@@ -52,7 +52,7 @@ sudo nvram boot-args="amfi_get_out_of_my_way=1 -v"
 **依存関係のインストール:**
 
 ```bash
-brew install ideviceinstaller wget gnu-tar openssl@3 ldid-procursus sshpass keystone autoconf automake pkg-config libtool
+brew install ideviceinstaller wget gnu-tar openssl@3 ldid-procursus sshpass keystone autoconf automake pkg-config libtool cmake
 ```
 
 **Submodules** — このリポジトリはリソースアーカイブに git submodule を使用しています。クローン時に以下を使用してください：
@@ -105,7 +105,7 @@ make boot_dfu                 # 実行したままにする
 
 ```bash
 # ターミナル 2
-make ramdisk_build            # 署名済みSSH Ramdisk のビルド
+sudo make ramdisk_build       # 署名済みSSH Ramdisk のビルド
 make ramdisk_send             # デバイスへ送信
 ```
 
@@ -119,6 +119,7 @@ iproxy 2222 22
 ```bash
 # ターミナル 2
 make cfw_install
+# または: make cfw_install_jb        # 脱獄バリアント
 ```
 
 ## 初回起動
@@ -146,6 +147,23 @@ shutdown -h now
 ```
 
 > **注意:** ホストキー生成手順を行わないと、dropbear（SSH サーバー）は接続を受け付けますが、SSH ハンドシェイクを実行するためのキーがないためすぐに切断されます。
+
+## *（任意）JBパッチの最終適用*
+
+```bash
+# ターミナル 1 — 実行したままにする
+make boot                     # 実行したままにする
+```
+
+```bash
+# ターミナル 2 — 実行したままにする
+iproxy 22222 22222
+```
+
+```bash
+# ターミナル 3 — 実行したままにする
+make cfw_install_jb_finalize
+```
 
 ## 2回目以降の起動
 

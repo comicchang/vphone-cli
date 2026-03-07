@@ -126,7 +126,7 @@ make boot_dfu                 # keep running
 
 ```bash
 # terminal 2
-sudo make ramdisk_build            # build signed SSH ramdisk
+sudo make ramdisk_build       # build signed SSH ramdisk
 make ramdisk_send             # send to device
 ```
 

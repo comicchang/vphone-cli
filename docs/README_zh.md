@@ -52,7 +52,7 @@ sudo nvram boot-args="amfi_get_out_of_my_way=1 -v"
 **安装依赖：**
 
 ```bash
-brew install ideviceinstaller wget gnu-tar openssl@3 ldid-procursus sshpass keystone autoconf automake pkg-config libtool
+brew install ideviceinstaller wget gnu-tar openssl@3 ldid-procursus sshpass keystone autoconf automake pkg-config libtool cmake
 ```
 
 **Submodules** —— 本仓库使用 git submodule 存储资源文件。克隆时请使用：
@@ -105,7 +105,7 @@ make boot_dfu                 # 保持运行
 
 ```bash
 # 终端 2
-make ramdisk_build            # 构建签名的 SSH ramdisk
+sudo make ramdisk_build       # 构建签名的 SSH ramdisk
 make ramdisk_send             # 发送到设备
 ```
 
@@ -119,6 +119,7 @@ iproxy 2222 22
 ```bash
 # 终端 2
 make cfw_install
+# 或：make cfw_install_jb        # 越狱变体
 ```
 
 ## 首次启动
@@ -146,6 +147,23 @@ shutdown -h now
 ```
 
 > **注意：** 若不执行主机密钥生成步骤，dropbear（SSH 服务器）会接受连接但立刻关闭，因为它没有密钥进行握手。
+
+## *（可选）完成越狱补丁*
+
+```bash
+# 终端 1 —— 保持运行
+make boot                     # 保持运行
+```
+
+```bash
+# 终端 2 —— 保持运行
+iproxy 22222 22222
+```
+
+```bash
+# 终端 3 —— 保持运行
+make cfw_install_jb_finalize
+```
 
 ## 后续启动
 

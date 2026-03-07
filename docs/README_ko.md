@@ -52,7 +52,7 @@ sudo nvram boot-args="amfi_get_out_of_my_way=1 -v"
 **의존성(Dependencies) 설치:**
 
 ```bash
-brew install ideviceinstaller wget gnu-tar openssl@3 ldid-procursus sshpass keystone autoconf automake pkg-config libtool
+brew install ideviceinstaller wget gnu-tar openssl@3 ldid-procursus sshpass keystone autoconf automake pkg-config libtool cmake
 ```
 
 **Submodules** — 이 저장소는 리소스 아카이브를 위해 git submodule을 사용합니다. 클론 시 다음 명령어를 사용하세요:
@@ -105,7 +105,7 @@ make boot_dfu                 # 계속 실행 유지
 
 ```bash
 # 터미널 2
-make ramdisk_build            # 서명된 SSH 램디스크 빌드
+sudo make ramdisk_build       # 서명된 SSH 램디스크 빌드
 make ramdisk_send             # 장치로 전송
 ```
 
@@ -119,6 +119,7 @@ iproxy 2222 22
 ```bash
 # 터미널 2
 make cfw_install
+# 또는: make cfw_install_jb        # 탈옥 변형
 ```
 
 ## 첫 부팅
@@ -146,6 +147,23 @@ shutdown -h now
 ```
 
 > **참고:** 호스트 키 생성 단계를 거치지 않으면 dropbear(SSH 서버)가 연결을 수락하더라도 SSH 핸드셰이크를 수행할 키가 없어 즉시 연결을 종료합니다.
+
+## *(선택) JB 패치 마무리*
+
+```bash
+# 터미널 1 — 계속 실행 유지
+make boot                     # 계속 실행 유지
+```
+
+```bash
+# 터미널 2 — 계속 실행 유지
+iproxy 22222 22222
+```
+
+```bash
+# 터미널 3 — 계속 실행 유지
+make cfw_install_jb_finalize
+```
 
 ## 이후 부팅
 
