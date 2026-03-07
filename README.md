@@ -72,7 +72,7 @@ Boot into Recovery (long press power button), open Terminal, then choose one set
 **Install dependencies:**
 
 ```bash
-brew install ideviceinstaller wget gnu-tar openssl@3 ldid-procursus sshpass keystone autoconf automake pkg-config libtool
+brew install ideviceinstaller wget gnu-tar openssl@3 ldid-procursus sshpass keystone autoconf automake pkg-config libtool cmake
 ```
 
 **Submodules** — this repo uses a git submodule for resource archives. Clone with:
@@ -126,7 +126,7 @@ make boot_dfu                 # keep running
 
 ```bash
 # terminal 2
-make ramdisk_build            # build signed SSH ramdisk
+sudo make ramdisk_build            # build signed SSH ramdisk
 make ramdisk_send             # send to device
 ```
 
@@ -140,6 +140,7 @@ iproxy 2222 22
 ```bash
 # terminal 2
 make cfw_install
+# or: make cfw_install_jb        # jailbreak variant
 ```
 
 ## First Boot
@@ -167,6 +168,23 @@ shutdown -h now
 ```
 
 > **Note:** Without the host key generation step, dropbear (SSH server) will accept connections but immediately close them because it has no keys to perform the SSH handshake.
+
+## *(optional) Finalize JB Patches*
+
+```bash
+# terminal 1 — keep running
+make boot                    # keep running
+```
+
+```bash
+# terminal 2 — keep running
+iproxy 22222 22222
+```
+
+```bash
+# terminal 3 — keep running
+make cfw_install_jb_finalize
+```
 
 ## Subsequent Boots
 
