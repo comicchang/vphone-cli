@@ -298,11 +298,15 @@ class VPhoneVirtualMachine: NSObject, VZVirtualMachineDelegate {
             print("[vphone] VM started — booting normally")
         }
 
-        // Print auto-assigned debug stub port after VM starts
-        if let debugStub = Dynamic(vm)._configuration._debugStub.asAnyObject {
-            if let port = Dynamic(debugStub).port.asInt, port > 0 {
-                print("[vphone] Kernel GDB debug stub listening on tcp://127.0.0.1:\(port)")
+        // Print auto-assigned debug stub port after VM starts (private API, macOS 26+ only)
+        if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26 {
+            if let debugStub = Dynamic(vm)._configuration._debugStub.asAnyObject {
+                if let port = Dynamic(debugStub).port.asInt, port > 0 {
+                    print("[vphone] Kernel GDB debug stub listening on tcp://127.0.0.1:\(port)")
+                }
             }
+        } else {
+            print("[vphone] Kernel GDB debug stub port query requires macOS 26+, skipped")
         }
     }
 
