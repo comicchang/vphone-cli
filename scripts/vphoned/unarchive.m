@@ -24,7 +24,10 @@ int vp_extract_archive(NSString *archivePath, NSString *extractionPath) {
     int flags = ARCHIVE_EXTRACT_TIME
               | ARCHIVE_EXTRACT_PERM
               | ARCHIVE_EXTRACT_ACL
-              | ARCHIVE_EXTRACT_FFLAGS;
+              | ARCHIVE_EXTRACT_FFLAGS
+              | ARCHIVE_EXTRACT_SECURE_SYMLINKS
+              | ARCHIVE_EXTRACT_SECURE_NODOTDOT
+              | ARCHIVE_EXTRACT_SECURE_NOABSOLUTEPATHS;
 
     struct archive *a = archive_read_new();
     archive_read_support_format_all(a);
@@ -48,7 +51,10 @@ int vp_extract_archive(NSString *archivePath, NSString *extractionPath) {
             fprintf(stderr, "%s\n", archive_error_string(a));
         if (r < ARCHIVE_WARN) { ret = 1; goto cleanup; }
 
-        NSString *currentFile = [NSString stringWithUTF8String:archive_entry_pathname(entry)];
+        const char *entryPath = archive_entry_pathname(entry);
+        if (!entryPath) { ret = 1; goto cleanup; }
+        NSString *currentFile = [NSString stringWithUTF8String:entryPath];
+        if (!currentFile) { ret = 1; goto cleanup; }
         NSString *fullOutputPath = [extractionPath stringByAppendingPathComponent:currentFile];
         archive_entry_set_pathname(entry, fullOutputPath.fileSystemRepresentation);
 

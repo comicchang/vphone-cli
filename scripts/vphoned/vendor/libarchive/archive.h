@@ -48,10 +48,13 @@ struct archive_entry;
 #define ARCHIVE_WARN    (-20)
 
 /* Extract flags */
-#define ARCHIVE_EXTRACT_TIME    0x0004
-#define ARCHIVE_EXTRACT_PERM    0x0002
-#define ARCHIVE_EXTRACT_ACL     0x0020
-#define ARCHIVE_EXTRACT_FFLAGS  0x0040
+#define ARCHIVE_EXTRACT_TIME                  0x0004
+#define ARCHIVE_EXTRACT_PERM                  0x0002
+#define ARCHIVE_EXTRACT_ACL                   0x0020
+#define ARCHIVE_EXTRACT_FFLAGS                0x0040
+#define ARCHIVE_EXTRACT_SECURE_SYMLINKS       0x0100
+#define ARCHIVE_EXTRACT_SECURE_NODOTDOT       0x0200
+#define ARCHIVE_EXTRACT_SECURE_NOABSOLUTEPATHS 0x10000
 
 /* Error string */
 const char *archive_error_string(struct archive *);
