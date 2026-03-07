@@ -19,15 +19,6 @@ extension VPhoneMenuController {
             return
         }
 
-        guard control.canInstallIPA else {
-            showAlert(
-                title: "Install IPA",
-                message: VPhoneControl.ipaInstallUnavailableMessage,
-                style: .warning
-            )
-            return
-        }
-
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false

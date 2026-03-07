@@ -241,9 +241,6 @@ static NSString *vp_find_ldid_path(void) {
     return nil;
 }
 
-static NSString *vp_resolve_ldid_path(void) {
-    return vp_find_ldid_path();
-}
 
 static NSString *vp_find_tar_path(void) {
     NSFileManager *fm = [NSFileManager defaultManager];
@@ -814,7 +811,7 @@ NSDictionary *vp_handle_custom_install(NSDictionary *msg) {
     NSString *registration = msg[@"registration"];
     NSString *packageFormat = msg[@"package_format"];
     NSString *certPath = msg[@"cert_path"];
-    NSString *ldidPath = vp_resolve_ldid_path();
+    NSString *ldidPath = vp_find_ldid_path();
     BOOL forceSystem = [registration isEqualToString:@"System"];
 
     if (ipaPath.length == 0) {

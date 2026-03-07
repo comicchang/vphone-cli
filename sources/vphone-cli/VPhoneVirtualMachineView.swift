@@ -115,14 +115,6 @@ class VPhoneVirtualMachineView: VZVirtualMachineView {
                 showAlert(title: "Install IPA", message: "Guest is not connected.", style: .warning)
                 return
             }
-            guard control.canInstallIPA else {
-                showAlert(
-                    title: "Install IPA",
-                    message: VPhoneControl.ipaInstallUnavailableMessage,
-                    style: .warning
-                )
-                return
-            }
 
             do {
                 let result = try await control.installIPA(localURL: url)
