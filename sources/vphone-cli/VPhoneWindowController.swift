@@ -40,7 +40,13 @@ class VPhoneWindowController: NSObject, NSToolbarDelegate {
         window.title = "VPHONE ⏳"
         window.subtitle = ecid ?? ""
         window.contentView = vmView
-        window.center()
+        if let ecid {
+            if !window.setFrameAutosaveName("vphone-\(ecid)") {
+                window.center()
+            }
+        } else {
+            window.center()
+        }
 
         // Toolbar with unified style for two-line title
         let toolbar = NSToolbar(identifier: "vphone-toolbar")
