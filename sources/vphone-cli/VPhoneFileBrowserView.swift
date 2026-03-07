@@ -301,15 +301,7 @@ struct VPhoneFileBrowserView: View {
         Task { @MainActor in
             var urls: [URL] = []
             for provider in validProviders {
-                if let url = try? await provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier)
-                    as? URL
-                {
-                    urls.append(url)
-                } else if let data = try? await provider.loadItem(
-                    forTypeIdentifier: UTType.fileURL.identifier
-                ) as? Data,
-                    let url = URL(dataRepresentation: data, relativeTo: nil)
-                {
+                if let url = await loadDroppedURL(from: provider) {
                     urls.append(url)
                 }
             }
@@ -320,6 +312,14 @@ struct VPhoneFileBrowserView: View {
             }
         }
         return true
+    }
+
+    func loadDroppedURL(from provider: NSItemProvider) async -> URL? {
+        await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                continuation.resume(returning: url)
+            }
+        }
     }
 
     func copyNames(ids: Set<VPhoneRemoteFile.ID>) {
