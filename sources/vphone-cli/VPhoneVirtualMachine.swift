@@ -290,7 +290,8 @@ class VPhoneVirtualMachine: NSObject, VZVirtualMachineDelegate {
         Dynamic(opts)._setStopInIBootStage1(false)
         Dynamic(opts)._setStopInIBootStage2(false)
         print("[vphone] Starting\(forceDFU ? " DFU" : "")...")
-        try await virtualMachine.start(options: opts)
+        nonisolated(unsafe) let vm = virtualMachine
+        try await vm.start(options: opts)
         if forceDFU {
             print("[vphone] VM started in DFU mode — connect with irecovery")
         } else {
@@ -298,7 +299,7 @@ class VPhoneVirtualMachine: NSObject, VZVirtualMachineDelegate {
         }
 
         // Print auto-assigned debug stub port after VM starts
-        if let debugStub = Dynamic(virtualMachine)._configuration._debugStub.asAnyObject {
+        if let debugStub = Dynamic(vm)._configuration._debugStub.asAnyObject {
             if let port = Dynamic(debugStub).port.asInt, port > 0 {
                 print("[vphone] Kernel GDB debug stub listening on tcp://127.0.0.1:\(port)")
             }
