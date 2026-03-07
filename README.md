@@ -244,10 +244,6 @@ killall dropbear
 dropbear -R -p 22222
 ```
 
-```bash
-make cfw_install_jb_finalize
-```
-
 **Q: Can I update to a newer iOS version?**
 
 Yes. Override `fw_prepare` with the IPSW URL for the version you want:
