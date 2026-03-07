@@ -1,3 +1,3 @@
 #import <Foundation/Foundation.h>
 
-extern int extract(NSString* fileToExtract, NSString* extractionPath);
+extern int vp_extract_archive(NSString *archivePath, NSString *extractionPath);

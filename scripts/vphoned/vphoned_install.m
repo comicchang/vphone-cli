@@ -745,9 +745,9 @@ static int vp_extract_package_to_directory(
     NSString *extractionPath,
     NSString **detailOutput
 ) {
-    int ret = extract(fileToExtract, extractionPath);
+    int ret = vp_extract_archive(fileToExtract, extractionPath);
     if (ret != 0) {
-        if (detailOutput) *detailOutput = @"libarchive extract() failed";
+        if (detailOutput) *detailOutput = @"libarchive extraction failed";
         return 168;
     }
     return 0;

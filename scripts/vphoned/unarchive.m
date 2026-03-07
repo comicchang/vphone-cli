@@ -3,65 +3,55 @@
 #include <archive.h>
 #include <archive_entry.h>
 
-static int
-copy_data(struct archive *ar, struct archive *aw)
-{
-  int r;
-  const void *buff;
-  size_t size;
-  la_int64_t offset;
+static int copy_data(struct archive *ar, struct archive *aw) {
+    const void *buff;
+    size_t size;
+    la_int64_t offset;
 
-  for (;;) {
-    r = archive_read_data_block(ar, &buff, &size, &offset);
-    if (r == ARCHIVE_EOF)
-      return (ARCHIVE_OK);
-    if (r < ARCHIVE_OK)
-      return (r);
-    r = archive_write_data_block(aw, buff, size, offset);
-    if (r < ARCHIVE_OK) {
-      fprintf(stderr, "%s\n", archive_error_string(aw));
-      return (r);
+    for (;;) {
+        int r = archive_read_data_block(ar, &buff, &size, &offset);
+        if (r == ARCHIVE_EOF) return ARCHIVE_OK;
+        if (r < ARCHIVE_OK) return r;
+        r = archive_write_data_block(aw, buff, size, offset);
+        if (r < ARCHIVE_OK) {
+            fprintf(stderr, "%s\n", archive_error_string(aw));
+            return r;
+        }
     }
-  }
 }
 
-int extract(NSString* fileToExtract, NSString* extractionPath)
-{
-    struct archive *a;
-    struct archive *ext;
-    struct archive_entry *entry;
-    int flags;
-    int r;
+int vp_extract_archive(NSString *archivePath, NSString *extractionPath) {
+    int flags = ARCHIVE_EXTRACT_TIME
+              | ARCHIVE_EXTRACT_PERM
+              | ARCHIVE_EXTRACT_ACL
+              | ARCHIVE_EXTRACT_FFLAGS;
 
-    /* Select which attributes we want to restore. */
-    flags = ARCHIVE_EXTRACT_TIME;
-    flags |= ARCHIVE_EXTRACT_PERM;
-    flags |= ARCHIVE_EXTRACT_ACL;
-    flags |= ARCHIVE_EXTRACT_FFLAGS;
-
-    a = archive_read_new();
+    struct archive *a = archive_read_new();
     archive_read_support_format_all(a);
     archive_read_support_filter_all(a);
-    ext = archive_write_disk_new();
+
+    struct archive *ext = archive_write_disk_new();
     archive_write_disk_set_options(ext, flags);
     archive_write_disk_set_standard_lookup(ext);
-    if ((r = archive_read_open_filename(a, fileToExtract.fileSystemRepresentation, 10240)))
-        return 1;
-    for (;;)
-    {
-        r = archive_read_next_header(a, &entry);
-        if (r == ARCHIVE_EOF)
-            break;
+
+    int ret = 0;
+    if (archive_read_open_filename(a, archivePath.fileSystemRepresentation, 10240) != ARCHIVE_OK) {
+        ret = 1;
+        goto cleanup;
+    }
+
+    for (;;) {
+        struct archive_entry *entry;
+        int r = archive_read_next_header(a, &entry);
+        if (r == ARCHIVE_EOF) break;
         if (r < ARCHIVE_OK)
             fprintf(stderr, "%s\n", archive_error_string(a));
-        if (r < ARCHIVE_WARN)
-            return 1;
-        
-        NSString* currentFile = [NSString stringWithUTF8String:archive_entry_pathname(entry)];
-        NSString* fullOutputPath = [extractionPath stringByAppendingPathComponent:currentFile];
-        //printf("extracting %@ to %@\n", currentFile, fullOutputPath);
+        if (r < ARCHIVE_WARN) { ret = 1; goto cleanup; }
+
+        NSString *currentFile = [NSString stringWithUTF8String:archive_entry_pathname(entry)];
+        NSString *fullOutputPath = [extractionPath stringByAppendingPathComponent:currentFile];
         archive_entry_set_pathname(entry, fullOutputPath.fileSystemRepresentation);
-        
+
         r = archive_write_header(ext, entry);
         if (r < ARCHIVE_OK)
             fprintf(stderr, "%s\n", archive_error_string(ext));
@@ -69,19 +59,19 @@ int extract(NSString* fileToExtract, NSString* extractionPath)
             r = copy_data(a, ext);
             if (r < ARCHIVE_OK)
                 fprintf(stderr, "%s\n", archive_error_string(ext));
-            if (r < ARCHIVE_WARN)
-                return 1;
+            if (r < ARCHIVE_WARN) { ret = 1; goto cleanup; }
         }
+
         r = archive_write_finish_entry(ext);
         if (r < ARCHIVE_OK)
             fprintf(stderr, "%s\n", archive_error_string(ext));
-        if (r < ARCHIVE_WARN)
-            return 1;
+        if (r < ARCHIVE_WARN) { ret = 1; goto cleanup; }
     }
+
+cleanup:
     archive_read_close(a);
     archive_read_free(a);
     archive_write_close(ext);
     archive_write_free(ext);
-    
-    return 0;
+    return ret;
 }
