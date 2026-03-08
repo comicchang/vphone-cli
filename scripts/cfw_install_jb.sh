@@ -277,6 +277,40 @@ if [[ -d "$BASEBIN_DIR" ]]; then
     echo "  [+] BaseBin hooks deployed"
 fi
 
+# ═══════════ JB-5 DEPLOY FIRST-BOOT SETUP ══════════════════════
+echo ""
+echo "[JB-5] Deploying first-boot setup..."
+
+# Deploy first-boot JB setup script + LaunchDaemon
+SETUP_SCRIPT="$SCRIPT_DIR/vphone_jb_setup.sh"
+SETUP_PLIST="$SCRIPT_DIR/vphone_jb_setup.plist"
+if [[ -f "$SETUP_SCRIPT" ]]; then
+    scp_to "$SETUP_SCRIPT" "/mnt1/cores/vphone_jb_setup.sh"
+    ssh_cmd "/bin/chmod 0755 /mnt1/cores/vphone_jb_setup.sh"
+    echo "  [+] vphone_jb_setup.sh -> /cores/"
+fi
+if [[ -f "$SETUP_PLIST" ]]; then
+    scp_to "$SETUP_PLIST" "/mnt1/System/Library/LaunchDaemons/com.vphone.jb-setup.plist"
+    ssh_cmd "/bin/chmod 0644 /mnt1/System/Library/LaunchDaemons/com.vphone.jb-setup.plist"
+
+    # Inject into launchd.plist so launchd starts it at boot
+    echo "  Injecting com.vphone.jb-setup into launchd.plist..."
+    scp_from "/mnt1/System/Library/xpc/launchd.plist" "$TEMP_DIR/launchd.plist"
+    python3 -c "
+import plistlib, sys
+with open(sys.argv[1], 'rb') as f:
+    target = plistlib.load(f)
+with open(sys.argv[2], 'rb') as f:
+    daemon = plistlib.load(f)
+target.setdefault('LaunchDaemons', {})['/System/Library/LaunchDaemons/com.vphone.jb-setup.plist'] = daemon
+with open(sys.argv[1], 'wb') as f:
+    plistlib.dump(target, f, sort_keys=False)
+" "$TEMP_DIR/launchd.plist" "$SETUP_PLIST"
+    scp_to "$TEMP_DIR/launchd.plist" "/mnt1/System/Library/xpc/launchd.plist"
+    ssh_cmd "/bin/chmod 0644 /mnt1/System/Library/xpc/launchd.plist"
+    echo "  [+] com.vphone.jb-setup.plist injected into launchd.plist"
+fi
+
 # ═══════════ CLEANUP ═════════════════════════════════════════
 echo ""
 echo "[*] Unmounting device filesystems..."
@@ -291,6 +325,5 @@ rm -f "$TEMP_DIR/launchd" \
 echo ""
 echo "[+] CFW + JB installation complete!"
 echo "    Reboot the device for changes to take effect."
-echo "    After boot, SSH will be available on port 22222 (password: alpine)"
 
 ssh_cmd "/sbin/halt" || true

@@ -81,7 +81,6 @@ help:
 	@echo "  make cfw_install             Install CFW mods via SSH"
 	@echo "  make cfw_install_dev         Install CFW mods via SSH (dev mode)"
 	@echo "  make cfw_install_jb          Install CFW + JB extensions (jetsam/procursus/basebin)"
-	@echo "  make cfw_install_jb_finalize Finalize JB bootstrap on live device (symlinks/sileo/apt)"
 	@echo ""
 	@echo "Variables: VM_DIR=$(VM_DIR) CPU=$(CPU) MEMORY=$(MEMORY) DISK_SIZE=$(DISK_SIZE)"
 
@@ -244,7 +243,7 @@ ramdisk_send:
 # CFW
 # ═══════════════════════════════════════════════════════════════════
 
-.PHONY: cfw_install cfw_install_dev cfw_install_jb cfw_install_jb_finalize
+.PHONY: cfw_install cfw_install_dev cfw_install_jb
 
 cfw_install:
 	cd $(VM_DIR) && $(if $(SSH_PORT),SSH_PORT="$(SSH_PORT)") zsh "$(CURDIR)/$(SCRIPTS)/cfw_install.sh" .
@@ -254,6 +253,3 @@ cfw_install_dev:
 
 cfw_install_jb:
 	cd $(VM_DIR) && $(if $(SSH_PORT),SSH_PORT="$(SSH_PORT)") zsh "$(CURDIR)/$(SCRIPTS)/cfw_install_jb.sh" .
-
-cfw_install_jb_finalize:
-	$(if $(SSH_PORT),SSH_PORT="$(SSH_PORT)") $(if $(SSH_PASS),SSH_PASS="$(SSH_PASS)") zsh "$(CURDIR)/$(SCRIPTS)/cfw_install_jb_post.sh"
