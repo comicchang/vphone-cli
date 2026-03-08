@@ -7,8 +7,13 @@ class VPhoneWindowController: NSObject, NSToolbarDelegate {
     private var windowController: NSWindowController?
     private var statusTimer: Timer?
     private weak var control: VPhoneControl?
+    private weak var virtualMachineView: VPhoneVirtualMachineView?
 
     private nonisolated static let homeItemID = NSToolbarItem.Identifier("home")
+
+    var captureView: VPhoneVirtualMachineView? {
+        virtualMachineView
+    }
 
     func showWindow(
         for vm: VZVirtualMachine, screenWidth: Int, screenHeight: Int, screenScale: Double,
@@ -21,6 +26,7 @@ class VPhoneWindowController: NSObject, NSToolbarDelegate {
         view.capturesSystemKeys = true
         view.keyHelper = keyHelper
         view.control = control
+        virtualMachineView = view
         let vmView: NSView = view
 
         let scale = CGFloat(screenScale)

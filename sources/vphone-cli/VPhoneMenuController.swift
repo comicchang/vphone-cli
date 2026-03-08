@@ -17,6 +17,7 @@ class VPhoneMenuController {
     var locationReplayStopItem: NSMenuItem?
     var screenRecorder: VPhoneScreenRecorder?
     var recordingItem: NSMenuItem?
+    weak var captureView: VPhoneVirtualMachineView?
 
     init(keyHelper: VPhoneKeyHelper, control: VPhoneControl) {
         self.keyHelper = keyHelper

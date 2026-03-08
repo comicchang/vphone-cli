@@ -71,6 +71,7 @@ extension VPhoneMenuController {
     }
 
     private func activeCaptureView() -> NSView? {
-        NSApp.keyWindow?.contentView ?? NSApp.mainWindow?.contentView
+        guard let captureView else { return nil }
+        return captureView.window == nil ? nil : captureView
     }
 }
