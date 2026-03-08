@@ -18,11 +18,11 @@
 
 提供三种补丁变体，安全绕过级别逐步递增：
 
-| 变体       |     启动链     | 自定义固件 | Make 目标                                                    |
-| ---------- | :------------: | :--------: | ------------------------------------------------------------ |
-| **常规版** |   41 个补丁    | 10 个阶段  | `fw_patch` + `cfw_install`                                   |
-| **开发版** |   52 个补丁    | 12 个阶段  | `fw_patch_dev` + `cfw_install_dev`                           |
-| **越狱版** | 66 / 78 个补丁 | 14 个阶段  | `fw_patch_jb` + `cfw_install_jb`                             |
+| 变体       |   启动链   | 自定义固件 | Make 目标                          |
+| ---------- | :--------: | :--------: | ---------------------------------- |
+| **常规版** | 41 个补丁  | 10 个阶段  | `fw_patch` + `cfw_install`         |
+| **开发版** | 52 个补丁  | 12 个阶段  | `fw_patch_dev` + `cfw_install_dev` |
+| **越狱版** | 112 个补丁 | 14 个阶段  | `fw_patch_jb` + `cfw_install_jb`   |
 
 > 越狱最终配置（符号链接、Sileo、apt、TrollStore）通过 `/cores/vphone_jb_setup.sh` LaunchDaemon 在首次启动时自动运行。查看进度：`/var/log/vphone_jb_setup.log`。
 
@@ -32,22 +32,42 @@
 
 **主机系统：** PV=3 虚拟化要求 macOS 15+（Sequoia）。
 
-**禁用 SIP 和 AMFI** —— 需要私有的 Virtualization.framework 权限。
+**配置 SIP/AMFI** —— 需要私有的 Virtualization.framework 权限和未签名二进制文件工作流。
 
-重启到恢复模式（长按电源键），打开终端：
+重启到恢复模式（长按电源键），打开终端，选择以下任一设置方式：
 
-```bash
-csrutil disable
-csrutil allow-research-guests enable
-```
+- **方式 1：完全禁用 SIP + AMFI boot-arg（最宽松）**
 
-重新启动回 macOS 后：
+  在恢复模式中：
 
-```bash
-sudo nvram boot-args="amfi_get_out_of_my_way=1 -v"
-```
+  ```bash
+  csrutil disable
+  csrutil allow-research-guests enable
+  ```
 
-再重启一次。
+  重新启动回 macOS 后：
+
+  ```bash
+  sudo nvram boot-args="amfi_get_out_of_my_way=1 -v"
+  ```
+
+  再重启一次。
+
+- **方式 2：保持 SIP 大部分启用，仅禁用调试限制，使用 [`amfidont`](https://github.com/zqxwce/amfidont)**
+
+  在恢复模式中：
+
+  ```bash
+  csrutil enable --without debug
+  csrutil allow-research-guests enable
+  ```
+
+  重新启动回 macOS 后：
+
+  ```bash
+  xcrun python3 -m pip install amfidont
+  sudo amfidont --path [PATH_TO_VPHONE_DIR]
+  ```
 
 **安装依赖：**
 
@@ -65,6 +85,7 @@ git clone --recurse-submodules https://github.com/Lakr233/vphone-cli.git
 
 ```bash
 make setup_machine            # 完全自动化完成"首次启动"流程（包含 restore/ramdisk/CFW）
+# 选项：NONE_INTERACTIVE=1 SUDO_PASSWORD=...
 ```
 
 ## 手动设置
@@ -132,6 +153,24 @@ make boot
 
 执行 `cfw_install_jb` 后，越狱变体在首次启动时将提供 **Sileo** 和 **TrollStore**。你可以使用 Sileo 安装 `openssh-server` 以获得 SSH 访问。
 
+对于常规版/开发版，VM 会提供**直接控制台**。当看到 `bash-4.4#` 时，按回车并运行以下命令以初始化 shell 环境并生成 SSH 主机密钥：
+
+```bash
+export PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/bin/X11:/usr/games:/iosbinpack64/usr/local/sbin:/iosbinpack64/usr/local/bin:/iosbinpack64/usr/sbin:/iosbinpack64/usr/bin:/iosbinpack64/sbin:/iosbinpack64/bin'
+
+mkdir -p /var/dropbear
+cp /iosbinpack64/etc/profile /var/profile
+cp /iosbinpack64/etc/motd /var/motd
+
+# 生成 SSH 主机密钥（SSH 能正常工作所必需）
+dropbearkey -t rsa -f /var/dropbear/dropbear_rsa_host_key
+dropbearkey -t ecdsa -f /var/dropbear/dropbear_ecdsa_host_key
+
+shutdown -h now
+```
+
+> **注意：** 若不执行主机密钥生成步骤，dropbear（SSH 服务器）会接受连接但立刻关闭，因为它没有密钥进行握手。
+
 ## 后续启动
 
 ```bash
@@ -141,14 +180,15 @@ make boot
 在另一个终端中启动 iproxy 隧道：
 
 ```bash
-iproxy 2222 22       # SSH（需要从 Sileo 安装 openssh-server）
+iproxy 2222 22       # SSH（越狱版：需从 Sileo 安装 openssh-server；常规版/开发版：dropbear）
 iproxy 5901 5901     # VNC
 iproxy 5910 5910     # RPC
 ```
 
 连接方式：
 
-- **SSH：** `ssh -p 2222 mobile@127.0.0.1`（密码：`alpine`）
+- **SSH（越狱版）：** `ssh -p 2222 mobile@127.0.0.1`（密码：`alpine`）
+- **SSH（常规版/开发版）：** `ssh -p 2222 root@127.0.0.1`（密码：`alpine`）
 - **VNC：** `vnc://127.0.0.1:5901`
 - [**RPC：**](http://github.com/doronz88/rpc-project) `rpcclient -p 5910 127.0.0.1`
 
@@ -158,11 +198,16 @@ iproxy 5910 5910     # RPC
 
 **问：运行时出现 `zsh: killed ./vphone-cli`。**
 
-AMFI 未禁用。设置 boot-arg 并重启：
+AMFI/调试限制未正确绕过。选择以下任一方式：
 
-```bash
-sudo nvram boot-args="amfi_get_out_of_my_way=1 -v"
-```
+- **方式 1（完全禁用 AMFI）：**
+
+  ```bash
+  sudo nvram boot-args="amfi_get_out_of_my_way=1 -v"
+  ```
+
+- **方式 2（仅禁用调试限制）：**
+  在恢复模式中使用 `csrutil enable --without debug`（不完全禁用 SIP），然后安装/加载 [`amfidont`](https://github.com/zqxwce/amfidont)，保持 AMFI 其他功能不变。
 
 **问：系统应用（App Store、信息等）无法下载或安装。**
 
@@ -179,6 +224,10 @@ sudo nvram boot-args="amfi_get_out_of_my_way=1 -v"
 **问：安装 openssh-server 后 SSH 无法使用。**
 
 重启虚拟机。SSH 服务器将在下次启动时自动启动。
+
+**问：可以安装 `.tipa` 文件吗？**
+
+可以。安装菜单同时支持 `.ipa` 和 `.tipa` 包。拖放或使用文件选择器即可。
 
 **问：可以升级到更新的 iOS 版本吗？**
 

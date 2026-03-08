@@ -18,11 +18,11 @@ Boot a virtual iPhone (iOS 26) via Apple's Virtualization.framework using PCC re
 
 Three patch variants are available with increasing levels of security bypass:
 
-| Variant         |   Boot Chain    |    CFW    | Make Targets                                                 |
-| --------------- | :-------------: | :-------: | ------------------------------------------------------------ |
-| **Regular**     |   41 patches    | 10 phases | `fw_patch` + `cfw_install`                                   |
-| **Development** |   52 patches    | 12 phases | `fw_patch_dev` + `cfw_install_dev`                           |
-| **Jailbreak**   | 66 / 78 patches | 14 phases | `fw_patch_jb` + `cfw_install_jb`                             |
+| Variant         | Boot Chain  |    CFW    | Make Targets                       |
+| --------------- | :---------: | :-------: | ---------------------------------- |
+| **Regular**     | 41 patches  | 10 phases | `fw_patch` + `cfw_install`         |
+| **Development** | 52 patches  | 12 phases | `fw_patch_dev` + `cfw_install_dev` |
+| **Jailbreak**   | 112 patches | 14 phases | `fw_patch_jb` + `cfw_install_jb`   |
 
 > JB finalization (symlinks, Sileo, apt, TrollStore) runs automatically on first boot via `/cores/vphone_jb_setup.sh` LaunchDaemon. Monitor progress: `/var/log/vphone_jb_setup.log`.
 
@@ -153,6 +153,24 @@ make boot
 
 After `cfw_install_jb`, the jailbreak variant will have **Sileo** and **TrollStore** available on first boot. You can use Sileo to install `openssh-server` for SSH access.
 
+For the regular/development variant, the VM gives you a **direct console**. When you see `bash-4.4#`, press Enter and run these commands to initialize the shell environment and generate SSH host keys:
+
+```bash
+export PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/bin/X11:/usr/games:/iosbinpack64/usr/local/sbin:/iosbinpack64/usr/local/bin:/iosbinpack64/usr/sbin:/iosbinpack64/usr/bin:/iosbinpack64/sbin:/iosbinpack64/bin'
+
+mkdir -p /var/dropbear
+cp /iosbinpack64/etc/profile /var/profile
+cp /iosbinpack64/etc/motd /var/motd
+
+# generate SSH host keys (required for SSH to work)
+dropbearkey -t rsa -f /var/dropbear/dropbear_rsa_host_key
+dropbearkey -t ecdsa -f /var/dropbear/dropbear_ecdsa_host_key
+
+shutdown -h now
+```
+
+> **Note:** Without the host key generation step, dropbear (SSH server) will accept connections but immediately close them because it has no keys to perform the SSH handshake.
+
 ## Subsequent Boots
 
 ```bash
@@ -162,14 +180,15 @@ make boot
 In a separate terminal, start iproxy tunnels:
 
 ```bash
-iproxy 2222 22       # SSH (requires openssh-server from Sileo)
+iproxy 2222 22       # SSH (JB: requires openssh-server from Sileo; Regular/Dev: dropbear)
 iproxy 5901 5901     # VNC
 iproxy 5910 5910     # RPC
 ```
 
 Connect via:
 
-- **SSH:** `ssh -p 2222 mobile@127.0.0.1` (password: `alpine`)
+- **SSH (JB):** `ssh -p 2222 mobile@127.0.0.1` (password: `alpine`)
+- **SSH (Regular/Dev):** `ssh -p 2222 root@127.0.0.1` (password: `alpine`)
 - **VNC:** `vnc://127.0.0.1:5901`
 - [**RPC:**](http://github.com/doronz88/rpc-project) `rpcclient -p 5910 127.0.0.1`
 
@@ -205,6 +224,10 @@ Install `openssh-server` from Sileo (available on the jailbreak variant after fi
 **Q: SSH doesn't work after installing openssh-server.**
 
 Reboot the VM. The SSH server will start automatically on the next boot.
+
+**Q: Can I install `.tipa` files?**
+
+Yes. The install menu supports both `.ipa` and `.tipa` packages. Drag and drop or use the file picker.
 
 **Q: Can I update to a newer iOS version?**
 
