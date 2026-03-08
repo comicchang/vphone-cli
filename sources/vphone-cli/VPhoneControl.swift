@@ -16,6 +16,8 @@ import Virtualization
 class VPhoneControl {
     private static let protocolVersion = 1
     private static let vsockPort: UInt32 = 1337
+    private static let reconnectDelay: TimeInterval = 3
+    private static let handshakeTimeout: TimeInterval = 8
     private static let defaultRequestTimeout: TimeInterval = 10
     private static let slowRequestTimeout: TimeInterval = 30
     private static let transferRequestTimeout: TimeInterval = 180
@@ -37,6 +39,8 @@ class VPhoneControl {
     private var guestBinaryData: Data?
     private var guestBinaryHash: String?
     private var nextRequestId: UInt64 = 0
+    private var connectionAttemptToken: UInt64 = 0
+    private var reconnectWorkItem: DispatchWorkItem?
 
     // MARK: - Pending Requests
 
@@ -128,23 +132,27 @@ class VPhoneControl {
 
     func connect(device: VZVirtioSocketDevice) {
         self.device = device
+        cancelReconnect()
         loadGuestBinary()
         attemptConnect()
     }
 
     private func attemptConnect() {
         guard let device else { return }
+        connectionAttemptToken += 1
+        let attemptToken = connectionAttemptToken
         device.connect(toPort: Self.vsockPort) {
             [weak self] (result: Result<VZVirtioSocketConnection, any Error>) in
             Task { @MainActor in
+                guard let self else { return }
+                guard self.isCurrentAttempt(attemptToken) else { return }
                 switch result {
                 case let .success(conn):
-                    self?.connection = conn
-                    self?.performHandshake(fd: conn.fileDescriptor)
-                case .failure:
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                        self?.attemptConnect()
-                    }
+                    self.connection = conn
+                    self.performHandshake(fd: conn.fileDescriptor, attemptToken: attemptToken)
+                case let .failure(error):
+                    print("[control] connect failed: \(error)")
+                    self.scheduleReconnect(for: attemptToken, reason: "connect failed")
                 }
             }
         }
@@ -152,22 +160,25 @@ class VPhoneControl {
 
     // MARK: - Handshake
 
-    private func performHandshake(fd: Int32) {
+    private func performHandshake(fd: Int32, attemptToken: UInt64) {
         var hello: [String: Any] = ["v": Self.protocolVersion, "t": "hello"]
         if let hash = guestBinaryHash {
             hello["bin_hash"] = hash
         }
         guard writeMessage(fd: fd, dict: hello) else {
             print("[control] handshake: failed to send hello")
-            disconnect()
+            disconnect(ifCurrentAttempt: attemptToken)
             return
         }
+        armHandshakeTimeout(fd: fd, attemptToken: attemptToken)
 
         DispatchQueue.global(qos: .userInteractive).async { [weak self] in
             guard let resp = Self.readMessage(fd: fd) else {
                 Task { @MainActor in
+                    guard let self else { return }
+                    guard self.isCurrentAttempt(attemptToken, fd: fd) else { return }
                     print("[control] handshake: no response")
-                    self?.disconnect()
+                    self.disconnect(ifCurrentAttempt: attemptToken)
                 }
                 return
             }
@@ -180,11 +191,12 @@ class VPhoneControl {
 
             Task { @MainActor in
                 guard let self else { return }
+                guard self.isCurrentAttempt(attemptToken, fd: fd) else { return }
                 guard type == "hello", version == Self.protocolVersion else {
                     print(
                         "[control] handshake: version mismatch (guest v\(version), host v\(Self.protocolVersion))"
                     )
-                    self.disconnect()
+                    self.disconnect(ifCurrentAttempt: attemptToken)
                     return
                 }
                 self.guestName = name
@@ -195,7 +207,7 @@ class VPhoneControl {
                 if needUpdate {
                     self.pushUpdate(fd: fd)
                 } else {
-                    self.startReadLoop(fd: fd)
+                    self.startReadLoop(fd: fd, attemptToken: attemptToken)
                     self.onConnect?(caps)
                 }
             }
@@ -207,7 +219,7 @@ class VPhoneControl {
     private func pushUpdate(fd: Int32) {
         guard let data = guestBinaryData else {
             print("[control] update requested but no binary available")
-            startReadLoop(fd: fd)
+            startReadLoop(fd: fd, attemptToken: connectionAttemptToken)
             return
         }
 
@@ -233,7 +245,7 @@ class VPhoneControl {
         }
 
         print("[control] update sent, waiting for ack...")
-        startReadLoop(fd: fd)
+        startReadLoop(fd: fd, attemptToken: connectionAttemptToken)
     }
 
     // MARK: - Send Commands
@@ -495,8 +507,15 @@ class VPhoneControl {
 
     // MARK: - Disconnect & Reconnect
 
-    private func disconnect() {
+    private func disconnect(ifCurrentAttempt expectedAttemptToken: UInt64? = nil) {
+        if let expectedAttemptToken, !isCurrentAttempt(expectedAttemptToken) {
+            return
+        }
+
+        let reconnectAttemptToken = connectionAttemptToken
         let wasConnected = isConnected
+        let hadConnection = connection != nil
+        let fd = connection?.fileDescriptor
         connection = nil
         isConnected = false
         guestName = ""
@@ -509,18 +528,18 @@ class VPhoneControl {
             onDisconnect?()
         }
 
-        if wasConnected, device != nil {
-            print("[control] reconnecting in 3s...")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-                self?.loadGuestBinary()
-                self?.attemptConnect()
-            }
+        if let fd {
+            Self.shutdownSocket(fd: fd)
+        }
+
+        if hadConnection, device != nil {
+            scheduleReconnect(for: reconnectAttemptToken, reason: "connection lost")
         }
     }
 
     // MARK: - Background Read Loop
 
-    private func startReadLoop(fd: Int32) {
+    private func startReadLoop(fd: Int32, attemptToken: UInt64) {
         DispatchQueue.global(qos: .utility).async { [weak self] in
             while let msg = Self.readMessage(fd: fd) {
                 guard let self else { break }
@@ -577,9 +596,57 @@ class VPhoneControl {
                 }
             }
             Task { @MainActor in
+                guard let self else { return }
+                guard self.isCurrentAttempt(attemptToken, fd: fd) else { return }
                 print("[control] read loop ended")
-                self?.disconnect()
+                self.disconnect(ifCurrentAttempt: attemptToken)
             }
+        }
+    }
+
+    // MARK: - Reconnect Coordination
+
+    private func isCurrentAttempt(_ attemptToken: UInt64, fd: Int32? = nil) -> Bool {
+        guard connectionAttemptToken == attemptToken else { return false }
+        guard let fd else { return true }
+        return connection?.fileDescriptor == fd
+    }
+
+    private func cancelReconnect() {
+        reconnectWorkItem?.cancel()
+        reconnectWorkItem = nil
+    }
+
+    private func scheduleReconnect(for attemptToken: UInt64, reason: String) {
+        guard isCurrentAttempt(attemptToken) else { return }
+        guard device != nil else { return }
+
+        cancelReconnect()
+        let delay = Self.reconnectDelay
+        print("[control] \(reason); reconnecting in \(Int(delay.rounded()))s...")
+
+        let workItem = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                guard self.isCurrentAttempt(attemptToken) else { return }
+                self.reconnectWorkItem = nil
+                self.loadGuestBinary()
+                self.attemptConnect()
+            }
+        }
+        reconnectWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private func armHandshakeTimeout(fd: Int32, attemptToken: UInt64) {
+        let timeout = Self.handshakeTimeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + timeout) { [weak self] in
+            guard let self else { return }
+            guard self.isCurrentAttempt(attemptToken, fd: fd) else { return }
+            guard !self.isConnected else { return }
+            print("[control] handshake timed out after \(Int(timeout.rounded()))s")
+            Self.shutdownSocket(fd: fd)
+            self.disconnect(ifCurrentAttempt: attemptToken)
         }
     }
 
@@ -660,5 +727,9 @@ class VPhoneControl {
             offset += n
         }
         return true
+    }
+
+    private nonisolated static func shutdownSocket(fd: Int32) {
+        _ = Darwin.shutdown(fd, SHUT_RDWR)
     }
 }
