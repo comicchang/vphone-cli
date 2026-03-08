@@ -103,6 +103,13 @@ ldid_sign() {
     ldid "${args[@]}" "$file"
 }
 
+ldid_sign_ent() {
+    local file="$1" entitlements_plist="$2" bundle_id="${3:-}"
+    local args=("-S$entitlements_plist" "-K$VM_DIR/$CFW_INPUT/signcert.p12")
+    [[ -n "$bundle_id" ]] && args+=("-I$bundle_id")
+    ldid "${args[@]}" "$file"
+}
+
 remote_mount() {
     local dev="$1" mnt="$2" opts="${3:-rw}"
     ssh_cmd "/bin/mkdir -p $mnt"
@@ -132,6 +139,26 @@ setup_cfw_jb_input() {
         fi
     done
     die "JB mode: neither $CFW_JB_INPUT/ nor $CFW_JB_ARCHIVE found"
+}
+
+# ── Apply dev overlay (replace rpcserver_ios in iosbinpack64) ──
+apply_dev_overlay() {
+    local dev_bin
+    for search_dir in "$SCRIPT_DIR/resources/cfw_dev" "$SCRIPT_DIR/cfw_dev"; do
+        dev_bin="$search_dir/rpcserver_ios"
+        if [[ -f "$dev_bin" ]]; then
+            echo "  Applying dev overlay (rpcserver_ios)..."
+            local iosbinpack="$VM_DIR/$CFW_INPUT/jb/iosbinpack64.tar"
+            local tmpdir="$VM_DIR/.iosbinpack_tmp"
+            mkdir -p "$tmpdir"
+            tar -xf "$iosbinpack" -C "$tmpdir"
+            cp "$dev_bin" "$tmpdir/iosbinpack64/usr/local/bin/rpcserver_ios"
+            (cd "$tmpdir" && tar -cf "$iosbinpack" iosbinpack64)
+            rm -rf "$tmpdir"
+            return
+        fi
+    done
+    die "Dev overlay not found (cfw_dev/rpcserver_ios)"
 }
 
 # ── Check JB prerequisites ────────────────────────────────────
@@ -198,12 +225,28 @@ scp_to "$VM_DIR/$CFW_INPUT/jb/iosbinpack64.tar" "/mnt1"
 ssh_cmd "/usr/bin/tar --preserve-permissions --no-overwrite-dir \
     -xf /mnt1/iosbinpack64.tar -C /mnt1"
 ssh_cmd "/bin/rm -f /mnt1/iosbinpack64.tar"
+apply_dev_overlay
 
 echo "  [+] iosbinpack64 installed"
 
-# ═══════════ JB-3 INSTALL PROCURSUS BOOTSTRAP ══════════════════
+# ═══════════ JB-3 PATCH debugserver entitlements ════
 echo ""
-echo "[JB-3] Installing procursus bootstrap..."
+echo "[JB-3] Patching debugserver entitlements..."
+
+scp_from "/mnt1/usr/libexec/debugserver" "$TEMP_DIR/debugserver"
+ldid -e "$TEMP_DIR/debugserver" > "$TEMP_DIR/debugserver-entitlements.plist"
+plutil -remove seatbelt-profiles "$TEMP_DIR/debugserver-entitlements.plist" || true
+plutil -insert task_for_pid-allow -bool YES "$TEMP_DIR/debugserver-entitlements.plist" || true
+ldid_sign_ent "$TEMP_DIR/debugserver" "$TEMP_DIR/debugserver-entitlements.plist"
+scp_to "$TEMP_DIR/debugserver" "/mnt1/usr/libexec/debugserver"
+ssh_cmd "/bin/chmod 0755 /mnt1/usr/libexec/debugserver"
+
+echo "  [+] debugserver entitlements patched"
+
+
+# ═══════════ JB-4 INSTALL PROCURSUS BOOTSTRAP ══════════════════
+echo ""
+echo "[JB-4] Installing procursus bootstrap..."
 
 remote_mount /dev/disk1s5 /mnt5
 BOOT_HASH="$(get_boot_manifest_hash)"
