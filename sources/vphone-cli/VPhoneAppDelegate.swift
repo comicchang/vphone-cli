@@ -141,6 +141,7 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
 
             // Wire location toggle through onConnect/onDisconnect
             control.onConnect = { [weak mc, weak provider = locationProvider] caps in
+                mc?.updateConnectAvailability(available: true)
                 if caps.contains("location") {
                     mc?.updateLocationCapability(available: true)
                     // Auto-resume if user had toggle on
@@ -152,6 +153,7 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             control.onDisconnect = { [weak mc, weak provider = locationProvider] in
+                mc?.updateConnectAvailability(available: false)
                 provider?.stopReplay()
                 provider?.stopForwarding()
                 mc?.updateLocationCapability(available: false)

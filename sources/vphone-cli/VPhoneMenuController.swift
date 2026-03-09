@@ -10,6 +10,10 @@ class VPhoneMenuController {
     weak var vm: VPhoneVirtualMachine?
 
     var onFilesPressed: (() -> Void)?
+    var connectFileBrowserItem: NSMenuItem?
+    var connectDevModeStatusItem: NSMenuItem?
+    var connectPingItem: NSMenuItem?
+    var connectGuestVersionItem: NSMenuItem?
     var locationProvider: VPhoneLocationProvider?
     var locationMenuItem: NSMenuItem?
     var locationPresetMenuItem: NSMenuItem?

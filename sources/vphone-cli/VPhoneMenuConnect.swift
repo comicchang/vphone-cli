@@ -6,14 +6,40 @@ extension VPhoneMenuController {
     func buildConnectMenu() -> NSMenuItem {
         let item = NSMenuItem()
         let menu = NSMenu(title: "Connect")
-        menu.addItem(makeItem("File Browser", action: #selector(openFiles)))
+
+        let fileBrowser = makeItem("File Browser", action: #selector(openFiles))
+        fileBrowser.isEnabled = false
+        connectFileBrowserItem = fileBrowser
+        menu.addItem(fileBrowser)
+
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(makeItem("Developer Mode Status", action: #selector(devModeStatus)))
+
+        let devModeStatus = makeItem("Developer Mode Status", action: #selector(devModeStatus))
+        devModeStatus.isEnabled = false
+        connectDevModeStatusItem = devModeStatus
+        menu.addItem(devModeStatus)
+
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(makeItem("Ping", action: #selector(sendPing)))
-        menu.addItem(makeItem("Guest Version", action: #selector(queryGuestVersion)))
+
+        let ping = makeItem("Ping", action: #selector(sendPing))
+        ping.isEnabled = false
+        connectPingItem = ping
+        menu.addItem(ping)
+
+        let guestVersion = makeItem("Guest Version", action: #selector(queryGuestVersion))
+        guestVersion.isEnabled = false
+        connectGuestVersionItem = guestVersion
+        menu.addItem(guestVersion)
+
         item.submenu = menu
         return item
+    }
+
+    func updateConnectAvailability(available: Bool) {
+        connectFileBrowserItem?.isEnabled = available
+        connectDevModeStatusItem?.isEnabled = available
+        connectPingItem?.isEnabled = available
+        connectGuestVersionItem?.isEnabled = available
     }
 
     @objc func openFiles() {
