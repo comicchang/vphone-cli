@@ -9,15 +9,28 @@ let package = Package(
     ],
     products: [],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.1"),
-        .package(url: "https://github.com/mhdhejazi/Dynamic", from: "1.2.0"),
+        .package(path: "vendor/swift-argument-parser"),
+        .package(path: "vendor/Dynamic"),
+        .package(path: "vendor/libcapstone-spm"),
+        .package(path: "vendor/libimg4-spm"),
+        .package(path: "vendor/MachOKit"),
     ],
     targets: [
+        .target(
+            name: "FirmwarePatcher",
+            dependencies: [
+                .product(name: "Capstone", package: "libcapstone-spm"),
+                .product(name: "Img4tool", package: "libimg4-spm"),
+                .product(name: "MachOKit", package: "MachOKit"),
+            ],
+            path: "sources/FirmwarePatcher"
+        ),
         .executableTarget(
             name: "vphone-cli",
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "Dynamic", package: "Dynamic"),
+                "FirmwarePatcher",
             ],
             path: "sources/vphone-cli",
             linkerSettings: [
@@ -27,6 +40,11 @@ let package = Package(
                 .linkedFramework("CoreLocation"),
                 .linkedFramework("AVFoundation"),
             ]
+        ),
+        .testTarget(
+            name: "FirmwarePatcherTests",
+            dependencies: ["FirmwarePatcher"],
+            path: "tests/FirmwarePatcherTests"
         ),
     ]
 )

@@ -7,7 +7,7 @@ struct VPhoneAppBrowserView: View {
         VStack(spacing: 0) {
             filterBar
             Divider()
-            if model.isLoading && model.apps.isEmpty {
+            if model.isLoading, model.apps.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.filteredApps.isEmpty {
