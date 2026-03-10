@@ -18,6 +18,7 @@ BUILD_INFO  := sources/vphone-cli/VPhoneBuildInfo.swift
 # ─── Paths ────────────────────────────────────────────────────────
 SCRIPTS     := scripts
 BINARY      := .build/release/vphone-cli
+PATCHER_BINARY := .build/debug/vphone-cli
 BUNDLE      := .build/vphone-cli.app
 BUNDLE_BIN  := $(BUNDLE)/Contents/MacOS/vphone-cli
 INFO_PLIST  := sources/Info.plist
@@ -61,6 +62,8 @@ help:
 	@echo "             CPU=8             CPU cores (stored in manifest)"
 	@echo "             MEMORY=8192       Memory in MB (stored in manifest)"
 	@echo "             DISK_SIZE=64      Disk size in GB (stored in manifest)"
+	@echo "  make amfidont_allow_vphone   Start amfidont for the signed vphone-cli binary"
+	@echo "  make boot_host_preflight     Diagnose whether host can launch signed PV=3 binary"
 	@echo "  make boot                    Boot VM (reads from config.plist)"
 	@echo "  make boot_dfu                Boot VM in DFU mode (reads from config.plist)"
 	@echo ""
@@ -68,9 +71,9 @@ help:
 	@echo "  make fw_prepare              Download IPSWs, extract, merge"
 	@echo "    Options: IPHONE_SOURCE=    URL or local path to iPhone IPSW"
 	@echo "             CLOUDOS_SOURCE=   URL or local path to cloudOS IPSW"
-	@echo "  make fw_patch                Patch boot chain (regular variant)"
-	@echo "  make fw_patch_dev            Patch boot chain (dev mode TXM patches)"
-	@echo "  make fw_patch_jb             Patch boot chain (dev + JB extensions)"
+	@echo "  make fw_patch                Patch boot chain with Swift pipeline (regular variant)"
+	@echo "  make fw_patch_dev            Patch boot chain with Swift pipeline (dev mode TXM patches)"
+	@echo "  make fw_patch_jb             Patch boot chain with Swift pipeline (dev + JB extensions)"
 	@echo ""
 	@echo "Restore:"
 	@echo "  make restore_get_shsh        Dump SHSH response from Apple"
@@ -121,9 +124,17 @@ clean:
 # Build
 # ═══════════════════════════════════════════════════════════════════
 
-.PHONY: build bundle
+.PHONY: build patcher_build bundle
 
 build: $(BINARY)
+
+patcher_build: $(PATCHER_BINARY)
+
+$(PATCHER_BINARY): $(SWIFT_SOURCES) Package.swift
+	@echo "=== Building vphone-cli patcher ($(GIT_HASH)) ==="
+	@echo '// Auto-generated — do not edit' > $(BUILD_INFO)
+	@echo 'enum VPhoneBuildInfo { static let commitHash = "$(GIT_HASH)" }' >> $(BUILD_INFO)
+	@set -o pipefail; swift build 2>&1 | tail -5
 
 $(BINARY): $(SWIFT_SOURCES) Package.swift $(ENTITLEMENTS)
 	@echo "=== Building vphone-cli ($(GIT_HASH)) ==="
@@ -168,17 +179,43 @@ vphoned:
 # VM management
 # ═══════════════════════════════════════════════════════════════════
 
-.PHONY: vm_new boot boot_dfu
+.PHONY: vm_new amfidont_allow_vphone boot_host_preflight boot boot_dfu boot_binary_check
 
 vm_new:
 	CPU="$(CPU)" MEMORY="$(MEMORY)" \
 	zsh $(SCRIPTS)/vm_create.sh --dir $(VM_DIR) --disk-size $(DISK_SIZE)
 
-boot: bundle vphoned
+amfidont_allow_vphone: build
+	zsh $(SCRIPTS)/start_amfidont_for_vphone.sh
+
+boot_host_preflight: build
+	zsh $(SCRIPTS)/boot_host_preflight.sh
+
+boot_binary_check: $(BINARY)
+	@zsh $(SCRIPTS)/boot_host_preflight.sh --assert-bootable
+	@tmp_log="$$(mktemp -t vphone-boot-preflight.XXXXXX)"; \
+	set +e; \
+	"$(CURDIR)/$(BINARY)" --help >"$$tmp_log" 2>&1; \
+	rc=$$?; \
+	set -e; \
+	if [ $$rc -ne 0 ]; then \
+		echo "Error: signed vphone-cli failed to launch (exit $$rc)." >&2; \
+		echo "Check private virtualization entitlement support and ensure SIP/AMFI are disabled on the host." >&2; \
+		echo "Repo workaround: start the AMFI bypass helper with 'make amfidont_allow_vphone' and retry." >&2; \
+		if [ -s "$$tmp_log" ]; then \
+			echo "--- vphone-cli preflight log ---" >&2; \
+			tail -n 40 "$$tmp_log" >&2; \
+		fi; \
+		rm -f "$$tmp_log"; \
+		exit $$rc; \
+	fi; \
+	rm -f "$$tmp_log"
+
+boot: bundle vphoned boot_binary_check
 	cd $(VM_DIR) && "$(CURDIR)/$(BUNDLE_BIN)" \
 		--config ./config.plist
 
-boot_dfu: build
+boot_dfu: build boot_binary_check
 	cd $(VM_DIR) && "$(CURDIR)/$(BINARY)" \
 		--config ./config.plist \
 		--dfu
@@ -192,14 +229,14 @@ boot_dfu: build
 fw_prepare:
 	cd $(VM_DIR) && bash "$(CURDIR)/$(SCRIPTS)/fw_prepare.sh"
 
-fw_patch:
-	cd $(VM_DIR) && $(PYTHON) "$(CURDIR)/$(SCRIPTS)/fw_patch.py" .
+fw_patch: patcher_build
+	"$(CURDIR)/$(PATCHER_BINARY)" patch-firmware --vm-directory "$(CURDIR)/$(VM_DIR)" --variant regular
 
-fw_patch_dev:
-	cd $(VM_DIR) && $(PYTHON) "$(CURDIR)/$(SCRIPTS)/fw_patch_dev.py" .
+fw_patch_dev: patcher_build
+	"$(CURDIR)/$(PATCHER_BINARY)" patch-firmware --vm-directory "$(CURDIR)/$(VM_DIR)" --variant dev
 
-fw_patch_jb:
-	cd $(VM_DIR) && $(PYTHON) "$(CURDIR)/$(SCRIPTS)/fw_patch_jb.py" .
+fw_patch_jb: patcher_build
+	"$(CURDIR)/$(PATCHER_BINARY)" patch-firmware --vm-directory "$(CURDIR)/$(VM_DIR)" --variant jb
 
 # ═══════════════════════════════════════════════════════════════════
 # Restore
@@ -225,7 +262,7 @@ restore:
 
 .PHONY: ramdisk_build ramdisk_send
 
-ramdisk_build:
+ramdisk_build: patcher_build
 	cd $(VM_DIR) && RAMDISK_UDID="$(RAMDISK_UDID)" $(PYTHON) "$(CURDIR)/$(SCRIPTS)/ramdisk_build.py" .
 
 ramdisk_send:

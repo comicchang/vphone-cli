@@ -5,7 +5,7 @@
 // entitlement string. The two BLs that immediately precede the string
 // reference (each followed by a conditional branch on w0) are patched.
 //
-// Python source: scripts/patchers/kernel_patch_dyld_policy.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
 

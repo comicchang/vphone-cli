@@ -3,7 +3,7 @@ import Foundation
 import Virtualization
 
 class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
-    private let cli: VPhoneCLI
+    private let cli: VPhoneBootCLI
     private var vm: VPhoneVirtualMachine?
     private var control: VPhoneControl?
     private var windowController: VPhoneWindowController?
@@ -14,7 +14,7 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
     private var locationProvider: VPhoneLocationProvider?
     private var sigintSource: DispatchSourceSignal?
 
-    init(cli: VPhoneCLI) {
+    init(cli: VPhoneBootCLI) {
         self.cli = cli
         super.init()
     }
@@ -36,7 +36,7 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
                 try await self.startVirtualMachine()
             } catch {
                 print("[vphone] Fatal: \(error)")
-                NSApp.terminate(nil)
+                exit(EXIT_FAILURE)
             }
         }
     }

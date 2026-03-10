@@ -3,7 +3,7 @@
 // Neutralizes root hash validation inside _apfs_graft by replacing the BL
 // to validate_on_disk_root_hash with MOV W0, #0.
 //
-// Python source: scripts/patchers/kernel_patch_apfs_graft.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
 

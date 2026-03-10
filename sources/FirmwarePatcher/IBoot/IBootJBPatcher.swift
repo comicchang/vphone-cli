@@ -1,6 +1,6 @@
 // IBootJBPatcher.swift — JB-variant iBoot patcher (nonce bypass).
 //
-// Python source: scripts/patchers/iboot_jb.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Capstone
 import Foundation

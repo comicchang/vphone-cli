@@ -1,6 +1,6 @@
 // KernelJBPatcher.swift — JB kernel patcher orchestrator.
 //
-// Python source: scripts/patchers/kernel_jb.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
 
@@ -53,10 +53,10 @@ public final class KernelJBPatcher: KernelJBPatcherBase, Patcher {
     }
 
     public func apply() throws -> Int {
-        let patches = try findAll()
-        for record in patches {
+        let records = try (patches.isEmpty ? findAll() : patches)
+        for record in records {
             buffer.writeBytes(at: record.fileOffset, bytes: record.patchedBytes)
         }
-        return patches.count
+        return records.count
     }
 }

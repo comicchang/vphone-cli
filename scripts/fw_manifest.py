@@ -168,7 +168,7 @@ def main():
     m["SEP"] = entry(C, VP, "SEP")
     m["RestoreSEP"] = entry(C, VP, "RestoreSEP")
 
-    # ── Kernel (vphone600, patched by fw_patch.py) ────────────────────
+    # ── Kernel (vphone600, patched by the Swift firmware pipeline) ─────
     m["KernelCache"] = entry(C, VPR, "KernelCache")  # research
     m["RestoreKernelCache"] = entry(C, VP, "RestoreKernelCache")  # release
 

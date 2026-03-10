@@ -1,6 +1,6 @@
 // IBootPatcher.swift — iBoot chain patcher (iBSS, iBEC, LLB).
 //
-// Translated from Python: scripts/patchers/iboot.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 // Each patch mirrors Python logic exactly — no hardcoded offsets.
 //
 // Patch schedule by mode:
@@ -71,7 +71,9 @@ public class IBootPatcher: Patcher {
 
     @discardableResult
     public func apply() throws -> Int {
-        let _ = try findAll()
+        if patches.isEmpty {
+            let _ = try findAll()
+        }
         for record in patches {
             buffer.writeBytes(at: record.fileOffset, bytes: record.patchedBytes)
         }
@@ -188,7 +190,11 @@ public class IBootPatcher: Patcher {
     /// Find the two long '====...' banner runs and write the mode label into each.
     /// Python: `patch_serial_labels()`
     func patchSerialLabels() {
-        let labelStr = "Loaded \(mode.rawValue.uppercased())"
+        let labelStr = switch mode {
+        case .ibss: "Loaded iBSS"
+        case .ibec: "Loaded iBEC"
+        case .llb: "Loaded LLB"
+        }
         guard let labelBytes = labelStr.data(using: .ascii) else { return }
 
         // Collect all runs of '=' (>=20 chars) — same logic as Python.

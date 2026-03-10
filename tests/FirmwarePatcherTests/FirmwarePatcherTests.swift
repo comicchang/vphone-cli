@@ -171,4 +171,97 @@ struct BinaryBufferTests {
         #expect(offsets.contains(8))
         #expect(offsets.contains(20))
     }
+
+    @Test func readUnalignedValues() {
+        let data = Data([0xFF, 0x78, 0x56, 0x34, 0x12, 0xF0, 0xDE, 0xBC, 0x9A])
+        let buf = BinaryBuffer(data)
+        #expect(buf.readU32(at: 1) == 0x1234_5678)
+        #expect(buf.readU64(at: 1) == 0x9ABC_DEF0_1234_5678)
+    }
+}
+
+struct IM4PPayloadParityTests {
+    @Test func ibssIM4PPayloadMatchesRawAndJBPatcherFindsNoncePatch() throws {
+        let baseDir = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("ipsws/patch_refactor_input")
+
+        let rawIBSS = try Data(contentsOf: baseDir.appendingPathComponent("raw_payloads/ibss.bin"))
+        let (im4pPayload, _) = try IM4PHandler.load(contentsOf: baseDir.appendingPathComponent("Firmware/dfu/iBSS.vresearch101.RELEASE.im4p"))
+
+        #expect(im4pPayload == rawIBSS)
+
+        let patcher = IBootJBPatcher(data: im4pPayload, mode: .ibss, verbose: false)
+        let records = try patcher.findAll()
+        #expect(records.count == 1)
+    }
+
+    @Test func savingIBSSIM4PRoundTripsPayload() throws {
+        let baseDir = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("ipsws/patch_refactor_input")
+
+        let sourceURL = baseDir.appendingPathComponent("Firmware/dfu/iBSS.vresearch101.RELEASE.im4p")
+        let originalFile = try Data(contentsOf: sourceURL)
+        let (payload, im4p) = try IM4PHandler.load(contentsOf: sourceURL)
+
+        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("im4p")
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try IM4PHandler.save(patchedData: payload, originalIM4P: im4p, to: tempURL)
+
+        let (roundTripPayload, _) = try IM4PHandler.load(contentsOf: tempURL)
+        #expect(roundTripPayload == payload)
+        #expect((try Data(contentsOf: tempURL)).count > originalFile.count)
+    }
+
+    @Test func savingTXMIM4PPreservesPAYPTrailer() throws {
+        let baseDir = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("ipsws/patch_refactor_input")
+
+        let sourceURL = baseDir.appendingPathComponent("Firmware/txm.iphoneos.research.im4p")
+        let originalFile = try Data(contentsOf: sourceURL)
+        let (payload, im4p) = try IM4PHandler.load(contentsOf: sourceURL)
+
+        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("im4p")
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try IM4PHandler.save(patchedData: payload, originalIM4P: im4p, to: tempURL)
+
+        let savedFile = try Data(contentsOf: tempURL)
+        #expect(originalFile.range(of: Data("PAYP".utf8)) != nil)
+        #expect(savedFile.range(of: Data("PAYP".utf8)) != nil)
+
+        let (roundTripPayload, _) = try IM4PHandler.load(contentsOf: tempURL)
+        #expect(roundTripPayload == payload)
+    }
+}
+
+struct FirmwarePipelineTests {
+    @Test func findFileSupportsGlobPatterns() throws {
+        let fm = FileManager.default
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+        try fm.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempDir) }
+
+        let target = tempDir.appendingPathComponent("AVPBooter.vresearch1.bin")
+        try Data([0xAA]).write(to: target)
+
+        let pipeline = FirmwarePipeline(vmDirectory: tempDir, variant: .regular, verbose: false)
+        let found = try pipeline.findFile(in: tempDir, patterns: ["AVPBooter*.bin"], label: "AVPBooter")
+
+        #expect(found == target)
+    }
 }

@@ -1,6 +1,6 @@
 // KernelJBPatcherBase.swift — JB kernel patcher base with extended infrastructure.
 //
-// Python source: scripts/patchers/kernel_jb_base.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Capstone
 import Foundation
@@ -35,19 +35,19 @@ public class KernelJBPatcherBase: KernelPatcherBase {
         let raw = buffer.original
         guard raw.count > 32 else { return }
 
-        let ncmds: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: 16, as: UInt32.self) }
+        let ncmds = raw.loadLE(UInt32.self, at: 16)
 
         // Pass 1: top-level LC_SYMTAB
         var tempOff = 32
         for _ in 0 ..< ncmds {
             guard tempOff + 8 <= raw.count else { break }
-            let cmd: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: tempOff, as: UInt32.self) }
-            let cmdsize: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: tempOff + 4, as: UInt32.self) }
+            let cmd = raw.loadLE(UInt32.self, at: tempOff)
+            let cmdsize = raw.loadLE(UInt32.self, at: tempOff + 4)
             guard cmdsize >= 8 else { break }
             if cmd == 0x2, tempOff + 20 <= raw.count { // LC_SYMTAB
-                let symoff: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: tempOff + 8, as: UInt32.self) }
-                let nsyms: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: tempOff + 12, as: UInt32.self) }
-                let stroff: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: tempOff + 16, as: UInt32.self) }
+                let symoff = raw.loadLE(UInt32.self, at: tempOff + 8)
+                let nsyms = raw.loadLE(UInt32.self, at: tempOff + 12)
+                let stroff = raw.loadLE(UInt32.self, at: tempOff + 16)
                 parseNlist(symoff: Int(symoff), nsyms: Int(nsyms), stroff: Int(stroff))
             }
             tempOff += Int(cmdsize)
@@ -57,11 +57,11 @@ public class KernelJBPatcherBase: KernelPatcherBase {
         tempOff = 32
         for _ in 0 ..< ncmds {
             guard tempOff + 8 <= raw.count else { break }
-            let cmd: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: tempOff, as: UInt32.self) }
-            let cmdsize: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: tempOff + 4, as: UInt32.self) }
+            let cmd = raw.loadLE(UInt32.self, at: tempOff)
+            let cmdsize = raw.loadLE(UInt32.self, at: tempOff + 4)
             guard cmdsize >= 8 else { break }
             if cmd == 0x8000_0035, tempOff + 24 <= raw.count { // LC_FILESET_ENTRY: fileoff at +16 (u64)
-                let foffEntry: UInt64 = raw.withUnsafeBytes { $0.load(fromByteOffset: tempOff + 16, as: UInt64.self) }
+                let foffEntry = raw.loadLE(UInt64.self, at: tempOff + 16)
                 parseFilesetSymtab(mhOff: Int(foffEntry))
             }
             tempOff += Int(cmdsize)
@@ -75,19 +75,19 @@ public class KernelJBPatcherBase: KernelPatcherBase {
     private func parseFilesetSymtab(mhOff: Int) {
         let raw = buffer.original
         guard mhOff >= 0, mhOff + 32 <= raw.count else { return }
-        let magic: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: mhOff, as: UInt32.self) }
+        let magic = raw.loadLE(UInt32.self, at: mhOff)
         guard magic == 0xFEED_FACF else { return }
-        let ncmds: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: mhOff + 16, as: UInt32.self) }
+        let ncmds = raw.loadLE(UInt32.self, at: mhOff + 16)
         var off = mhOff + 32
         for _ in 0 ..< ncmds {
             guard off + 8 <= raw.count else { break }
-            let cmd: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt32.self) }
-            let cmdsize: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: off + 4, as: UInt32.self) }
+            let cmd = raw.loadLE(UInt32.self, at: off)
+            let cmdsize = raw.loadLE(UInt32.self, at: off + 4)
             guard cmdsize >= 8 else { break }
             if cmd == 0x2, off + 20 <= raw.count { // LC_SYMTAB
-                let symoff: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: off + 8, as: UInt32.self) }
-                let nsyms: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: off + 12, as: UInt32.self) }
-                let stroff: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: off + 16, as: UInt32.self) }
+                let symoff = raw.loadLE(UInt32.self, at: off + 8)
+                let nsyms = raw.loadLE(UInt32.self, at: off + 12)
+                let stroff = raw.loadLE(UInt32.self, at: off + 16)
                 parseNlist(symoff: Int(symoff), nsyms: Int(nsyms), stroff: Int(stroff))
             }
             off += Int(cmdsize)
@@ -103,9 +103,9 @@ public class KernelJBPatcherBase: KernelPatcherBase {
             let entryOff = symoff + i * 16 // sizeof(nlist_64) == 16
             guard entryOff + 16 <= size else { break }
             // nlist_64: n_strx(u32) n_type(u8) n_sect(u8) n_desc(u16) n_value(u64)
-            let nStrx: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: entryOff, as: UInt32.self) }
-            let nType: UInt8 = raw.withUnsafeBytes { $0.load(fromByteOffset: entryOff + 4, as: UInt8.self) }
-            let nValue: UInt64 = raw.withUnsafeBytes { $0.load(fromByteOffset: entryOff + 8, as: UInt64.self) }
+            let nStrx = raw.loadLE(UInt32.self, at: entryOff)
+            let nType = raw.loadLE(UInt8.self, at: entryOff + 4)
+            let nValue = raw.loadLE(UInt64.self, at: entryOff + 8)
             // n_type & 0x0E == 0x0E selects N_SECT | N_EXT (defined external symbols)
             guard nType & 0x0E == 0x0E, nValue != 0 else { continue }
             let nameOff = stroff + Int(nStrx)
@@ -154,7 +154,7 @@ public class KernelJBPatcherBase: KernelPatcherBase {
             var runLen = 0
             var off = rngStart
             while off + 4 <= rngEnd {
-                let val = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt32.self) }
+                let val = buffer.readU32(at: off)
                 // Accept zeros, 0xFFFFFFFF, or UDF (0xD4200000)
                 if val == 0x0000_0000 || val == 0xFFFF_FFFF || val == 0xD420_0000 {
                     if runStart < 0 {
@@ -199,7 +199,7 @@ public class KernelJBPatcherBase: KernelPatcherBase {
         let limit = min(funcStart + maxSize, raw.count)
         var off = funcStart + 4
         while off + 4 <= limit {
-            let insn: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt32.self) }
+            let insn = raw.loadLE(UInt32.self, at: off)
             if insn == ARM64.pacibspU32 { return off }
             off += 4
         }
@@ -216,7 +216,7 @@ public class KernelJBPatcherBase: KernelPatcherBase {
         var off = range.lowerBound
         while off + 4 <= range.upperBound {
             guard off + 4 <= raw.count else { break }
-            let insn: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt32.self) }
+            let insn = raw.loadLE(UInt32.self, at: off)
             if insn >> 26 == 0b100101 { // BL
                 let imm26 = insn & 0x03FF_FFFF
                 let signedImm = Int32(bitPattern: imm26 << 6) >> 6
@@ -275,11 +275,11 @@ public class KernelJBPatcherBase: KernelPatcherBase {
         for (start, end) in codeRanges {
             var off = start
             while off + 8 <= end {
-                let v0: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt32.self) }
-                let v1: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: off + 4, as: UInt32.self) }
+                let v0 = raw.loadLE(UInt32.self, at: off)
+                let v1 = raw.loadLE(UInt32.self, at: off + 4)
                 if v0 == movW0_4e, v1 == retVal { return off }
                 if v0 == pacibsp, v1 == movW0_4e, off + 12 <= end {
-                    let v2: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: off + 8, as: UInt32.self) }
+                    let v2 = raw.loadLE(UInt32.self, at: off + 8)
                     if v2 == retVal { return off }
                 }
                 off += 4
@@ -328,13 +328,13 @@ public class KernelJBPatcherBase: KernelPatcherBase {
         let limit = min(end - 8, raw.count - 8)
         var off = max(start, 0)
         while off <= limit {
-            let i0: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt32.self) }
+            let i0 = raw.loadLE(UInt32.self, at: off)
             // SUB (immediate) 32-bit: [31:24]==0x51, sh[22]==0, imm12[21:10]==1
             guard (i0 & 0xFF00_0000) == 0x5100_0000 else { off += 4; continue }
             guard (i0 >> 22) & 1 == 0 else { off += 4; continue }
             guard (i0 >> 10) & 0xFFF == 1 else { off += 4; continue }
             let subRd = i0 & 0x1F
-            let i1: UInt32 = raw.withUnsafeBytes { $0.load(fromByteOffset: off + 4, as: UInt32.self) }
+            let i1 = raw.loadLE(UInt32.self, at: off + 4)
             // CMP wN, #imm ≡ SUBS WZR, wN, #imm: [31:24]==0x71, rd==31, sh==0, imm12==0x21
             guard (i1 & 0xFF00_001F) == 0x7100_001F else { off += 4; continue }
             guard (i1 >> 22) & 1 == 0 else { off += 4; continue }
@@ -429,9 +429,11 @@ public class KernelJBPatcherBase: KernelPatcherBase {
             let imm19 = Int32(bitPattern: ((insn >> 5) & 0x7FFFF) << 13) >> 13
             return (offset + Int(imm19) * 4, true)
         }
-        // CBZ/CBNZ: [31:25] = 0b011010x or 0b111010x
-        let op7 = insn >> 25
-        if op7 == 0b0110100 || op7 == 0b0110101 || op7 == 0b1110100 || op7 == 0b1110101 {
+        // CBZ/CBNZ W/X: match opcode class directly and ignore Rt/imm19.
+        let cbzClass = insn & 0x7F00_0000
+        if cbzClass == 0x3400_0000 || cbzClass == 0x3500_0000 ||
+            cbzClass == 0xB400_0000 || cbzClass == 0xB500_0000
+        {
             let imm19 = Int32(bitPattern: ((insn >> 5) & 0x7FFFF) << 13) >> 13
             return (offset + Int(imm19) * 4, true)
         }

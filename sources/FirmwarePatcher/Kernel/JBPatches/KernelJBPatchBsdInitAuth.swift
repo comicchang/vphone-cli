@@ -1,6 +1,6 @@
 // KernelJBPatchBsdInitAuth.swift — JB: bypass FSIOC_KERNEL_ROOTAUTH failure in _bsd_init.
 //
-// Python source: scripts/patchers/kernel_jb_patch_bsd_init_auth.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // GUARDRAIL (CLAUDE.md): recover _bsd_init → locate rootvp panic block →
 //   find unique in-function call → cbnz w0/x0, panic → bl imageboot_needed → patch gate.

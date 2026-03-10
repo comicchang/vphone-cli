@@ -1,6 +1,6 @@
 // KernelJBPatchSpawnPersona.swift — JB kernel patch: Spawn validate persona bypass
 //
-// Python source: scripts/patchers/kernel_jb_patch_spawn_persona.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Capstone
 import Foundation

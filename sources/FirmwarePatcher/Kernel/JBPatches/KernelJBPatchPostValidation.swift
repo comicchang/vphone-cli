@@ -1,6 +1,6 @@
 // KernelJBPatchPostValidation.swift — JB: additional post-validation cmp w0,w0 bypass.
 //
-// Python source: scripts/patchers/kernel_jb_patch_post_validation.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Reveal: string-anchor "AMFI: code signature validation failed" → caller function →
 //   BL targets in AMFI text → callee with `cmp w0,#imm ; b.ne` preceded by a BL.

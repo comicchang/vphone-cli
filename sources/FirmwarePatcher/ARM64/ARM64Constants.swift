@@ -142,6 +142,34 @@ public enum ARM64 {
     /// ldr x1, [x0, #0x3e0]
     static let ldr_x1_x0_0x3e0: UInt32 = 0xF941_F001
 
+    // MARK: Syscallmask C22 Cave Instructions (verified via clang/as)
+
+    static let syscallmask_cbzX2_0x6c: UInt32 = 0xB400_0362 // cbz x2, #+0x6c
+    static let syscallmask_subSP_0x40: UInt32 = 0xD101_03FF // sub sp, sp, #0x40
+    static let syscallmask_stpX19X20_0x10: UInt32 = 0xA901_53F3 // stp x19, x20, [sp, #0x10]
+    static let syscallmask_stpX21X22_0x20: UInt32 = 0xA902_5BF5 // stp x21, x22, [sp, #0x20]
+    static let syscallmask_stpFP_LR_0x30: UInt32 = 0xA903_7BFD // stp x29, x30, [sp, #0x30]
+    static let syscallmask_movX19_X0: UInt32 = 0xAA00_03F3 // mov x19, x0
+    static let syscallmask_movX20_X1: UInt32 = 0xAA01_03F4 // mov x20, x1
+    static let syscallmask_movX21_X2: UInt32 = 0xAA02_03F5 // mov x21, x2
+    static let syscallmask_movX22_X3: UInt32 = 0xAA03_03F6 // mov x22, x3
+    static let syscallmask_movX8_8: UInt32 = 0xD280_0108 // mov x8, #8
+    static let syscallmask_movX0_X17: UInt32 = 0xAA11_03E0 // mov x0, x17
+    static let syscallmask_movX1_X21: UInt32 = 0xAA15_03E1 // mov x1, x21
+    static let syscallmask_movX2_0: UInt32 = 0xD280_0002 // mov x2, #0
+    static let syscallmask_udivX4_X22_X8: UInt32 = 0x9AC8_0AC4 // udiv x4, x22, x8
+    static let syscallmask_msubX10_X4_X8_X22: UInt32 = 0x9B08_D88A // msub x10, x4, x8, x22
+    static let syscallmask_cbzX10_8: UInt32 = 0xB400_004A // cbz x10, #+8
+    static let syscallmask_addX4_X4_1: UInt32 = 0x9100_0484 // add x4, x4, #1
+    static let syscallmask_movX0_X19: UInt32 = 0xAA13_03E0 // mov x0, x19
+    static let syscallmask_movX1_X20: UInt32 = 0xAA14_03E1 // mov x1, x20
+    static let syscallmask_movX2_X21: UInt32 = 0xAA15_03E2 // mov x2, x21
+    static let syscallmask_movX3_X22: UInt32 = 0xAA16_03E3 // mov x3, x22
+    static let syscallmask_ldpX19X20_0x10: UInt32 = 0xA941_53F3 // ldp x19, x20, [sp, #0x10]
+    static let syscallmask_ldpX21X22_0x20: UInt32 = 0xA942_5BF5 // ldp x21, x22, [sp, #0x20]
+    static let syscallmask_ldpFP_LR_0x30: UInt32 = 0xA943_7BFD // ldp x29, x30, [sp, #0x30]
+    static let syscallmask_addSP_0x40: UInt32 = 0x9101_03FF // add sp, sp, #0x40
+
     // MARK: UInt32 Values (for pattern matching)
 
     public static let nopU32: UInt32 = 0xD503_201F
@@ -149,6 +177,7 @@ public enum ARM64 {
     public static let retaaU32: UInt32 = 0xD65F_0BFF
     public static let retabU32: UInt32 = 0xD65F_0FFF
     public static let pacibspU32: UInt32 = 0xD503_237F
+    public static let movX0_0_U32: UInt32 = 0xD280_0000 // MOV X0, #0 (MOVZ X0, #0)
 
     /// Set of instruction uint32 values that indicate function boundaries.
     public static let funcBoundaryU32s: Set<UInt32> = [

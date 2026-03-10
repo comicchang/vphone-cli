@@ -1,5 +1,7 @@
-from .iboot import IBootPatcher
-from .kernel import KernelPatcher
-from .txm import TXMPatcher
+"""patchers package.
 
-__all__ = ["IBootPatcher", "KernelPatcher", "TXMPatcher"]
+Only CFW-related helpers remain in Python. Firmware patching now lives in the
+Swift `FirmwarePatcher` module and is invoked through `vphone-cli`.
+"""
+
+__all__ = []

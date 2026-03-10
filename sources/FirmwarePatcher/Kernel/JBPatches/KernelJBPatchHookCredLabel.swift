@@ -1,6 +1,6 @@
 // KernelJBPatchHookCredLabel.swift — JB kernel patch: Faithful upstream C23 hook
 //
-// Python source: scripts/patchers/kernel_jb_patch_hook_cred_label.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Strategy (faithful upstream C23): Redirect mac_policy_ops[18]
 // (_hook_cred_label_update_execve sandbox wrapper) to a code cave that:
@@ -162,7 +162,7 @@ extension KernelJBPatcher {
             return nil
         }
 
-        let entryRaw = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: entryOff, as: UInt64.self) }
+        let entryRaw = buffer.readU64(at: entryOff)
         guard entryRaw != 0 else {
             log("  [-] hook ops entry is null")
             return nil
@@ -236,9 +236,11 @@ extension KernelJBPatcher {
             let refs = findStringRefs(searchStart)
             if let ref = refs.first {
                 let refOff = ref.adrpOff
-                // Scan back 80 bytes from the ref for a BL
-                var scanOff = max(0, refOff - 80)
-                while scanOff < refOff {
+                // Python scans backward from the string ref so we prefer the
+                // nearest call site rather than the first BL in the window.
+                var scanOff = refOff - 4
+                let scanLimit = max(0, refOff - 80)
+                while scanOff >= scanLimit {
                     let insn = buffer.readU32(at: scanOff)
                     if insn >> 26 == 0b100101 { // BL
                         let imm26 = insn & 0x03FF_FFFF
@@ -250,7 +252,7 @@ extension KernelJBPatcher {
                             return target
                         }
                     }
-                    scanOff += 4
+                    scanOff -= 4
                 }
             }
             // Try next occurrence

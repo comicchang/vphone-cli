@@ -2,6 +2,19 @@
 
 import Foundation
 
+extension Data {
+    /// Load a little-endian integer without assuming the buffer is naturally aligned.
+    @inlinable
+    func loadLE<T: FixedWidthInteger>(_: T.Type, at offset: Int) -> T {
+        precondition(offset >= 0 && offset + MemoryLayout<T>.size <= count)
+        var value: T = .zero
+        _ = Swift.withUnsafeMutableBytes(of: &value) { dst in
+            copyBytes(to: dst, from: offset ..< offset + MemoryLayout<T>.size)
+        }
+        return T(littleEndian: value)
+    }
+}
+
 /// A mutable binary buffer for reading and patching firmware data.
 public final class BinaryBuffer: @unchecked Sendable {
     /// The mutable working data.
@@ -15,8 +28,10 @@ public final class BinaryBuffer: @unchecked Sendable {
     }
 
     public init(_ data: Data) {
-        self.data = data
-        original = data
+        // Rebase to startIndex 0 so zero-based subscripts are always valid.
+        let rebased = data.startIndex == 0 ? data : Data(data)
+        self.data = rebased
+        original = rebased
     }
 
     public convenience init(contentsOf url: URL) throws {
@@ -28,17 +43,13 @@ public final class BinaryBuffer: @unchecked Sendable {
     /// Read a little-endian UInt32 at the given byte offset.
     @inlinable
     public func readU32(at offset: Int) -> UInt32 {
-        data.withUnsafeBytes { buf in
-            buf.load(fromByteOffset: offset, as: UInt32.self)
-        }
+        data.loadLE(UInt32.self, at: offset)
     }
 
     /// Read a little-endian UInt64 at the given byte offset.
     @inlinable
     public func readU64(at offset: Int) -> UInt64 {
-        data.withUnsafeBytes { buf in
-            buf.load(fromByteOffset: offset, as: UInt64.self)
-        }
+        data.loadLE(UInt64.self, at: offset)
     }
 
     /// Read bytes at the given range.

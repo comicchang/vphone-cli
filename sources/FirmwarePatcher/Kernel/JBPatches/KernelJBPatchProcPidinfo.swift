@@ -1,6 +1,6 @@
 // KernelJBPatchProcPidinfo.swift — JB: NOP the two pid-0 guards in proc_pidinfo.
 //
-// Python source: scripts/patchers/kernel_jb_patch_proc_pidinfo.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Reveal: shared _proc_info switch-table anchor → function prologue (first 0x80 bytes) →
 //   precise 4-insn pattern: ldr x0,[x0,#0x18] ; cbz x0,fail ; bl ... ; cbz/cbnz wN,fail.

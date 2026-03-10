@@ -1,6 +1,6 @@
 // KernelJBPatchVmFault.swift — JB kernel patch: VM fault enter prepare bypass
 //
-// Python source: scripts/patchers/kernel_jb_patch_vm_fault.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Capstone
 import Foundation

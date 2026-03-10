@@ -1,7 +1,7 @@
 // KernelPatchBsdInit.swift — BSD init rootvp patch.
 //
 // Patch 3: NOP the conditional branch guarding the "rootvp not authenticated" panic.
-// Python source: scripts/patchers/kernel_patch_bsd_init.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Allowed reveal flow (per CLAUDE.md guardrails):
 //   recover bsd_init → locate rootvp panic block → find the unique in-function BL

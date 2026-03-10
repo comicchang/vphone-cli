@@ -1,6 +1,6 @@
 // KernelJBPatchAmfiExecve.swift — JB kernel patch: AMFI execve kill path bypass (disabled)
 //
-// Python source: scripts/patchers/kernel_jb_patch_amfi_execve.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Strategy: All kill paths in the AMFI execve hook converge on a shared
 // epilogue that does `MOV W0, #1` (kill) then returns. Changing that single

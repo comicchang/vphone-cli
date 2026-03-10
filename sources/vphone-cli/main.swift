@@ -1,11 +1,26 @@
 import AppKit
+import ArgumentParser
 import Foundation
 
-/// Parse CLI arguments before NSApplication starts so that bad-arg errors
-/// print cleanly to the terminal without a run loop ever starting.
-let cli = VPhoneCLI.parseOrExit()
+do {
+    let command = try VPhoneCLI.parseAsRoot()
 
-let app = NSApplication.shared
-let delegate = VPhoneAppDelegate(cli: cli)
-app.delegate = delegate
-app.run()
+    switch command {
+    case let boot as VPhoneBootCLI:
+        let app = NSApplication.shared
+        let delegate = VPhoneAppDelegate(cli: boot)
+        app.delegate = delegate
+        app.run()
+
+    case var patch as PatchFirmwareCLI:
+        try patch.run()
+
+    case var patch as PatchComponentCLI:
+        try patch.run()
+
+    default:
+        break
+    }
+} catch {
+    VPhoneCLI.exit(withError: error)
+}

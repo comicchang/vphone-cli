@@ -1,6 +1,6 @@
 // KernelJBPatchSharedRegion.swift — JB kernel patch: Shared region map bypass
 //
-// Python source: scripts/patchers/kernel_jb_patch_shared_region.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Capstone
 import Foundation

@@ -38,6 +38,23 @@ echo "  IPSWs:   $IPSW_DIR"
 echo "  Output:  $(pwd)/$IPHONE_DIR/"
 echo ""
 
+cleanup_old_restore_dirs() {
+    local keep="$1"
+    local found=0
+    shopt -s nullglob
+    for dir in *Restore*; do
+        [[ -d "$dir" ]] || continue
+        [[ "$dir" == "$keep" ]] && continue
+        if [[ $found -eq 0 ]]; then
+            echo "==> Removing stale restore directories ..."
+            found=1
+        fi
+        echo "    rm -rf $dir"
+        rm -rf "$dir"
+    done
+    shopt -u nullglob
+}
+
 # ── Fetch (download or copy) ─────────────────────────────────────────
 is_local() { [[ "$1" != http://* && "$1" != https://* ]]; }
 
@@ -86,6 +103,10 @@ extract() {
 
 extract "$IPHONE_IPSW_PATH" "$IPHONE_CACHE" "$IPHONE_DIR"
 extract "$CLOUDOS_IPSW_PATH" "$CLOUDOS_CACHE" "$CLOUDOS_DIR"
+
+# Keep exactly one active restore tree in the working directory so fw_patch
+# cannot accidentally pick a stale older firmware directory.
+cleanup_old_restore_dirs "$IPHONE_DIR"
 
 # ── Merge cloudOS firmware into iPhone restore directory ──────────────
 echo "==> Importing cloudOS firmware components ..."

@@ -1,6 +1,6 @@
 // KernelPatcher.swift — Regular kernel patcher orchestrator (26 patches).
 //
-// Swift equivalent of scripts/patchers/kernel.py.
+// Historical note: this file replaces the old Python firmware patcher implementation.
 // Each patch method is defined as an extension in its own file under Patches/.
 
 import Foundation
@@ -41,7 +41,7 @@ public final class KernelPatcher: KernelPatcherBase, Patcher {
 
     @discardableResult
     public func apply() throws -> Int {
-        let records = try findAll()
+        let records = try (patches.isEmpty ? findAll() : patches)
         guard !records.isEmpty else {
             log("  [!] No kernel patches found")
             return 0

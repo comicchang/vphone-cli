@@ -1,6 +1,6 @@
 // KernelJBPatchTaskForPid.swift — JB kernel patch: task_for_pid bypass
 //
-// Python source: scripts/patchers/kernel_jb_patch_task_for_pid.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Capstone
 import Foundation

@@ -13,7 +13,7 @@
 //   3. Walk backward from each ADRP to locate the enclosing function start.
 //   4. Emit `mov w0, #0` at funcStart and `ret` at funcStart+4.
 //
-// Python source: scripts/patchers/kernel_patch_launch_constraints.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
 

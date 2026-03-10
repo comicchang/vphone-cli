@@ -2,7 +2,7 @@
 """
 build_ramdisk.py — Build a signed SSH ramdisk for vphone600.
 
-Expects firmware already patched by patch_firmware.py.
+Expects the VM restore tree to have already been patched by the Swift firmware pipeline.
 Extracts patched components, signs with SHSH, and builds SSH ramdisk.
 
 Usage:
@@ -15,8 +15,8 @@ Directory structure:
     ./Ramdisk/           — Final signed IMG4 output
 
 Prerequisites:
-    pip install keystone-engine capstone pyimg4
-    Run patch_firmware.py first to patch boot-chain components.
+    pip install pyimg4
+    Run make fw_patch / make fw_patch_dev / make fw_patch_jb first to patch boot-chain components.
 """
 
 import gzip
@@ -26,23 +26,11 @@ import plistlib
 import shutil
 import subprocess
 import sys
-
-# Ensure sibling modules (patch_firmware) are importable when run from any CWD
-_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-if _SCRIPT_DIR not in sys.path:
-    sys.path.insert(0, _SCRIPT_DIR)
+import tempfile
 
 from pyimg4 import IM4M, IM4P, IMG4
 
-from fw_patch import (
-    load_firmware,
-    _save_im4p_with_payp,
-    patch_txm,
-    find_restore_dir,
-    find_file,
-)
-from patchers.iboot import IBootPatcher
-from patchers.kernel import KernelPatcher
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ══════════════════════════════════════════════════════════════════
 # Configuration
@@ -53,6 +41,7 @@ TEMP_DIR = "ramdisk_builder_temp"
 INPUT_DIR = "ramdisk_input"
 RESTORED_EXTERNAL_PATH = "usr/local/bin/restored_external"
 RESTORED_EXTERNAL_SERIAL_MARKER = b"SSHRD_Script Sep 22 2022 18:56:50"
+DEFAULT_IBEC_BOOT_ARGS = b"serial=3 -v debug=0x2014e %s"
 
 # Ramdisk boot-args
 RAMDISK_BOOT_ARGS = b"serial=3 rd=md0 debug=0x2014e -v wdt=-1 %s"
@@ -88,6 +77,7 @@ SIGN_DIRS = [
 
 # Compressed archive of ramdisk_input/ (located next to this script)
 INPUT_ARCHIVE = "ramdisk_input.tar.zst"
+PATCHER_BINARY_ENV = "VPHONE_PATCHER_BINARY"
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -204,6 +194,117 @@ def check_prerequisites():
         sys.exit(1)
 
 
+def project_root():
+    return os.path.abspath(os.path.join(_SCRIPT_DIR, ".."))
+
+
+def patcher_binary_path():
+    override = os.environ.get(PATCHER_BINARY_ENV, "").strip()
+    if override:
+        return os.path.abspath(override)
+    return os.path.join(project_root(), ".build", "debug", "vphone-cli")
+
+
+def run_swift_patch_component(component, src_path, output_path):
+    """Patch a single component via the Swift FirmwarePatcher CLI."""
+    binary = patcher_binary_path()
+    if not os.path.isfile(binary):
+        print(f"[-] Swift patcher binary not found: {binary}")
+        print("    Run: make patcher_build")
+        sys.exit(1)
+
+    run(
+        [
+            binary,
+            "patch-component",
+            "--component",
+            component,
+            "--input",
+            src_path,
+            "--output",
+            output_path,
+            "--quiet",
+        ]
+    )
+
+
+def load_firmware(path):
+    """Load firmware file, auto-detecting IM4P vs raw."""
+    with open(path, "rb") as f:
+        raw = f.read()
+
+    try:
+        im4p = IM4P(raw)
+        if im4p.payload.compression:
+            im4p.payload.decompress()
+        return im4p, bytearray(im4p.payload.data), True, raw
+    except Exception:
+        return None, bytearray(raw), False, raw
+
+
+def _save_im4p_with_payp(path, fourcc, patched_data, original_raw):
+    """Repackage as LZFSE-compressed IM4P and append PAYP from original."""
+    with (
+        tempfile.NamedTemporaryFile(suffix=".raw", delete=False) as tmp_raw,
+        tempfile.NamedTemporaryFile(suffix=".im4p", delete=False) as tmp_im4p,
+    ):
+        tmp_raw_path = tmp_raw.name
+        tmp_im4p_path = tmp_im4p.name
+        tmp_raw.write(bytes(patched_data))
+
+    try:
+        subprocess.run(
+            [
+                "pyimg4",
+                "im4p",
+                "create",
+                "-i",
+                tmp_raw_path,
+                "-o",
+                tmp_im4p_path,
+                "-f",
+                fourcc,
+                "--lzfse",
+            ],
+            check=True,
+            capture_output=True,
+        )
+        output = bytearray(open(tmp_im4p_path, "rb").read())
+    finally:
+        os.unlink(tmp_raw_path)
+        os.unlink(tmp_im4p_path)
+
+    payp_offset = original_raw.rfind(b"PAYP")
+    if payp_offset >= 0:
+        payp_data = original_raw[payp_offset - 10 :]
+        output.extend(payp_data)
+        old_len = int.from_bytes(output[2:5], "big")
+        output[2:5] = (old_len + len(payp_data)).to_bytes(3, "big")
+        print(f"  [+] preserved PAYP ({len(payp_data)} bytes)")
+
+    with open(path, "wb") as f:
+        f.write(output)
+
+
+def find_restore_dir(base_dir):
+    for entry in sorted(os.listdir(base_dir)):
+        full = os.path.join(base_dir, entry)
+        if os.path.isdir(full) and "Restore" in entry:
+            return full
+    return None
+
+
+def find_file(base_dir, patterns, label):
+    for pattern in patterns:
+        matches = sorted(glob.glob(os.path.join(base_dir, pattern)))
+        if matches:
+            return matches[0]
+    print(f"[-] {label} not found. Searched patterns:")
+    for pattern in patterns:
+        print(f"    {os.path.join(base_dir, pattern)}")
+    sys.exit(1)
+
+
 # ══════════════════════════════════════════════════════════════════
 # Firmware extraction and IM4P creation
 # ══════════════════════════════════════════════════════════════════
@@ -279,17 +380,9 @@ def derive_ramdisk_kernel_source(kc_src, temp_dir):
         return None
 
     print(f"  deriving ramdisk kernel from pristine source: {pristine}")
-    im4p_obj, data, was_im4p, original_raw = load_firmware(pristine)
-    kp = KernelPatcher(data)
-    n = kp.apply()
-    print(f"  [+] {n} base kernel patches applied for ramdisk variant")
-
     out_path = os.path.join(temp_dir, f"kernelcache.research.vphone600{RAMDISK_KERNEL_SUFFIX}")
-    if was_im4p and im4p_obj is not None:
-        _save_im4p_with_payp(out_path, im4p_obj.fourcc, data, original_raw)
-    else:
-        with open(out_path, "wb") as f:
-            f.write(data)
+    run_swift_patch_component("kernel-base", pristine, out_path)
+    print("  [+] base kernel patches applied for ramdisk variant")
     return out_path
 
 
@@ -301,14 +394,13 @@ def derive_ramdisk_kernel_source(kc_src, temp_dir):
 def patch_ibec_bootargs(data):
     """Replace normal boot-args with ramdisk boot-args in already-patched iBEC.
 
-    Finds the boot-args string written by patch_firmware.py (via IBootPatcher)
+    Finds the boot-args string written by the Swift firmware pipeline
     and overwrites it in-place. No hardcoded offsets needed — the ADRP+ADD
     instructions already point to the string location.
     """
-    normal_args = IBootPatcher.BOOT_ARGS
-    off = data.find(normal_args)
+    off = data.find(DEFAULT_IBEC_BOOT_ARGS)
     if off < 0:
-        print(f"  [-] boot-args: existing string not found ({normal_args.decode()!r})")
+        print(f"  [-] boot-args: existing string not found ({DEFAULT_IBEC_BOOT_ARGS.decode()!r})")
         return False
 
     args = RAMDISK_BOOT_ARGS + b"\x00"
@@ -695,10 +787,17 @@ def main():
         "TXM",
     )
     txm_raw = os.path.join(temp_dir, "txm.raw")
-    im4p_obj, data, original_raw = extract_to_raw(txm_src, txm_raw)
-    patch_txm(data)
+    txm_patched_raw = os.path.join(temp_dir, "txm.patched.raw")
+    im4p_obj, data, _, original_raw = load_firmware(txm_src)
+    with open(txm_raw, "wb") as f:
+        f.write(bytes(data))
+    print(f"  source: {txm_src}")
+    print(f"  format: IM4P, {len(data)} bytes")
+    run_swift_patch_component("txm", txm_src, txm_patched_raw)
+    with open(txm_patched_raw, "rb") as f:
+        patched_txm = f.read()
     txm_im4p = os.path.join(temp_dir, "txm.im4p")
-    _save_im4p_with_payp(txm_im4p, TXM_FOURCC, data, original_raw)
+    _save_im4p_with_payp(txm_im4p, TXM_FOURCC, patched_txm, original_raw)
     sign_img4(
         txm_im4p, os.path.join(output_dir, "txm.img4"), im4m_path
     )

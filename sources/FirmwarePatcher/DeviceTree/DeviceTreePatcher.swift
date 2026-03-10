@@ -1,6 +1,6 @@
 // DeviceTreePatcher.swift — DeviceTree payload patcher.
 //
-// Translated from Python source: scripts/dtree.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Strategy:
 //   1. Parse the flat device tree binary into a node/property tree.
@@ -17,6 +17,7 @@ public final class DeviceTreePatcher: Patcher {
 
     let buffer: BinaryBuffer
     var patches: [PatchRecord] = []
+    var rebuiltData: Data?
 
     // MARK: - Patch Definitions
 
@@ -114,16 +115,24 @@ public final class DeviceTreePatcher: Patcher {
 
     public func findAll() throws -> [PatchRecord] {
         patches = []
+        rebuiltData = nil
         let root = try parsePayload(buffer.data)
         try applyPatches(root: root)
+        rebuiltData = serializePayload(root)
         return patches
     }
 
     @discardableResult
     public func apply() throws -> Int {
-        let _ = try findAll()
-        for record in patches {
-            buffer.writeBytes(at: record.fileOffset, bytes: record.patchedBytes)
+        if patches.isEmpty, rebuiltData == nil {
+            let _ = try findAll()
+        }
+        if let rebuiltData {
+            buffer.data = rebuiltData
+        } else {
+            for record in patches {
+                buffer.writeBytes(at: record.fileOffset, bytes: record.patchedBytes)
+            }
         }
         if verbose, !patches.isEmpty {
             print("\n  [\(patches.count) DeviceTree patch(es) applied]")
@@ -132,7 +141,7 @@ public final class DeviceTreePatcher: Patcher {
     }
 
     public var patchedData: Data {
-        buffer.data
+        rebuiltData ?? buffer.data
     }
 
     // MARK: - Parsing
@@ -207,6 +216,39 @@ public final class DeviceTreePatcher: Patcher {
             )
         }
         return root
+    }
+
+    private func serializeNode(_ node: DTNode) -> Data {
+        var out = Data()
+        out.append(contentsOf: withUnsafeBytes(of: UInt32(node.properties.count).littleEndian) { Data($0) })
+        out.append(contentsOf: withUnsafeBytes(of: UInt32(node.children.count).littleEndian) { Data($0) })
+
+        for prop in node.properties {
+            var name = Data(prop.name.utf8)
+            if name.count >= 32 {
+                name = Data(name.prefix(31))
+            }
+            name.append(contentsOf: [UInt8](repeating: 0, count: 32 - name.count))
+            out.append(name)
+
+            out.append(contentsOf: withUnsafeBytes(of: UInt16(prop.length).littleEndian) { Data($0) })
+            out.append(contentsOf: withUnsafeBytes(of: prop.flags.littleEndian) { Data($0) })
+            out.append(prop.value)
+
+            let pad = Self.align4(prop.length) - prop.length
+            if pad > 0 {
+                out.append(Data(repeating: 0, count: pad))
+            }
+        }
+
+        for child in node.children {
+            out.append(serializeNode(child))
+        }
+        return out
+    }
+
+    private func serializePayload(_ root: DTNode) -> Data {
+        serializeNode(root)
     }
 
     // MARK: - Node Navigation
@@ -303,6 +345,10 @@ public final class DeviceTreePatcher: Patcher {
                 try Self.encodeInteger(v, length: patch.length)
             }
 
+            prop.length = patch.length
+            prop.flags = patch.flags
+            prop.value = newValue
+
             let record = PatchRecord(
                 patchID: patch.patchID,
                 component: component,
@@ -321,17 +367,6 @@ public final class DeviceTreePatcher: Patcher {
                              newValue.hex,
                              patch.patchID))
             }
-        }
-    }
-}
-
-// MARK: - Data Helpers
-
-private extension Data {
-    /// Load a little-endian integer at the given byte offset.
-    func loadLE<T: FixedWidthInteger>(_: T.Type, at offset: Int) -> T {
-        withUnsafeBytes { buf in
-            T(littleEndian: buf.load(fromByteOffset: offset, as: T.self))
         }
     }
 }

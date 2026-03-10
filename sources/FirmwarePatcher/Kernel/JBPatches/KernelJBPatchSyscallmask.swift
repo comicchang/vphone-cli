@@ -1,6 +1,6 @@
 // KernelJBPatchSyscallmask.swift — JB kernel patch: syscallmask C22 apply-to-proc
 //
-// Python source: scripts/patchers/kernel_jb_patch_syscallmask.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Strategy (retargeted C22): Hijack the low-level syscallmask apply wrapper.
 //   1. Replace the pre-setter helper BL with `mov x17, x0` (save RO selector).
@@ -283,31 +283,31 @@ extension KernelJBPatcher {
         var code: [Data] = []
 
         // 0: cbz x2, #exit (28 instrs * 4 = 0x70 — jump to after add sp)
-        code.append(ARM64.encodeU32(0xB400_0622)) // cbz x2, #+0x6c
+        code.append(ARM64.encodeU32(ARM64.syscallmask_cbzX2_0x6c))
         // 1: sub sp, sp, #0x40
-        code.append(ARM64.encodeU32(0xD101_03FF)) // sub sp, sp, #0x40
+        code.append(ARM64.encodeU32(ARM64.syscallmask_subSP_0x40))
         // 2: stp x19, x20, [sp, #0x10]
-        code.append(ARM64.encodeU32(0xA901_4FF3)) // stp x19, x20, [sp, #0x10]
+        code.append(ARM64.encodeU32(ARM64.syscallmask_stpX19X20_0x10))
         // 3: stp x21, x22, [sp, #0x20]
-        code.append(ARM64.encodeU32(0xA902_57F5)) // stp x21, x22, [sp, #0x20]
+        code.append(ARM64.encodeU32(ARM64.syscallmask_stpX21X22_0x20))
         // 4: stp x29, x30, [sp, #0x30]
-        code.append(ARM64.encodeU32(0xA903_7BFD)) // stp x29, x30, [sp, #0x30]
+        code.append(ARM64.encodeU32(ARM64.syscallmask_stpFP_LR_0x30))
         // 5: mov x19, x0
-        code.append(ARM64.encodeU32(0xAA00_03F3)) // mov x19, x0
+        code.append(ARM64.encodeU32(ARM64.syscallmask_movX19_X0))
         // 6: mov x20, x1
-        code.append(ARM64.encodeU32(0xAA01_03F4)) // mov x20, x1
+        code.append(ARM64.encodeU32(ARM64.syscallmask_movX20_X1))
         // 7: mov x21, x2
-        code.append(ARM64.encodeU32(0xAA02_03F5)) // mov x21, x2
+        code.append(ARM64.encodeU32(ARM64.syscallmask_movX21_X2))
         // 8: mov x22, x3
-        code.append(ARM64.encodeU32(0xAA03_03F6)) // mov x22, x3
+        code.append(ARM64.encodeU32(ARM64.syscallmask_movX22_X3))
         // 9: mov x8, #8
-        code.append(ARM64.encodeU32(0xD280_0108)) // movz x8, #8
+        code.append(ARM64.encodeU32(ARM64.syscallmask_movX8_8))
         // 10: mov x0, x17
-        code.append(ARM64.encodeU32(0xAA11_03E0)) // mov x0, x17
+        code.append(ARM64.encodeU32(ARM64.syscallmask_movX0_X17))
         // 11: mov x1, x21
-        code.append(ARM64.encodeU32(0xAA15_03E1)) // mov x1, x21
+        code.append(ARM64.encodeU32(ARM64.syscallmask_movX1_X21))
         // 12: mov x2, #0
-        code.append(ARM64.encodeU32(0xD280_0002)) // movz x2, #0
+        code.append(ARM64.encodeU32(ARM64.syscallmask_movX2_0))
 
         // 13: adr x3, #blobDelta (blob is at caveOff, code is at codeOff)
         let adrOff = codeOff + code.count * 4
@@ -321,13 +321,13 @@ extension KernelJBPatcher {
         code.append(ARM64.encodeU32(adrInsn))
 
         // 14: udiv x4, x22, x8
-        code.append(ARM64.encodeU32(0x9AC8_0AC4)) // udiv x4, x22, x8
+        code.append(ARM64.encodeU32(ARM64.syscallmask_udivX4_X22_X8))
         // 15: msub x10, x4, x8, x22
-        code.append(ARM64.encodeU32(0x9B08_5C8A)) // msub x10, x4, x8, x22
+        code.append(ARM64.encodeU32(ARM64.syscallmask_msubX10_X4_X8_X22))
         // 16: cbz x10, #8  (skip 2 instrs)
-        code.append(ARM64.encodeU32(0xB400_004A)) // cbz x10, #+8
+        code.append(ARM64.encodeU32(ARM64.syscallmask_cbzX10_8))
         // 17: add x4, x4, #1
-        code.append(ARM64.encodeU32(0x9100_0484)) // add x4, x4, #1
+        code.append(ARM64.encodeU32(ARM64.syscallmask_addX4_X4_1))
 
         // 18: bl mutatorOff
         let blOff = codeOff + code.count * 4
@@ -335,21 +335,21 @@ extension KernelJBPatcher {
         code.append(blMutator)
 
         // 19: mov x0, x19
-        code.append(ARM64.encodeU32(0xAA13_03E0)) // mov x0, x19
+        code.append(ARM64.encodeU32(ARM64.syscallmask_movX0_X19))
         // 20: mov x1, x20
-        code.append(ARM64.encodeU32(0xAA14_03E1)) // mov x1, x20
+        code.append(ARM64.encodeU32(ARM64.syscallmask_movX1_X20))
         // 21: mov x2, x21
-        code.append(ARM64.encodeU32(0xAA15_03E2)) // mov x2, x21
+        code.append(ARM64.encodeU32(ARM64.syscallmask_movX2_X21))
         // 22: mov x3, x22
-        code.append(ARM64.encodeU32(0xAA16_03E3)) // mov x3, x22
+        code.append(ARM64.encodeU32(ARM64.syscallmask_movX3_X22))
         // 23: ldp x19, x20, [sp, #0x10]
-        code.append(ARM64.encodeU32(0xA941_4FF3)) // ldp x19, x20, [sp, #0x10]
+        code.append(ARM64.encodeU32(ARM64.syscallmask_ldpX19X20_0x10))
         // 24: ldp x21, x22, [sp, #0x20]
-        code.append(ARM64.encodeU32(0xA942_57F5)) // ldp x21, x22, [sp, #0x20]
+        code.append(ARM64.encodeU32(ARM64.syscallmask_ldpX21X22_0x20))
         // 25: ldp x29, x30, [sp, #0x30]
-        code.append(ARM64.encodeU32(0xA943_7BFD)) // ldp x29, x30, [sp, #0x30]
+        code.append(ARM64.encodeU32(ARM64.syscallmask_ldpFP_LR_0x30))
         // 26: add sp, sp, #0x40
-        code.append(ARM64.encodeU32(0x9101_03FF)) // add sp, sp, #0x40
+        code.append(ARM64.encodeU32(ARM64.syscallmask_addSP_0x40))
 
         // 27: b setterOff (tail-call)
         let branchBackOff = codeOff + code.count * 4

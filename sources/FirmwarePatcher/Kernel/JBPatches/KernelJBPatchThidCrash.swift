@@ -1,6 +1,6 @@
 // KernelJBPatchThidCrash.swift — JB kernel patch: thid_should_crash bypass
 //
-// Python source: scripts/patchers/kernel_jb_patch_thid_crash.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
 

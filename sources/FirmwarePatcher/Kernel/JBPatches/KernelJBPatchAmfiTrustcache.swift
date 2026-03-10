@@ -1,6 +1,6 @@
 // KernelJBPatchAmfiTrustcache.swift — JB kernel patch: AMFI trustcache gate bypass
 //
-// Python source: scripts/patchers/kernel_jb_patch_amfi_trustcache.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Strategy (semantic function matching):
 //   Scan amfi_text for functions (PACIBSP boundaries) that match the

@@ -17,6 +17,7 @@ struct VerboseJBDebug {
         patcher.buildADRPIndex()
         patcher.buildBLIndex()
         patcher.buildSymbolTable()
+        patcher.findPanic()
 
         print("=== HOOK CRED LABEL ===")
         let r1 = patcher.patchHookCredLabelUpdateExecve()

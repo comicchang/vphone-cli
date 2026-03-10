@@ -1,6 +1,6 @@
 // KernelJBPatchProcSecurity.swift — JB: stub _proc_security_policy with mov x0,#0; ret.
 //
-// Python source: scripts/patchers/kernel_jb_patch_proc_security.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Reveal: find _proc_info by `sub wN,wM,#1 ; cmp wN,#0x21` switch pattern,
 //   then identify _proc_security_policy among BL targets called 2+ times,

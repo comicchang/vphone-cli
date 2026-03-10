@@ -1,6 +1,6 @@
 // TXMDevPatcher.swift — Dev-variant TXM patcher (entitlements, debugger, developer mode).
 //
-// Python source: scripts/patchers/txm_dev.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
 
@@ -132,7 +132,7 @@ public final class TXMDevPatcher: TXMPatcher {
         while off < searchEnd {
             // Count consecutive zero words starting at off
             var run = off
-            while run < searchEnd && buffer.readU32(at: run) == 0 {
+            while run < searchEnd, buffer.readU32(at: run) == 0 {
                 run += 4
             }
 

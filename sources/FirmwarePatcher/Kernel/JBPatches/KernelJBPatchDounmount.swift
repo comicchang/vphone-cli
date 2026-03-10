@@ -1,6 +1,6 @@
 // KernelJBPatchDounmount.swift — JB: NOP the upstream cleanup call in dounmount.
 //
-// Python source: scripts/patchers/kernel_jb_patch_dounmount.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Reveal: string-anchor "dounmount:" → find the unique near-tail 4-arg zeroed cleanup
 //   call: mov x0,xN ; mov w1,#0 ; mov w2,#0 ; mov w3,#0 ; bl ; mov x0,xN ; bl ; cbz x19,...

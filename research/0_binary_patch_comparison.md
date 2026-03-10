@@ -180,6 +180,84 @@
 | iOS 26.1 (`23B85`)  |             14 |                59 |
 | iOS 26.3 (`23D127`) |             14 |                59 |
 
+## Swift Migration Notes (2026-03-10)
+
+- Swift `FirmwarePatcher` now matches the Python reference patch output across all checked components:
+  - `avpbooter` 1/1
+  - `ibss` 4/4
+  - `ibec` 7/7
+  - `llb` 13/13
+  - `txm` 1/1
+  - `txm_dev` 12/12
+  - `kernelcache` 28/28
+  - `ibss_jb` 1/1
+  - `kernelcache_jb` 84/84
+- JB parity fixes completed in Swift:
+  - C23 `vnode_getattr` resolution now follows the Python backward BL scan and resolves `0x00CD44F8`.
+  - C22 syscallmask cave encodings were corrected and centralized in `ARM64Constants.swift`.
+  - Task-conversion matcher masks and kernel-text scan range were corrected, restoring the patch at `0x00B0C400`.
+  - `jbDecodeBranchTarget()` now correctly decodes `cbz/cbnz`, restoring the real `_bsd_init` rootauth gate at `0x00F7798C`.
+  - IOUC MACF matching now uses Python-equivalent disassembly semantics for the aggregator shape, restoring the deny-to-allow patch at `0x01260644`.
+- C24 `kcall10` cave instruction bytes were re-verified against macOS `clang`/`as`; no Swift byte changes were needed.
+- The Swift pipeline is now directly invokable from the product binary:
+  - `vphone-cli patch-firmware --vm-directory <dir> --variant {regular|dev|jb}`
+  - `vphone-cli patch-component --component {txm|kernel-base} --input <file> --output <raw>` is available for non-firmware tooling that still needs a single patched payload during ramdisk packaging
+  - default loader now preserves IM4P containers via `IM4PHandler`
+  - DeviceTree patching now uses the real Swift `DeviceTreePatcher` in the pipeline
+  - project `make fw_patch`, `make fw_patch_dev`, and `make fw_patch_jb` targets now invoke this Swift pipeline via the unsigned debug `vphone-cli` build, while the signed release build remains reserved for VM boot/DFU paths
+  - on 2026-03-11, the legacy Python firmware patcher entrypoints and patch modules were temporarily restored from pre-removal history for parity/debug work.
+  - after byte-for-byte parity was revalidated against Python on `26.1` and `26.3` for `regular`, `dev`, and `jb`, those legacy firmware-patcher Python sources and transient comparison/export helpers were removed again so the repo keeps Swift as the single firmware-patching implementation.
+- Swift pipeline follow-up fixes completed after CLI bring-up:
+  - `findFile()` now supports glob patterns such as `AVPBooter*.bin` instead of treating them as literal paths.
+  - JB variant sequencing now runs base iBSS/kernel patchers first, then the JB extension patchers.
+  - Sequential pipeline application now merges each patcher's `PatchRecord` writes onto the shared output buffer while keeping later patcher searches anchored to the original payload, matching the standalone Swift/Python validation model.
+  - `apply()` now reuses an already-populated `patches` array instead of re-running `findAll()`, so `patch-firmware` / `patch-component` no longer double-scan or double-print the same component diagnostics on a single invocation.
+  - unaligned integer reads across the firmware patcher now go through a shared safe `Data.loadLE(...)` helper, fixing the JB IM4P crash (`Swift/UnsafeRawPointer.swift:449` misaligned raw pointer load).
+  - `TXMPatcher` now preserves pristine Python parity by preferring the legacy trustcache binary-search site when present, and only falls back to the selector24 hash-flags call chain (`ldr x1, [x20,#0x38]` -> `add x2, sp, #4` -> `bl` -> `ldp x0, x1, [x20,#0x30]` -> `add x2, sp, #8` -> `bl`) when rerunning on a VM tree that already carries the dev/JB selector24 early-return patch.
+  - `scripts/fw_prepare.sh` now deletes stale sibling `*Restore*` directories in the working VM directory before patching continues, so a fresh `make fw_prepare && make fw_patch` cannot accidentally select an older prepared firmware tree (for example `26.1`) when a newer one (for example `26.3`) was just generated.
+- IM4P/output parity fixes completed after synthetic full-pipeline comparison:
+  - `IM4PHandler.save()` no longer forces a generic LZFSE re-encode.
+  - Swift now rebuilds IM4Ps in the same effective shape as the Python patch flow and only preserves trailing `PAYP` metadata for `TXM` (`trxm`) and `kernelcache` (`krnl`).
+  - `IBootPatcher` serial labels now match Python casing exactly (`Loaded iBSS`, `Loaded iBEC`, `Loaded LLB`).
+  - `DeviceTreePatcher` now serializes the full patched flat tree, matching Python `dtree.py`, instead of relying on in-place property writes alone.
+- Synthetic CLI dry-run status on 2026-03-10 using IM4P-backed inputs under `ipsws/patch_refactor_input`:
+  - regular: 58 patch records
+  - dev: 69 patch records
+  - jb: 154 patch records
+- Full synthetic Python-vs-Swift pipeline comparison status on 2026-03-10 using `scripts/compare_swift_python_pipeline.py`:
+  - regular: all 7 component payloads match
+  - dev: all 7 component payloads match
+  - jb: all 7 component payloads match
+- Real prepared-firmware Python-vs-Swift pipeline comparison status on 2026-03-10 using `vm/` after `make fw_prepare`:
+  - historical note: the now-removed `scripts/compare_swift_python_pipeline.py` cloned only the prepared `*Restore*` tree plus `AVPBooter*.bin`, `AVPSEPBooter*.bin`, and `config.plist`, avoiding `No space left on device` failures from copying `Disk.img` after `make vm_new`.
+  - regular: all 7 component payloads match
+  - dev: all 7 component payloads match
+  - jb: all 7 component payloads match
+- Runtime validation blocker observed on 2026-03-10:
+  - `NONE_INTERACTIVE=1 SKIP_PROJECT_SETUP=1 make setup_machine JB=1` reaches the Swift patch stage and reports `[patch-firmware] applied 154 patches for jb`, then fails when the flow transitions into `make boot_dfu`.
+  - `make boot_dfu` originally failed at launch-policy time with exit `137` / signal `9` because the release `vphone-cli` could not launch on this host.
+  - `amfidont` was then validated on-host:
+    - it can attach to `/usr/libexec/amfid`
+    - the initial path allow rule failed because `AMFIPathValidator` reports URL-encoded paths (`/Volumes/My%20Shared%20Files/...`)
+    - rerunning `amfidont` with the encoded project path and the release-binary CDHash allows the signed release `vphone-cli` to launch
+    - this workflow is now packaged as `make amfidont_allow_vphone` / `scripts/start_amfidont_for_vphone.sh`
+  - With launch policy bypassed, `make boot_dfu` advances into VM setup, emits `vm/udid-prediction.txt`, and then fails with `VZErrorDomain Code=2 "Virtualization is not available on this hardware."`
+  - `VPhoneAppDelegate` startup failure handling was tightened so these fatal boot/DFU startup errors now exit non-zero; `make boot_dfu` now reports `make: *** [boot_dfu] Error 1` for the nested-virtualization failure instead of incorrectly returning success.
+  - The host itself is a nested Apple VM (`Model Name: Apple Virtual Machine 1`, `kern.hv_vmm_present=1`), so the remaining blocker is lack of nested Virtualization.framework availability rather than firmware patching or AMFI bypass.
+  - `boot_binary_check` now uses strict host preflight and fails earlier on this class of host with `make: *** [boot_binary_check] Error 3`, avoiding a wasted VM-start attempt once the nested-virtualization condition is already known.
+  - Added `make boot_host_preflight` / `scripts/boot_host_preflight.sh` to capture this state in one command:
+    - model: `Apple Virtual Machine 1`
+    - `kern.hv_vmm_present`: `1`
+    - SIP: disabled
+    - `allow-research-guests`: disabled
+    - current `kern.bootargs`: empty
+    - next-boot `nvram boot-args`: `amfi_get_out_of_my_way=1 -v` (staged on 2026-03-10; requires reboot before it affects launch policy)
+    - `spctl --status`: assessments enabled
+    - `spctl --assess` rejects the signed release binary
+    - unsigned debug `vphone-cli --help`: exit `0`
+    - signed release `vphone-cli --help`: exit `137`
+    - freshly signed debug control binary `--help`: exit `137`
+
 ## Automation Notes (2026-03-06)
 
 - `scripts/setup_machine.sh` non-interactive flow fix: renamed local variable `status` to `boot_state` in first-boot log wait and boot-analysis wait helpers to avoid zsh `status` read-only special parameter collision.

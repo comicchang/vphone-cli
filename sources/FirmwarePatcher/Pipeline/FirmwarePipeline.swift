@@ -1,6 +1,6 @@
 // FirmwarePipeline.swift — Orchestrates full boot-chain firmware patching.
 //
-// Swift equivalent of scripts/fw_patch.py main().
+// Historical note: this file replaces the old Python firmware patcher implementation.
 //
 // Pipeline order: AVPBooter → iBSS → iBEC → LLB → TXM → Kernel → DeviceTree
 //
@@ -9,6 +9,7 @@
 //   .dev     — TXMDevPatcher instead of TXMPatcher
 //   .jb      — TXMDevPatcher + IBootJBPatcher (iBSS) + KernelJBPatcher
 
+import Darwin
 import Foundation
 
 /// Orchestrates firmware patching for all boot-chain components.
@@ -17,10 +18,8 @@ import Foundation
 /// `find_restore_dir` + `find_file` in the Python source), loads each file,
 /// delegates to the appropriate ``Patcher``, and writes the patched data back.
 ///
-/// **IM4P handling:** The Python pipeline loads IM4P containers, extracts
-/// payloads, patches them, and repackages. This Swift pipeline is designed to
-/// support an identical flow via a pluggable ``FirmwareLoader`` once IM4P
-/// support is implemented. Until then, raw-data loading is used directly.
+/// The default loader mirrors the Python flow: it loads IM4P containers when
+/// present, patches the extracted payload, and re-packages them on save.
 public final class FirmwarePipeline {
     // MARK: - Variant
 
@@ -34,9 +33,7 @@ public final class FirmwarePipeline {
 
     /// Abstraction over IM4P vs raw firmware loading.
     ///
-    /// When IM4P handling is ready, provide a conforming type that
-    /// decompresses/extracts the payload on load and repackages on save.
-    /// The default ``RawFirmwareLoader`` reads/writes plain bytes.
+    /// Provide a conforming type to override the default IM4P/raw handling.
     public protocol FirmwareLoader {
         /// Load firmware from `url`, returning the mutable payload data.
         func load(from url: URL) throws -> Data
@@ -44,15 +41,16 @@ public final class FirmwarePipeline {
         func save(_ data: Data, to url: URL) throws
     }
 
-    /// Default loader: reads and writes raw bytes with no container handling.
-    public struct RawFirmwareLoader: FirmwareLoader {
+    /// Default loader: transparently handles IM4P containers and raw payloads.
+    public struct ContainerFirmwareLoader: FirmwareLoader {
         public init() {}
         public func load(from url: URL) throws -> Data {
-            try Data(contentsOf: url)
+            try IM4PHandler.load(contentsOf: url).payload
         }
 
         public func save(_ data: Data, to url: URL) throws {
-            try data.write(to: url)
+            let original = try IM4PHandler.load(contentsOf: url).im4p
+            try IM4PHandler.save(patchedData: data, originalIM4P: original, to: url)
         }
     }
 
@@ -66,8 +64,8 @@ public final class FirmwarePipeline {
         let inRestoreDir: Bool
         /// Glob patterns used to locate the file (tried in order).
         let searchPatterns: [String]
-        /// Factory that creates the appropriate ``Patcher`` for the loaded data.
-        let patcherFactory: (Data, Bool) -> any Patcher
+        /// Factories that create patchers to run in sequence for the loaded data.
+        let patcherFactories: [(Data, Bool) -> any Patcher]
     }
 
     // MARK: - Properties
@@ -88,7 +86,7 @@ public final class FirmwarePipeline {
         self.vmDirectory = vmDirectory
         self.variant = variant
         self.verbose = verbose
-        self.loader = loader ?? RawFirmwareLoader()
+        self.loader = loader ?? ContainerFirmwareLoader()
     }
 
     // MARK: - Pipeline Execution
@@ -121,22 +119,35 @@ public final class FirmwarePipeline {
             log("  format: \(rawData.count) bytes")
 
             // Patch
-            let patcher = component.patcherFactory(rawData, verbose)
-            let records = try patcher.findAll()
+            var currentData = rawData
+            var componentRecords: [PatchRecord] = []
 
-            guard !records.isEmpty else {
-                throw PatcherError.patchSiteNotFound("\(component.name): no patches found")
+            for makePatcher in component.patcherFactories {
+                let patcher = makePatcher(rawData, verbose)
+                let records = try patcher.findAll()
+
+                guard !records.isEmpty else {
+                    throw PatcherError.patchSiteNotFound("\(component.name): no patches found")
+                }
+
+                let count = try patcher.apply()
+                log("  [+] \(count) \(component.name) patches applied")
+
+                componentRecords.append(contentsOf: records)
+                if let deviceTreePatcher = patcher as? DeviceTreePatcher {
+                    currentData = deviceTreePatcher.patchedData
+                } else {
+                    for record in records {
+                        let range = record.fileOffset ..< record.fileOffset + record.patchedBytes.count
+                        currentData.replaceSubrange(range, with: record.patchedBytes)
+                    }
+                }
             }
 
-            let count = try patcher.apply()
-            log("  [+] \(count) \(component.name) patches applied")
-
-            // Save — retrieve the mutated buffer data from the patcher.
-            let patchedData = extractPatchedData(from: patcher, fallback: rawData, records: records)
-            try loader.save(patchedData, to: fileURL)
+            try loader.save(currentData, to: fileURL)
             log("  [+] saved")
 
-            allRecords.append(contentsOf: records)
+            allRecords.append(contentsOf: componentRecords)
         }
 
         log("\n\(String(repeating: "=", count: 60))")
@@ -157,22 +168,31 @@ public final class FirmwarePipeline {
             name: "AVPBooter",
             inRestoreDir: false,
             searchPatterns: ["AVPBooter*.bin"],
-            patcherFactory: { data, verbose in
+            patcherFactories: [{ data, verbose in
                 AVPBooterPatcher(data: data, verbose: verbose)
-            }
+            }]
         ))
 
-        // 2. iBSS — JB variant adds nonce-skip via IBootJBPatcher
+        // 2. iBSS — JB variant runs the base iBSS patcher, then the nonce-skip extension.
         components.append(ComponentDescriptor(
             name: "iBSS",
             inRestoreDir: true,
             searchPatterns: ["Firmware/dfu/iBSS.vresearch101.RELEASE.im4p"],
-            patcherFactory: { [variant] data, verbose in
+            patcherFactories: {
                 if variant == .jb {
-                    return IBootJBPatcher(data: data, mode: .ibss, verbose: verbose)
+                    return [
+                        { data, verbose in
+                            IBootPatcher(data: data, mode: .ibss, verbose: verbose)
+                        },
+                        { data, verbose in
+                            IBootJBPatcher(data: data, mode: .ibss, verbose: verbose)
+                        },
+                    ]
                 }
-                return IBootPatcher(data: data, mode: .ibss, verbose: verbose)
-            }
+                return [{ data, verbose in
+                    IBootPatcher(data: data, mode: .ibss, verbose: verbose)
+                }]
+            }()
         ))
 
         // 3. iBEC — same for all variants
@@ -180,9 +200,9 @@ public final class FirmwarePipeline {
             name: "iBEC",
             inRestoreDir: true,
             searchPatterns: ["Firmware/dfu/iBEC.vresearch101.RELEASE.im4p"],
-            patcherFactory: { data, verbose in
+            patcherFactories: [{ data, verbose in
                 IBootPatcher(data: data, mode: .ibec, verbose: verbose)
-            }
+            }]
         ))
 
         // 4. LLB — same for all variants
@@ -190,9 +210,9 @@ public final class FirmwarePipeline {
             name: "LLB",
             inRestoreDir: true,
             searchPatterns: ["Firmware/all_flash/LLB.vresearch101.RELEASE.im4p"],
-            patcherFactory: { data, verbose in
+            patcherFactories: [{ data, verbose in
                 IBootPatcher(data: data, mode: .llb, verbose: verbose)
-            }
+            }]
         ))
 
         // 5. TXM — dev/jb variants use TXMDevPatcher (adds entitlements, debugger, dev-mode)
@@ -200,35 +220,44 @@ public final class FirmwarePipeline {
             name: "TXM",
             inRestoreDir: true,
             searchPatterns: ["Firmware/txm.iphoneos.research.im4p"],
-            patcherFactory: { [variant] data, verbose in
+            patcherFactories: [{ [variant] data, verbose in
                 if variant == .dev || variant == .jb {
                     return TXMDevPatcher(data: data, verbose: verbose)
                 }
                 return TXMPatcher(data: data, verbose: verbose)
-            }
+            }]
         ))
 
-        // 6. Kernel — JB variant uses KernelJBPatcher (84 patches)
+        // 6. Kernel — JB variant runs base kernel patches first, then JB extensions.
         components.append(ComponentDescriptor(
             name: "kernelcache",
             inRestoreDir: true,
             searchPatterns: ["kernelcache.research.vphone600"],
-            patcherFactory: { [variant] data, verbose in
+            patcherFactories: {
                 if variant == .jb {
-                    return KernelJBPatcher(data: data, verbose: verbose)
+                    return [
+                        { data, verbose in
+                            KernelPatcher(data: data, verbose: verbose)
+                        },
+                        { data, verbose in
+                            KernelJBPatcher(data: data, verbose: verbose)
+                        },
+                    ]
                 }
-                return KernelPatcher(data: data, verbose: verbose)
-            }
+                return [{ data, verbose in
+                    KernelPatcher(data: data, verbose: verbose)
+                }]
+            }()
         ))
 
-        // 7. DeviceTree — same for all variants (stub patcher for now)
+        // 7. DeviceTree — same for all variants
         components.append(ComponentDescriptor(
             name: "DeviceTree",
             inRestoreDir: true,
             searchPatterns: ["Firmware/all_flash/DeviceTree.vphone600ap.im4p"],
-            patcherFactory: { data, verbose in
-                DeviceTreePatcherAdapter(data: data, verbose: verbose)
-            }
+            patcherFactories: [{ data, verbose in
+                DeviceTreePatcher(data: data, verbose: verbose)
+            }]
         ))
 
         return components
@@ -240,10 +269,13 @@ public final class FirmwarePipeline {
     /// Mirrors Python `find_restore_dir`.
     func findRestoreDirectory() throws -> URL {
         let fm = FileManager.default
-        let contents = try fm.contentsOfDirectory(at: vmDirectory, includingPropertiesForKeys: [.isDirectoryKey])
-            .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
-            .filter { $0.lastPathComponent.contains("Restore") }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        let contents = try fm.contentsOfDirectory(
+            at: vmDirectory,
+            includingPropertiesForKeys: [.isDirectoryKey, .contentModificationDateKey]
+        )
+        .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+        .filter { $0.lastPathComponent.contains("Restore") }
+        .sorted(by: compareRestoreDirectories)
 
         guard let restoreDir = contents.first else {
             throw PatcherError.fileNotFound("No *Restore* directory found in \(vmDirectory.path). Run prepare_firmware first.")
@@ -251,14 +283,77 @@ public final class FirmwarePipeline {
         return restoreDir
     }
 
+    private func compareRestoreDirectories(_ lhs: URL, _ rhs: URL) -> Bool {
+        let leftName = lhs.lastPathComponent
+        let rightName = rhs.lastPathComponent
+
+        if let left = parseRestoreDirectoryName(leftName),
+           let right = parseRestoreDirectoryName(rightName)
+        {
+            if left.version != right.version {
+                return left.version.lexicographicallyPrecedes(right.version, by: >)
+            }
+            if left.build != right.build {
+                return left.build.compare(right.build, options: .numeric) == .orderedDescending
+            }
+        }
+
+        let leftDate = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+        let rightDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+        if leftDate != rightDate {
+            return leftDate > rightDate
+        }
+        return leftName > rightName
+    }
+
+    private func parseRestoreDirectoryName(_ name: String) -> (version: [Int], build: String)? {
+        let pattern = #"_([0-9]+(?:\.[0-9]+)*)_([0-9A-Za-z]+)_Restore$"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(name.startIndex..., in: name)
+        guard let match = regex.firstMatch(in: name, range: range),
+              match.numberOfRanges == 3,
+              let versionRange = Range(match.range(at: 1), in: name),
+              let buildRange = Range(match.range(at: 2), in: name)
+        else { return nil }
+
+        let version = name[versionRange]
+            .split(separator: ".")
+            .compactMap { Int($0) }
+        let build = String(name[buildRange])
+        guard !version.isEmpty else { return nil }
+        return (version, build)
+    }
+
     /// Find a firmware file by trying glob-style patterns under `baseDir`.
     /// Mirrors Python `find_file`.
     func findFile(in baseDir: URL, patterns: [String], label: String) throws -> URL {
         let fm = FileManager.default
         for pattern in patterns {
-            let candidate = baseDir.appendingPathComponent(pattern)
-            if fm.fileExists(atPath: candidate.path) {
-                return candidate
+            if pattern.contains("*") || pattern.contains("?") || pattern.contains("[") {
+                var matches: [URL] = []
+                if !pattern.contains("/") {
+                    let urls = try fm.contentsOfDirectory(at: baseDir, includingPropertiesForKeys: [.isRegularFileKey])
+                    for url in urls where fnmatch(pattern, url.lastPathComponent, 0) == 0 {
+                        matches.append(url)
+                    }
+                } else {
+                    let enumerator = fm.enumerator(at: baseDir, includingPropertiesForKeys: [.isRegularFileKey])
+                    while let url = enumerator?.nextObject() as? URL {
+                        guard url.path.hasPrefix(baseDir.path + "/") else { continue }
+                        let rel = String(url.path.dropFirst(baseDir.path.count + 1))
+                        if fnmatch(pattern, rel, 0) == 0 {
+                            matches.append(url)
+                        }
+                    }
+                }
+                if let first = matches.sorted(by: { $0.path < $1.path }).first {
+                    return first
+                }
+            } else {
+                let candidate = baseDir.appendingPathComponent(pattern)
+                if fm.fileExists(atPath: candidate.path) {
+                    return candidate
+                }
             }
         }
         let searched = patterns.map { baseDir.appendingPathComponent($0).path }.joined(separator: "\n    ")
@@ -279,7 +374,7 @@ public final class FirmwarePipeline {
         if let txm = patcher as? TXMPatcher { return txm.buffer.data }
         if let kp = patcher as? KernelPatcher { return kp.buffer.data }
         if let kjb = patcher as? KernelJBPatcher { return kjb.buffer.data }
-        if let dt = patcher as? DeviceTreePatcherAdapter { return dt.buffer.data }
+        if let dt = patcher as? DeviceTreePatcher { return dt.patchedData }
 
         // Fallback: apply records manually to a copy of the original data.
         var data = fallback
@@ -296,39 +391,5 @@ public final class FirmwarePipeline {
         if verbose {
             print(message)
         }
-    }
-}
-
-// MARK: - DeviceTree Patcher Adapter
-
-/// Adapter that wraps DeviceTree patching behind the ``Patcher`` protocol.
-///
-/// The real ``DeviceTreePatcher`` is currently a stub enum. This adapter
-/// provides a conforming type so the pipeline can include DeviceTree in the
-/// component list. Replace the body once `DeviceTreePatcher` is implemented.
-final class DeviceTreePatcherAdapter: Patcher {
-    let component = "devicetree"
-    let verbose: Bool
-    let buffer: BinaryBuffer
-
-    init(data: Data, verbose: Bool = true) {
-        buffer = BinaryBuffer(data)
-        self.verbose = verbose
-    }
-
-    func findAll() throws -> [PatchRecord] {
-        // DeviceTree patching is not yet migrated to Swift.
-        // Return an empty array; the pipeline will throw patchSiteNotFound
-        // unless the caller skips validation for stubs.
-        []
-    }
-
-    @discardableResult
-    func apply() throws -> Int {
-        let records = try findAll()
-        for record in records {
-            buffer.writeBytes(at: record.fileOffset, bytes: record.patchedBytes)
-        }
-        return records.count
     }
 }

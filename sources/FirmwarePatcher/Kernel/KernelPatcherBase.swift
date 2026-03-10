@@ -2,7 +2,7 @@
 //
 // Provides Mach-O parsing, ADRP/BL index building, string reference search,
 // kext range discovery, and the emit() system.
-// Swift equivalent of scripts/patchers/kernel_base.py.
+// Historical note: this file replaces the old Python firmware patcher implementation.
 
 import Capstone
 import Foundation
@@ -103,6 +103,10 @@ open class KernelPatcherBase {
         )
 
         patches.append(record)
+
+        // Write through to buffer.data so findCodeCave() sees previously
+        // allocated shellcode and won't reuse the same cave region.
+        buffer.writeBytes(at: offset, bytes: patchBytes)
 
         if verbose {
             print("  0x\(String(format: "%06X", offset)): \(beforeStr) → \(afterStr)  [\(description)]")
@@ -445,16 +449,16 @@ open class KernelPatcherBase {
     /// Parse an embedded kext Mach-O at `kextFoff` and return its __TEXT_EXEC.__text range.
     public func parseKextTextExecRange(at kextFoff: Int) -> (start: Int, end: Int)? {
         guard kextFoff + 32 <= buffer.count else { return nil }
-        let magic: UInt32 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: kextFoff, as: UInt32.self) }
+        let magic = buffer.data.loadLE(UInt32.self, at: kextFoff)
         guard magic == 0xFEED_FACF else { return nil }
 
-        let ncmds: UInt32 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: kextFoff + 16, as: UInt32.self) }
+        let ncmds = buffer.data.loadLE(UInt32.self, at: kextFoff + 16)
         var off = kextFoff + 32
 
         for _ in 0 ..< ncmds {
             guard off + 8 <= buffer.count else { break }
-            let cmd: UInt32 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt32.self) }
-            let cmdsize: UInt32 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off + 4, as: UInt32.self) }
+            let cmd = buffer.data.loadLE(UInt32.self, at: off)
+            let cmdsize = buffer.data.loadLE(UInt32.self, at: off + 4)
 
             if cmd == 0x19 { // LC_SEGMENT_64
                 let nameBytes = buffer.data[off + 8 ..< off + 24]
@@ -462,9 +466,9 @@ open class KernelPatcherBase {
                     .trimmingCharacters(in: CharacterSet(charactersIn: "\0")) ?? ""
 
                 if segName == "__TEXT_EXEC" {
-                    let vmAddr: UInt64 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off + 24, as: UInt64.self) }
-                    let fileSize: UInt64 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off + 48, as: UInt64.self) }
-                    let nsects: UInt32 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off + 64, as: UInt32.self) }
+                    let vmAddr = buffer.data.loadLE(UInt64.self, at: off + 24)
+                    let fileSize = buffer.data.loadLE(UInt64.self, at: off + 48)
+                    let nsects = buffer.data.loadLE(UInt32.self, at: off + 64)
 
                     var sectOff = off + 72
                     for _ in 0 ..< nsects {
@@ -474,8 +478,8 @@ open class KernelPatcherBase {
                             .trimmingCharacters(in: CharacterSet(charactersIn: "\0")) ?? ""
 
                         if sectName == "__text" {
-                            let sectAddr: UInt64 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: sectOff + 32, as: UInt64.self) }
-                            let sectSize: UInt64 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: sectOff + 40, as: UInt64.self) }
+                            let sectAddr = buffer.data.loadLE(UInt64.self, at: sectOff + 32)
+                            let sectSize = buffer.data.loadLE(UInt64.self, at: sectOff + 40)
                             guard sectAddr >= baseVA else { break }
                             let sectFoff = Int(sectAddr - baseVA)
                             return (sectFoff, sectFoff + Int(sectSize))

@@ -70,6 +70,15 @@ Boot into Recovery (long press power button), open Terminal, then choose one set
   sudo amfidont --path [PATH_TO_VPHONE_DIR]
   ```
 
+  Repo helper:
+
+  ```bash
+  make amfidont_allow_vphone
+  ```
+
+  This helper computes the current signed `vphone-cli` CDHash and uses the
+  URL-encoded project path form observed by `AMFIPathValidator`.
+
 **Install dependencies:**
 
 ```bash
@@ -225,6 +234,17 @@ AMFI/debug restrictions are not bypassed correctly. Choose one setup path:
 
 - **Option 2 (debug restrictions only):**
   use Recovery mode `csrutil enable --without debug` (no full SIP disable), then install/load [`amfidont`](https://github.com/zqxwce/amfidont) while keeping AMFI otherwise enabled.
+  For this repo, `make amfidont_allow_vphone` packages the required encoded-path
+  and CDHash allowlist startup.
+
+**Q: `make boot` / `make boot_dfu` starts and then fails with `VZErrorDomain Code=2 "Virtualization is not available on this hardware."`**
+
+The host itself is running inside an Apple virtual machine, so nested
+Virtualization.framework guest boot is unavailable. Run the boot flow on a
+non-nested macOS 15+ host instead. `make boot_host_preflight` will show this as
+`Model Name: Apple Virtual Machine 1` with `kern.hv_vmm_present=1`.
+`make boot` / `make boot_dfu` now fail fast through `boot_binary_check` before
+attempting VM startup on that kind of host.
 
 **Q: System apps (App Store, Messages, etc.) won't download or install.**
 

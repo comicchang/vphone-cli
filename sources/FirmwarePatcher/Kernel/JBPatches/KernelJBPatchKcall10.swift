@@ -1,6 +1,6 @@
 // KernelJBPatchKcall10.swift — JB kernel patch: kcall10 ABI-correct sysent[439] cave
 //
-// Python source: scripts/patchers/kernel_jb_patch_kcall10.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Strategy: Replace SYS_kas_info (sysent[439]) with a cave implementing
 // the kcall10 primitive:
@@ -70,10 +70,10 @@ extension KernelJBPatcher {
             log("  [-] sysent[439] outside file")
             return false
         }
-        let oldSyCallRaw = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: entry439, as: UInt64.self) }
+        let oldSyCallRaw = buffer.readU64(at: entry439)
         let callNext = extractChainNext(oldSyCallRaw)
 
-        let oldMungeRaw = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: entry439 + 8, as: UInt64.self) }
+        let oldMungeRaw = buffer.readU64(at: entry439 + 8)
         let mungeNext = extractChainNext(oldMungeRaw)
         let mungeDiv = extractChainDiversity(oldMungeRaw)
         let mungeAddrDiv = extractChainAddrDiv(oldMungeRaw)
@@ -129,11 +129,11 @@ extension KernelJBPatcher {
             let sEnd = sStart + Int(seg.fileSize)
             var off = sStart
             while off + Self.sysent_entry_size <= sEnd {
-                let val = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt64.self) }
+                let val = buffer.readU64(at: off)
                 let decoded = decodeChainedPtr(val)
                 if decoded == nosysOff {
                     // Confirm: next entry also decodes to a code-range address
-                    let val2 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off + Self.sysent_entry_size, as: UInt64.self) }
+                    let val2 = buffer.readU64(at: off + Self.sysent_entry_size)
                     let dec2 = decodeChainedPtr(val2)
                     let inCode = dec2 > 0 && codeRanges.contains { dec2 >= $0.start && dec2 < $0.end }
                     if inCode {
@@ -156,14 +156,14 @@ extension KernelJBPatcher {
         while base - Self.sysent_entry_size >= segStart {
             guard entriesBack < Self.sysent_max_entries else { break }
             let prev = base - Self.sysent_entry_size
-            let val = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: prev, as: UInt64.self) }
+            let val = buffer.readU64(at: prev)
             let decoded = decodeChainedPtr(val)
             guard decoded > 0 else { break }
             let inCode = codeRanges.contains { decoded >= $0.start && decoded < $0.end }
             guard inCode else { break }
             // Check narg and arg_bytes for sanity
-            let narg: UInt16 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: prev + 20, as: UInt16.self) }
-            let argBytes: UInt16 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: prev + 22, as: UInt16.self) }
+            let narg = buffer.data.loadLE(UInt16.self, at: prev + 20)
+            let argBytes = buffer.data.loadLE(UInt16.self, at: prev + 22)
             guard narg <= 12, argBytes <= 96 else { break }
             base = prev
             entriesBack += 1
@@ -186,10 +186,10 @@ extension KernelJBPatcher {
         for idx in 0 ..< Self.sysent_max_entries {
             let entry = sysEntOff + idx * Self.sysent_entry_size
             guard entry + Self.sysent_entry_size <= buffer.count else { break }
-            let curNarg: UInt16 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: entry + 20, as: UInt16.self) }
-            let curArgBytes: UInt16 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: entry + 22, as: UInt16.self) }
+            let curNarg = buffer.data.loadLE(UInt16.self, at: entry + 20)
+            let curArgBytes = buffer.data.loadLE(UInt16.self, at: entry + 22)
             guard curNarg == narg, curArgBytes == argBytes else { continue }
-            let rawMunge = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: entry + 8, as: UInt64.self) }
+            let rawMunge = buffer.readU64(at: entry + 8)
             let target = decodeChainedPtr(rawMunge)
             guard target > 0 else { continue }
             candidates[target, default: []].append(entry)

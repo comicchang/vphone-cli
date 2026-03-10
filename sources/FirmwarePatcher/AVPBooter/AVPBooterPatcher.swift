@@ -1,6 +1,6 @@
 // AVPBooterPatcher.swift — AVPBooter DGST bypass patcher.
 //
-// Python source: scripts/fw_patch.py patch_avpbooter()
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Strategy:
 //   1. Disassemble the entire binary.
@@ -49,7 +49,9 @@ public final class AVPBooterPatcher: Patcher {
 
     @discardableResult
     public func apply() throws -> Int {
-        let _ = try findAll()
+        if patches.isEmpty {
+            let _ = try findAll()
+        }
         for record in patches {
             buffer.writeBytes(at: record.fileOffset, bytes: record.patchedBytes)
         }

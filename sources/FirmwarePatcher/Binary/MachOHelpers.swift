@@ -32,25 +32,25 @@ public enum MachOParser {
         var segments: [MachOSegmentInfo] = []
         guard data.count > 32 else { return segments }
 
-        let magic: UInt32 = data.withUnsafeBytes { $0.load(as: UInt32.self) }
+        let magic = data.loadLE(UInt32.self, at: 0)
         guard magic == 0xFEED_FACF else { return segments } // MH_MAGIC_64
 
-        let ncmds: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: 16, as: UInt32.self) }
+        let ncmds = data.loadLE(UInt32.self, at: 16)
         var offset = 32 // sizeof(mach_header_64)
 
         for _ in 0 ..< ncmds {
             guard offset + 8 <= data.count else { break }
-            let cmd: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self) }
-            let cmdsize: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 4, as: UInt32.self) }
+            let cmd = data.loadLE(UInt32.self, at: offset)
+            let cmdsize = data.loadLE(UInt32.self, at: offset + 4)
 
             if cmd == 0x19 { // LC_SEGMENT_64
                 let nameData = data[offset + 8 ..< offset + 24]
                 let name = String(data: nameData, encoding: .utf8)?
                     .trimmingCharacters(in: CharacterSet(charactersIn: "\0")) ?? ""
-                let vmAddr: UInt64 = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 24, as: UInt64.self) }
-                let vmSize: UInt64 = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 32, as: UInt64.self) }
-                let fileOff: UInt64 = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 40, as: UInt64.self) }
-                let fileSize: UInt64 = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 48, as: UInt64.self) }
+                let vmAddr = data.loadLE(UInt64.self, at: offset + 24)
+                let vmSize = data.loadLE(UInt64.self, at: offset + 32)
+                let fileOff = data.loadLE(UInt64.self, at: offset + 40)
+                let fileSize = data.loadLE(UInt64.self, at: offset + 48)
 
                 segments.append(MachOSegmentInfo(
                     name: name, vmAddr: vmAddr, vmSize: vmSize,
@@ -68,22 +68,22 @@ public enum MachOParser {
         var sections: [String: MachOSectionInfo] = [:]
         guard data.count > 32 else { return sections }
 
-        let magic: UInt32 = data.withUnsafeBytes { $0.load(as: UInt32.self) }
+        let magic = data.loadLE(UInt32.self, at: 0)
         guard magic == 0xFEED_FACF else { return sections }
 
-        let ncmds: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: 16, as: UInt32.self) }
+        let ncmds = data.loadLE(UInt32.self, at: 16)
         var offset = 32
 
         for _ in 0 ..< ncmds {
             guard offset + 8 <= data.count else { break }
-            let cmd: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self) }
-            let cmdsize: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 4, as: UInt32.self) }
+            let cmd = data.loadLE(UInt32.self, at: offset)
+            let cmdsize = data.loadLE(UInt32.self, at: offset + 4)
 
             if cmd == 0x19 { // LC_SEGMENT_64
                 let segNameData = data[offset + 8 ..< offset + 24]
                 let segName = String(data: segNameData, encoding: .utf8)?
                     .trimmingCharacters(in: CharacterSet(charactersIn: "\0")) ?? ""
-                let nsects: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 64, as: UInt32.self) }
+                let nsects = data.loadLE(UInt32.self, at: offset + 64)
 
                 var sectOff = offset + 72 // sizeof(segment_command_64) header
                 for _ in 0 ..< nsects {
@@ -91,9 +91,9 @@ public enum MachOParser {
                     let sectNameData = data[sectOff ..< sectOff + 16]
                     let sectName = String(data: sectNameData, encoding: .utf8)?
                         .trimmingCharacters(in: CharacterSet(charactersIn: "\0")) ?? ""
-                    let addr: UInt64 = data.withUnsafeBytes { $0.load(fromByteOffset: sectOff + 32, as: UInt64.self) }
-                    let size: UInt64 = data.withUnsafeBytes { $0.load(fromByteOffset: sectOff + 40, as: UInt64.self) }
-                    let fileOff: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: sectOff + 48, as: UInt32.self) }
+                    let addr = data.loadLE(UInt64.self, at: sectOff + 32)
+                    let size = data.loadLE(UInt64.self, at: sectOff + 40)
+                    let fileOff = data.loadLE(UInt32.self, at: sectOff + 48)
 
                     let key = "\(segName),\(sectName)"
                     sections[key] = MachOSectionInfo(
@@ -129,19 +129,19 @@ public enum MachOParser {
     public static func parseSymtab(from data: Data) -> (symoff: Int, nsyms: Int, stroff: Int, strsize: Int)? {
         guard data.count > 32 else { return nil }
 
-        let ncmds: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: 16, as: UInt32.self) }
+        let ncmds = data.loadLE(UInt32.self, at: 16)
         var offset = 32
 
         for _ in 0 ..< ncmds {
             guard offset + 8 <= data.count else { break }
-            let cmd: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self) }
-            let cmdsize: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 4, as: UInt32.self) }
+            let cmd = data.loadLE(UInt32.self, at: offset)
+            let cmdsize = data.loadLE(UInt32.self, at: offset + 4)
 
             if cmd == 0x02 { // LC_SYMTAB
-                let symoff: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 8, as: UInt32.self) }
-                let nsyms: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 12, as: UInt32.self) }
-                let stroff: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 16, as: UInt32.self) }
-                let strsize: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 20, as: UInt32.self) }
+                let symoff = data.loadLE(UInt32.self, at: offset + 8)
+                let nsyms = data.loadLE(UInt32.self, at: offset + 12)
+                let stroff = data.loadLE(UInt32.self, at: offset + 16)
+                let strsize = data.loadLE(UInt32.self, at: offset + 20)
                 return (Int(symoff), Int(nsyms), Int(stroff), Int(strsize))
             }
             offset += Int(cmdsize)
@@ -157,8 +157,8 @@ public enum MachOParser {
             let entryOff = symtab.symoff + i * 16 // sizeof(nlist_64)
             guard entryOff + 16 <= data.count else { break }
 
-            let nStrx: UInt32 = data.withUnsafeBytes { $0.load(fromByteOffset: entryOff, as: UInt32.self) }
-            let nValue: UInt64 = data.withUnsafeBytes { $0.load(fromByteOffset: entryOff + 8, as: UInt64.self) }
+            let nStrx = data.loadLE(UInt32.self, at: entryOff)
+            let nValue = data.loadLE(UInt64.self, at: entryOff + 8)
 
             guard nStrx < symtab.strsize, nValue != 0 else { continue }
 

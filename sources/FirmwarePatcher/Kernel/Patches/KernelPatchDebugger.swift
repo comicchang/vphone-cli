@@ -3,7 +3,7 @@
 // Stubs _PE_i_can_has_debugger with: mov x0, #1; ret
 // so the kernel always reports debugger enabled.
 //
-// Python source: scripts/patchers/kernel_patch_debugger.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
 

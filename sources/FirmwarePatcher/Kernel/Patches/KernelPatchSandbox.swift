@@ -3,7 +3,7 @@
 // Stubs 5 Sandbox hook functions with: mov x0,#0; ret
 // so that sandbox policy operations always succeed.
 //
-// Python source: scripts/patchers/kernel_patch_sandbox.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 // Algorithm:
 //   1. Find the Sandbox mac_policy_conf struct by locating the "Sandbox" and
 //      "Seatbelt sandbox policy" strings and scanning __DATA/__DATA_CONST for a
@@ -239,13 +239,13 @@ extension KernelPatcher {
         let magic = buffer.readU32(at: kextFoff)
         guard magic == 0xFEED_FACF else { return nil } // MH_MAGIC_64
 
-        let ncmds: UInt32 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: kextFoff + 16, as: UInt32.self) }
+        let ncmds = buffer.data.loadLE(UInt32.self, at: kextFoff + 16)
         var off = kextFoff + 32
 
         for _ in 0 ..< ncmds {
             guard off + 8 <= buffer.count else { break }
-            let cmd: UInt32 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt32.self) }
-            let cmdsize: UInt32 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off + 4, as: UInt32.self) }
+            let cmd = buffer.data.loadLE(UInt32.self, at: off)
+            let cmdsize = buffer.data.loadLE(UInt32.self, at: off + 4)
             guard cmdsize >= 8, cmdsize < 0x10000 else { break }
 
             if cmd == 0x19 { // LC_SEGMENT_64
@@ -254,9 +254,9 @@ extension KernelPatcher {
                     .trimmingCharacters(in: CharacterSet(charactersIn: "\0")) ?? ""
 
                 if segName == "__TEXT_EXEC" {
-                    let vmAddr: UInt64 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off + 24, as: UInt64.self) }
-                    let fileSize: UInt64 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off + 48, as: UInt64.self) }
-                    let nsects: UInt32 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: off + 64, as: UInt32.self) }
+                    let vmAddr = buffer.data.loadLE(UInt64.self, at: off + 24)
+                    let fileSize = buffer.data.loadLE(UInt64.self, at: off + 48)
+                    let nsects = buffer.data.loadLE(UInt32.self, at: off + 64)
 
                     // Search sections for __text
                     var sectOff = off + 72
@@ -267,8 +267,8 @@ extension KernelPatcher {
                             .trimmingCharacters(in: CharacterSet(charactersIn: "\0")) ?? ""
 
                         if sectName == "__text" {
-                            let sectAddr: UInt64 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: sectOff + 32, as: UInt64.self) }
-                            let sectSize: UInt64 = buffer.data.withUnsafeBytes { $0.load(fromByteOffset: sectOff + 40, as: UInt64.self) }
+                            let sectAddr = buffer.data.loadLE(UInt64.self, at: sectOff + 32)
+                            let sectSize = buffer.data.loadLE(UInt64.self, at: sectOff + 40)
                             guard sectAddr >= baseVA else { break }
                             let sectFoff = Int(sectAddr - baseVA)
                             return (sectFoff, sectFoff + Int(sectSize))

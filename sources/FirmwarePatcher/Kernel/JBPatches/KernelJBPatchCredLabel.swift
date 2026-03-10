@@ -1,6 +1,6 @@
 // KernelJBPatchCredLabel.swift — JB kernel patch: _cred_label_update_execve C21-v3
 //
-// Python source: scripts/patchers/kernel_jb_patch_cred_label.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Strategy (C21-v3): Split late exits, add helper bits on success.
 //   - Keep _cred_label_update_execve body intact.

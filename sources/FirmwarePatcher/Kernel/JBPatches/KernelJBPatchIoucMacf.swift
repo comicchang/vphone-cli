@@ -1,6 +1,6 @@
 // KernelJBPatchIoucMacf.swift — JB kernel patch: IOUC MACF gate bypass
 //
-// Python source: scripts/patchers/kernel_jb_patch_iouc_macf.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Strategy:
 //   1. Locate the "IOUC %s failed MACF in process %s" format string.
@@ -117,27 +117,24 @@ extension KernelJBPatcher {
 
         let funcEnd = findFuncEnd(calleeOff, maxSize: 0x400)
 
-        // LDR X10, [X10, #0x9e8]:
-        //   LDR (unsigned offset) Xt, [Xn, #imm]: size=11(X), opc=01
-        //   bits[31:22]=1111_1001_01, imm12=offset>>3, Rn, Rt
-        //   imm12 = 0x9e8 >> 3 = 0x13D
-        //   Rn = X10 = 10,  Rt = X10 = 10
-        //   Full: 0xF9400000 | (0x13D << 10) | (10 << 5) | 10 = 0xF944F54A
-        let ldrX10SlotVal: UInt32 = 0xF944_F54A
-
-        // BLRAA X10 = 0xD73F0940, BLRAB X10 = 0xD73F0D40, BLR X10 = 0xD63F0140
-        let blraaX10: UInt32 = 0xD73F_0940
-        let blrabX10: UInt32 = 0xD73F_0D40
-        let blrX10: UInt32 = 0xD63F_0140
-
         var sawSlotLoad = false
         var sawIndirectCall = false
 
         var off = calleeOff
         while off < funcEnd {
-            let insn = buffer.readU32(at: off)
-            if insn == ldrX10SlotVal { sawSlotLoad = true }
-            if insn == blraaX10 || insn == blrabX10 || insn == blrX10 { sawIndirectCall = true }
+            guard let insn = disasAt(off) else {
+                off += 4
+                continue
+            }
+            let op = insn.operandString.replacingOccurrences(of: " ", with: "").lowercased()
+            if insn.mnemonic == "ldr", op.hasPrefix("x10,[x10"), op.contains(",#0x9e8]") {
+                sawSlotLoad = true
+            }
+            if insn.mnemonic == "blraa" || insn.mnemonic == "blrab" || insn.mnemonic == "blr",
+               op.hasPrefix("x10")
+            {
+                sawIndirectCall = true
+            }
             if sawSlotLoad, sawIndirectCall { return true }
             off += 4
         }

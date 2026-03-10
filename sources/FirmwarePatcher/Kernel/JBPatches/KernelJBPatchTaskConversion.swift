@@ -1,6 +1,6 @@
 // KernelJBPatchTaskConversion.swift — JB kernel patch: Task conversion eval bypass
 //
-// Python source: scripts/patchers/kernel_jb_patch_task_conversion.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Strategy (fast raw scanner):
 //   Locate the unique guard site in _task_conversion_eval_internal that performs:
@@ -24,8 +24,10 @@ extension KernelJBPatcher {
     func patchTaskConversionEvalInternal() -> Bool {
         log("\n[JB] task_conversion_eval_internal: cmp xzr,xzr")
 
-        guard let codeRange = codeRanges.first else { return false }
-        let (ks, ke) = (codeRange.start, codeRange.end)
+        guard let range = kernTextRange ?? codeRanges.first.map({ ($0.start, $0.end) }) else {
+            return false
+        }
+        let (ks, ke) = range
 
         let candidates = collectTaskConversionCandidates(start: ks, end: ke)
 
@@ -50,11 +52,11 @@ extension KernelJBPatcher {
         // CMP Xn, X0 = SUBS XZR, Xn, X0  → bits [31:21]=1110_1011_000, [20:16]=X0=00000,
         //   [15:10]=000000, [9:5]=Rn, [4:0]=11111(XZR)
         // Mask covers the fixed opcode and X0 operand; leaves Rn free.
-        let cmpXnX0Mask: UInt32 = 0xFFE0_FC1F
+        let cmpXnX0Mask: UInt32 = 0xFFFF_FC1F
         let cmpXnX0Val: UInt32 = 0xEB00_001F // cmp Xn, X0 — Rn wildcard
 
         // CMP Xn, X1 = SUBS XZR, Xn, X1  → Rm=X1=00001
-        let cmpXnX1Mask: UInt32 = 0xFFE0_FC1F
+        let cmpXnX1Mask: UInt32 = 0xFFFF_FC1F
         let cmpXnX1Val: UInt32 = 0xEB01_001F // cmp Xn, X1 — Rn wildcard
 
         // B.EQ #offset → bits[31:24]=0101_0100, bit[4]=0, bits[3:0]=0000 (EQ cond)

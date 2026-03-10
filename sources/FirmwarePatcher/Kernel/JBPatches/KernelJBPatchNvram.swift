@@ -1,6 +1,6 @@
 // KernelJBPatchNvram.swift — JB kernel patch: NVRAM permission bypass
 //
-// Python source: scripts/patchers/kernel_jb_patch_nvram.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
 

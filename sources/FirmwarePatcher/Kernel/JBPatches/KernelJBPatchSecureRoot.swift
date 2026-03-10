@@ -1,6 +1,6 @@
 // KernelJBPatchSecureRoot.swift — JB: force SecureRootName policy to return success.
 //
-// Python source: scripts/patchers/kernel_jb_patch_secure_root.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Reveal: find functions referencing both "SecureRootName" and "SecureRoot" strings →
 //   locate the final CSEL that selects between wzr (success) and kIOReturnNotPrivileged →

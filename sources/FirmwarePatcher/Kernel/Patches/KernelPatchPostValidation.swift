@@ -1,6 +1,6 @@
 // KernelPatchPostValidation.swift — Post-validation patches (NOP + CMP).
 //
-// Python source: scripts/patchers/kernel_patch_post_validation.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Patch 8 — patchPostValidationNOP:
 //   Anchor: "TXM [Error]: CodeSignature" string → ADRP+ADD ref → scan forward

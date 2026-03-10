@@ -1,6 +1,6 @@
 // KernelJBPatchVmProtect.swift — JB kernel patch: VM map protect bypass
 //
-// Python source: scripts/patchers/kernel_jb_patch_vm_protect.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Capstone
 import Foundation

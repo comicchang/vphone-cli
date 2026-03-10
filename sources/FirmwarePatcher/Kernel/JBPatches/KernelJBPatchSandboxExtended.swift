@@ -1,6 +1,6 @@
 // KernelJBPatchSandboxExtended.swift — JB kernel patch: Extended sandbox hooks bypass
 //
-// Python source: scripts/patchers/kernel_jb_patch_sandbox_extended.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Strategy (ops-table retargeting — matches upstream patch_fw.py):
 //   1. Locate mac_policy_conf via the "Seatbelt sandbox policy" and "Sandbox" strings
@@ -173,14 +173,11 @@ extension KernelJBPatcher {
         let sbRange = sandboxTextRange()
         let (sbStart, sbEnd) = (sbRange.start, sbRange.end)
 
-        let movX0_0: UInt32 = 0xD280_0000 // MOV X0, #0 (MOVZ X0, #0)
-        let retVal: UInt32 = 0xD65F_03C0 // RET
-
         var hits: [Int] = []
         var off = sbStart
         while off < sbEnd - 8 {
-            if buffer.readU32(at: off) == movX0_0,
-               buffer.readU32(at: off + 4) == retVal
+            if buffer.readU32(at: off) == ARM64.movX0_0_U32,
+               buffer.readU32(at: off + 4) == ARM64.retU32
             {
                 hits.append(off)
             }

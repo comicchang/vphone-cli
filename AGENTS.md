@@ -15,10 +15,9 @@ Virtual iPhone boot tool using Apple's Virtualization.framework with PCC researc
 
 ## Workflow Rules
 
-- Always read `/TODO.md` before starting any substantial work.
-- Always update `/TODO.md` when plan, progress, assumptions, blockers, or open questions change.
-- If blocked or waiting on user input, write the exact blocker and next action in `/TODO.md`.
-- If not exists, continue existing work until complete. If exists, follow `/TODO.md` instructions.
+- Do not create, read, or update `/TODO.md`.
+- Ignore `/TODO.md` if it exists locally; it is intentionally not part of the repo workflow anymore.
+- Track plan, progress, assumptions, blockers, and next actions in commit history, code comments when warranted, and current research docs instead of a repo TODO file.
 
 For any changes applying new patches, also update research/0_binary_patch_comparison.md. Dont forget this.
 
@@ -89,23 +88,13 @@ sources/
 
 scripts/
 ├── vphoned/                      # Guest daemon (ObjC, runs inside iOS VM over vsock)
-├── patchers/                     # Python patcher modules
-│   ├── iboot.py                  #   iBoot patcher (iBSS/iBEC/LLB)
-│   ├── iboot_jb.py              #   JB: iBoot nonce skip
-│   ├── kernel.py                 #   Kernel patcher (26 patches)
-│   ├── kernel_jb.py             #   JB: kernel patches (~40)
-│   ├── txm.py                   #   TXM patcher
-│   ├── txm_dev.py               #   Dev: TXM entitlements/debugger/dev mode
-
-│   └── cfw.py                   #   CFW binary patcher
+├── patchers/                     # Python CFW patcher modules
+│   └── cfw.py                    #   CFW binary patcher entrypoint
 ├── resources/                    # Resource archives (git submodule)
 ├── patches/                      # Build-time patches (libirecovery)
 ├── fw_prepare.sh                 # Download IPSWs, merge cloudOS into iPhone
 ├── fw_manifest.py                # Generate hybrid BuildManifest/Restore plists
-├── fw_patch.py                   # Patch boot chain (regular)
-├── fw_patch_dev.py               # Regular + dev TXM patches
-├── fw_patch_jb.py                # Regular + JB extensions
-├── ramdisk_build.py              # Build SSH ramdisk with trustcache
+├── ramdisk_build.py              # Build SSH ramdisk with trustcache (reuses Swift patch-component for TXM/base kernel)
 ├── ramdisk_send.sh               # Send ramdisk to device via irecovery
 ├── cfw_install.sh                # Install CFW (regular)
 ├── cfw_install_dev.sh            # Regular + rpcserver daemon
@@ -160,7 +149,7 @@ research/                         # Detailed firmware/patch documentation
 - All instruction matching must be derived from Capstone decode results (mnemonic / operands / control-flow), not exact operand-string text when a semantic operand check is possible.
 - All replacement instruction bytes must come from Keystone-backed helpers already used by the project (for example `asm(...)`, `NOP`, `MOV_W0_0`, etc.).
 - Prefer source-backed semantic anchors: in-image symbol lookup, string xrefs, local call-flow, and XNU correlation. Do not depend on repo-exported per-kernel symbol dumps at runtime.
-- When retargeting a patch, write the reveal procedure and validation steps into `TODO.md` before handing off for testing.
+- When retargeting a patch, write the reveal procedure and validation steps into the relevant research doc or commit notes before handing off for testing. Do not create `TODO.md`.
 - For `patch_bsd_init_auth` specifically, the allowed reveal flow is: recover `bsd_init` -> locate rootvp panic block -> find the unique in-function `call` -> `cbnz w0/x0, panic` -> `bl imageboot_needed` site -> patch the branch gate only.
 
 - Patchers use `capstone` (disassembly), `keystone-engine` (assembly), `pyimg4` (IM4P handling).

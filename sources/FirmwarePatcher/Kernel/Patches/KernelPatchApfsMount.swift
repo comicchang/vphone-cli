@@ -1,6 +1,6 @@
 // KernelPatchApfsMount.swift — APFS mount/dev-role patches (patches 13, 14, 15, 16).
 //
-// Python source: scripts/patchers/kernel_patch_apfs_mount.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //                scripts/patchers/kernel_patch_apfs_graft.py (patch_handle_fsioc_graft)
 
 import Capstone

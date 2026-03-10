@@ -1,6 +1,6 @@
 // KernelJBPatchPortToMap.swift — JB: skip kernel-map panic in _convert_port_to_map_with_flavor.
 //
-// Python source: scripts/patchers/kernel_jb_patch_port_to_map.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Reveal: string-anchor "userspace has control access to a kernel map" →
 //   walk backward from ADRP to find CMP + B.cond (conditional branch forward past panic) →

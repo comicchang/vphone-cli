@@ -1,6 +1,6 @@
 // KernelJBPatchLoadDylinker.swift — JB: bypass load_dylinker policy gate in the dyld path.
 //
-// Python source: scripts/patchers/kernel_jb_patch_load_dylinker.py
+// Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //
 // Reveal: string-anchor "/usr/lib/dyld" → kernel-text function containing the ref →
 //   inside that function: BL <check>; CBZ W0, <allow>; MOV W0, #2 (deny path).
