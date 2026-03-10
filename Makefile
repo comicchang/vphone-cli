@@ -4,13 +4,12 @@
 
 # ─── Configuration (override with make VAR=value) ─────────────────
 VM_DIR      ?= vm
-CPU         ?= 8
-MEMORY      ?= 8192
-DISK_SIZE   ?= 64
-CFW_INPUT   ?= cfw_input
-RESTORE_UDID ?=
-RESTORE_ECID ?=
-IRECOVERY_ECID ?=
+CPU         ?= 8          # CPU cores (only used during vm_new)
+MEMORY      ?= 8192       # Memory in MB (only used during vm_new)
+DISK_SIZE   ?= 64         # Disk size in GB (only used during vm_new)
+RESTORE_UDID ?=           # UDID for restore operations
+RESTORE_ECID ?=           # ECID for restore operations
+IRECOVERY_ECID ?=         # ECID for irecovery operations
 
 # ─── Build info ──────────────────────────────────────────────────
 GIT_HASH    := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -57,20 +56,24 @@ help:
 	@echo "  make clean                   Remove all build artifacts (keeps IPSWs)"
 	@echo ""
 	@echo "VM management:"
-	@echo "  make vm_new                  Create VM directory"
-	@echo "  make boot                    Boot VM (GUI)"
-	@echo "  make boot_dfu                Boot VM in DFU mode"
+	@echo "  make vm_new                  Create VM directory with manifest (config.plist)"
+	@echo "    Options: VM_DIR=vm         VM directory name"
+	@echo "             CPU=8             CPU cores (stored in manifest)"
+	@echo "             MEMORY=8192       Memory in MB (stored in manifest)"
+	@echo "             DISK_SIZE=64      Disk size in GB (stored in manifest)"
+	@echo "  make boot                    Boot VM (reads from config.plist)"
+	@echo "  make boot_dfu                Boot VM in DFU mode (reads from config.plist)"
 	@echo ""
 	@echo "Firmware pipeline:"
 	@echo "  make fw_prepare              Download IPSWs, extract, merge"
 	@echo "    Options: IPHONE_SOURCE=    URL or local path to iPhone IPSW"
 	@echo "             CLOUDOS_SOURCE=   URL or local path to cloudOS IPSW"
-	@echo "  make fw_patch                Patch boot chain (6 components)"
-	@echo "  make fw_patch_dev            Patch boot chain (dev mode TXM patcher)"
-	@echo "  make fw_patch_jb             Run fw_patch + JB extension patches"
+	@echo "  make fw_patch                Patch boot chain (regular variant)"
+	@echo "  make fw_patch_dev            Patch boot chain (dev mode TXM patches)"
+	@echo "  make fw_patch_jb             Patch boot chain (dev + JB extensions)"
 	@echo ""
 	@echo "Restore:"
-	@echo "  make restore_get_shsh        Fetch SHSH blob from device"
+	@echo "  make restore_get_shsh        Dump SHSH response from Apple"
 	@echo "  make restore                 idevicerestore to device"
 	@echo ""
 	@echo "Ramdisk:"
@@ -167,25 +170,24 @@ vphoned:
 .PHONY: vm_new boot boot_dfu
 
 vm_new:
+	CPU="$(CPU)" MEMORY="$(MEMORY)" \
 	zsh $(SCRIPTS)/vm_create.sh --dir $(VM_DIR) --disk-size $(DISK_SIZE)
 
 boot: bundle vphoned
 	cd $(VM_DIR) && "$(CURDIR)/$(BUNDLE_BIN)" \
+		--config ./config.plist \
 		--rom ./AVPBooter.vresearch1.bin \
 		--disk ./Disk.img \
 		--nvram ./nvram.bin \
-		--machine-id ./machineIdentifier.bin \
-		--cpu $(CPU) --memory $(MEMORY) \
 		--sep-rom ./AVPSEPBooter.vresearch1.bin \
 		--sep-storage ./SEPStorage
 
 boot_dfu: build
 	cd $(VM_DIR) && "$(CURDIR)/$(BINARY)" \
+		--config ./config.plist \
 		--rom ./AVPBooter.vresearch1.bin \
 		--disk ./Disk.img \
 		--nvram ./nvram.bin \
-		--machine-id ./machineIdentifier.bin \
-		--cpu $(CPU) --memory $(MEMORY) \
 		--sep-rom ./AVPSEPBooter.vresearch1.bin \
 		--sep-storage ./SEPStorage \
 		--no-graphics --dfu

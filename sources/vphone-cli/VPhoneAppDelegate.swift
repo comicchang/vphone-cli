@@ -42,52 +42,31 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func startVirtualMachine() async throws {
-        let romURL = URL(fileURLWithPath: cli.rom)
-        guard FileManager.default.fileExists(atPath: romURL.path) else {
-            throw VPhoneError.romNotFound(cli.rom)
+        let options = try cli.resolveOptions()
+
+        guard FileManager.default.fileExists(atPath: options.romURL.path) else {
+            throw VPhoneError.romNotFound(options.romURL.path)
         }
 
-        let diskURL = URL(fileURLWithPath: cli.disk)
-        let nvramURL = URL(fileURLWithPath: cli.nvram)
-        let machineIDURL = URL(fileURLWithPath: cli.machineId)
-        let sepStorageURL = URL(fileURLWithPath: cli.sepStorage)
-        let sepRomURL = URL(fileURLWithPath: cli.sepRom)
-
         print("=== vphone-cli ===")
-        print("ROM   : \(cli.rom)")
-        print("Disk  : \(cli.disk)")
-        print("NVRAM : \(cli.nvram)")
-        print("MachID: \(cli.machineId)")
-        print("CPU   : \(cli.cpu)")
-        print("Memory: \(cli.memory) MB")
+        print("ROM   : \(options.romURL.path)")
+        print("Disk  : \(options.diskURL.path)")
+        print("NVRAM : \(options.nvramURL.path)")
+        print("Config: \(options.configURL.path)")
+        print("CPU   : \(options.cpuCount)")
+        print("Memory: \(options.memorySize / 1024 / 1024) MB")
         print(
-            "Screen: \(cli.screenWidth)x\(cli.screenHeight) @ \(cli.screenPpi) PPI (scale \(cli.screenScale)x)"
+            "Screen: \(options.screenWidth)x\(options.screenHeight) @ \(options.screenPPI) PPI (scale \(options.screenScale)x)"
         )
-        if let kernelDebugPort = cli.kernelDebugPort {
+        if let kernelDebugPort = options.kernelDebugPort {
             print("Kernel debug stub : 127.0.0.1:\(kernelDebugPort)")
         } else {
             print("Kernel debug stub : auto-assigned")
         }
         print("SEP               : enabled")
-        print("  storage         : \(cli.sepStorage)")
-        print("  rom             : \(cli.sepRom)")
+        print("  storage         : \(options.sepStorageURL.path)")
+        print("  rom             : \(options.sepRomURL.path)")
         print("")
-
-        let options = VPhoneVirtualMachine.Options(
-            romURL: romURL,
-            nvramURL: nvramURL,
-            machineIDURL: machineIDURL,
-            diskURL: diskURL,
-            cpuCount: cli.cpu,
-            memorySize: UInt64(cli.memory) * 1024 * 1024,
-            sepStorageURL: sepStorageURL,
-            sepRomURL: sepRomURL,
-            screenWidth: cli.screenWidth,
-            screenHeight: cli.screenHeight,
-            screenPPI: cli.screenPpi,
-            screenScale: cli.screenScale,
-            kernelDebugPort: cli.kernelDebugPort
-        )
 
         let vm = try VPhoneVirtualMachine(options: options)
         self.vm = vm
@@ -115,9 +94,9 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
             let wc = VPhoneWindowController()
             wc.showWindow(
                 for: vm.virtualMachine,
-                screenWidth: cli.screenWidth,
-                screenHeight: cli.screenHeight,
-                screenScale: cli.screenScale,
+                screenWidth: options.screenWidth,
+                screenHeight: options.screenHeight,
+                screenScale: options.screenScale,
                 keyHelper: keyHelper,
                 control: control,
                 ecid: vm.ecidHex

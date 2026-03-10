@@ -6,6 +6,7 @@
 #   2. Create sparse disk image (default 64 GB)
 #   3. Create SEP storage (512 KB flat file)
 #   4. Copy AVPBooter and AVPSEPBooter ROMs
+#   5. Generate config.plist manifest
 #
 # machineIdentifier and NVRAM are auto-created on first boot by vphone-cli.
 #
@@ -16,9 +17,14 @@
 set -euo pipefail
 
 # --- Defaults ---
-VM_DIR="vm"
-DISK_SIZE_GB=64
+VM_DIR="${VM_DIR:-vm}"
+DISK_SIZE_GB="${DISK_SIZE:-64}"
+CPU_COUNT="${CPU:-8}"
+MEMORY_MB="${MEMORY:-8192}"
 SEP_STORAGE_SIZE=$((512 * 1024)) # 512 KB (same as vrevm)
+
+# Script directory
+SCRIPT_DIR="${0:A:h}"
 
 # Framework-bundled ROMs (vresearch1 / research1 chip)
 FW_ROM_DIR="/System/Library/Frameworks/Virtualization.framework/Versions/A/Resources"
@@ -139,11 +145,25 @@ fi
 # --- Create .gitkeep ---
 touch "${VM_DIR}/.gitkeep"
 
+# --- Generate VM manifest ---
+echo "[5/4] Generating VM manifest (config.plist)"
+"${SCRIPT_DIR}/vm_manifest.py" \
+    --vm-dir "${VM_DIR}" \
+    --cpu "${CPU_COUNT}" \
+    --memory "${MEMORY_MB}" \
+    --disk-size "${DISK_SIZE_GB}" || {
+    echo "ERROR: Failed to generate VM manifest"
+    exit 1
+}
+
 echo ""
 echo "=== VM created at ${VM_DIR}/ ==="
 echo ""
 echo "Contents:"
 ls -lh "${VM_DIR}/"
+echo ""
+echo "Manifest (config.plist) saved with VM configuration."
+echo "Future boots will read configuration from this manifest."
 echo ""
 echo "Next steps:"
 echo "  1. Prepare firmware:  make fw_prepare"

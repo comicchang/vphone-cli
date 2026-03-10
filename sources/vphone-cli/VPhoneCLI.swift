@@ -15,9 +15,15 @@ struct VPhoneCLI: ParsableCommand {
           - Signed with vphone entitlements (done automatically by wrapper script)
 
         Example:
-          vphone-cli --rom firmware/rom.bin --disk firmware/disk.img
+          vphone-cli --config config.plist --rom ./AVPBooter.vresearch1.bin --disk ./Disk.img
         """
     )
+
+    @Option(
+        help: "Path to VM manifest plist (config.plist). Required.",
+        transform: URL.init(fileURLWithPath:)
+    )
+    var config: URL
 
     @Option(help: "Path to the AVPBooter / ROM binary")
     var rom: String
@@ -28,14 +34,11 @@ struct VPhoneCLI: ParsableCommand {
     @Option(help: "Path to NVRAM storage (created/overwritten)")
     var nvram: String = "nvram.bin"
 
-    @Option(help: "Path to machineIdentifier file (created if missing)")
-    var machineId: String
+    @Option(help: "Number of CPU cores (overridden by --config if present)")
+    var cpu: Int?
 
-    @Option(help: "Number of CPU cores")
-    var cpu: Int = 8
-
-    @Option(help: "Memory size in MB")
-    var memory: Int = 8192
+    @Option(help: "Memory size in MB (overridden by --config if present)")
+    var memory: Int?
 
     @Option(help: "Path to SEP storage file (created if missing)")
     var sepStorage: String
@@ -46,14 +49,14 @@ struct VPhoneCLI: ParsableCommand {
     @Flag(help: "Boot into DFU mode")
     var dfu: Bool = false
 
-    @Option(help: "Display width in pixels (default: 1290)")
-    var screenWidth: Int = 1290
+    @Option(help: "Display width in pixels (overridden by --config if present)")
+    var screenWidth: Int?
 
-    @Option(help: "Display height in pixels (default: 2796)")
-    var screenHeight: Int = 2796
+    @Option(help: "Display height in pixels (overridden by --config if present)")
+    var screenHeight: Int?
 
-    @Option(help: "Display pixels per inch (default: 460)")
-    var screenPpi: Int = 460
+    @Option(help: "Display pixels per inch (overridden by --config if present)")
+    var screenPpi: Int?
 
     @Option(help: "Window scale divisor (default: 3.0)")
     var screenScale: Double = 3.0
@@ -66,6 +69,59 @@ struct VPhoneCLI: ParsableCommand {
 
     @Option(help: "Path to signed vphoned binary for guest auto-update")
     var vphonedBin: String = ".vphoned.signed"
+
+    /// Resolve final options by merging manifest with command-line overrides
+    func resolveOptions() throws -> VPhoneVirtualMachine.Options {
+        // Start with command-line paths
+        let romURL = URL(fileURLWithPath: rom)
+        let diskURL = URL(fileURLWithPath: disk)
+        let nvramURL = URL(fileURLWithPath: nvram)
+        let sepStorageURL = URL(fileURLWithPath: sepStorage)
+        let sepRomURL = URL(fileURLWithPath: sepRom)
+
+        // Default values
+        var resolvedCpuCount = 8
+        var resolvedMemorySize: UInt64 = 8 * 1024 * 1024 * 1024
+        var resolvedScreenWidth = 1290
+        var resolvedScreenHeight = 2796
+        var resolvedScreenPpi = 460
+        var resolvedScreenScale = 3.0
+
+        // Load manifest (required)
+        let manifest = try VPhoneVirtualMachineManifest.load(from: config)
+        print("[vphone] Loaded VM manifest from \(config.path)")
+
+        // Apply manifest settings
+        resolvedCpuCount = Int(manifest.cpuCount)
+        resolvedMemorySize = manifest.memorySize
+        resolvedScreenWidth = manifest.screenConfig.width
+        resolvedScreenHeight = manifest.screenConfig.height
+        resolvedScreenPpi = manifest.screenConfig.pixelsPerInch
+        resolvedScreenScale = manifest.screenConfig.scale
+
+        // Apply command-line overrides (if provided)
+        if let cpuArg = cpu { resolvedCpuCount = cpuArg }
+        if let memoryArg = memory { resolvedMemorySize = UInt64(memoryArg) * 1024 * 1024 }
+        if let screenWidthArg = screenWidth { resolvedScreenWidth = screenWidthArg }
+        if let screenHeightArg = screenHeight { resolvedScreenHeight = screenHeightArg }
+        if let screenPpiArg = screenPpi { resolvedScreenPpi = screenPpiArg }
+
+        return VPhoneVirtualMachine.Options(
+            configURL: config,
+            romURL: romURL,
+            nvramURL: nvramURL,
+            diskURL: diskURL,
+            cpuCount: resolvedCpuCount,
+            memorySize: resolvedMemorySize,
+            sepStorageURL: sepStorageURL,
+            sepRomURL: sepRomURL,
+            screenWidth: resolvedScreenWidth,
+            screenHeight: resolvedScreenHeight,
+            screenPPI: resolvedScreenPpi,
+            screenScale: resolvedScreenScale,
+            kernelDebugPort: kernelDebugPort
+        )
+    }
 
     /// Execution is driven by VPhoneAppDelegate; main.swift calls parseOrExit()
     /// and hands the parsed options to the delegate.

@@ -40,7 +40,11 @@ class VPhoneMenuController {
         // App menu
         let appMenuItem = NSMenuItem()
         let appMenu = NSMenu(title: "vphone")
-        let buildItem = NSMenuItem(title: "Build: \(VPhoneBuildInfo.commitHash)", action: nil, keyEquivalent: "")
+        #if canImport(VPhoneBuildInfo)
+            let buildItem = NSMenuItem(title: "Build: \(VPhoneBuildInfo.commitHash)", action: nil, keyEquivalent: "")
+        #else
+            let buildItem = NSMenuItem(title: "Build: unknown", action: nil, keyEquivalent: "")
+        #endif
         buildItem.isEnabled = false
         appMenu.addItem(buildItem)
         appMenu.addItem(NSMenuItem.separator())

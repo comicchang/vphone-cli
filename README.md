@@ -94,12 +94,27 @@ make setup_machine            # full automation through "First Boot" (includes r
 ```bash
 make setup_tools              # install brew deps, build trustcache, clone insert_dylib, build libimobiledevice, create Python venv
 make build                    # build + sign vphone-cli
-make vm_new                   # create vm/ directory (ROMs, disk, SEP storage)
+make vm_new                   # create VM directory with manifest (config.plist)
+# options: CPU=8 MEMORY=8192 DISK_SIZE=64
 make fw_prepare               # download IPSWs, extract, merge, generate manifest
 make fw_patch                 # patch boot chain (regular variant)
 # or: make fw_patch_dev       # dev variant (+ TXM entitlement/debug bypasses)
 # or: make fw_patch_jb        # jailbreak variant (+ full security bypass)
 ```
+
+### VM Configuration
+
+Starting from v1.0, VM configuration is stored in `vm/config.plist`. Set CPU, memory, and disk size during VM creation:
+
+```bash
+# Create VM with custom configuration
+make vm_new CPU=16 MEMORY=16384 DISK_SIZE=128
+
+# Boot automatically reads from config.plist
+make boot
+```
+
+The manifest stores all VM settings (CPU, memory, screen, ROMs, storage) and is compatible with [security-pcc's VMBundle.Config format](https://github.com/apple/security-pcc).
 
 ## Restore
 
