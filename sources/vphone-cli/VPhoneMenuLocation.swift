@@ -49,8 +49,8 @@ private let locationReplayPoints: [VPhoneLocationProvider.ReplayPoint] = [
 // MARK: - Location Menu
 
 extension VPhoneMenuController {
-    func buildLocationMenu() -> NSMenuItem {
-        let item = NSMenuItem()
+    func buildLocationSubmenu() -> NSMenuItem {
+        let item = NSMenuItem(title: "Location", action: nil, keyEquivalent: "")
         let menu = NSMenu(title: "Location")
 
         let toggle = makeItem("Sync Host Location", action: #selector(toggleLocationSync))

@@ -11,12 +11,19 @@ class VPhoneMenuController {
 
     var onFilesPressed: (() -> Void)?
     var onKeychainPressed: (() -> Void)?
+    var onAppsPressed: (() -> Void)?
     var connectFileBrowserItem: NSMenuItem?
     var connectKeychainBrowserItem: NSMenuItem?
     var connectDevModeStatusItem: NSMenuItem?
     var connectPingItem: NSMenuItem?
     var connectGuestVersionItem: NSMenuItem?
     var installPackageItem: NSMenuItem?
+    var clipboardGetItem: NSMenuItem?
+    var clipboardSetItem: NSMenuItem?
+    var appsListItem: NSMenuItem?
+    var appsOpenURLItem: NSMenuItem?
+    var settingsGetItem: NSMenuItem?
+    var settingsSetItem: NSMenuItem?
     var locationProvider: VPhoneLocationProvider?
     var locationMenuItem: NSMenuItem?
     var locationPresetMenuItem: NSMenuItem?
@@ -41,7 +48,9 @@ class VPhoneMenuController {
         let appMenuItem = NSMenuItem()
         let appMenu = NSMenu(title: "vphone")
         #if canImport(VPhoneBuildInfo)
-            let buildItem = NSMenuItem(title: "Build: \(VPhoneBuildInfo.commitHash)", action: nil, keyEquivalent: "")
+            let buildItem = NSMenuItem(
+                title: "Build: \(VPhoneBuildInfo.commitHash)", action: nil, keyEquivalent: ""
+            )
         #else
             let buildItem = NSMenuItem(title: "Build: unknown", action: nil, keyEquivalent: "")
         #endif
@@ -54,13 +63,10 @@ class VPhoneMenuController {
         appMenuItem.submenu = appMenu
         mainMenu.addItem(appMenuItem)
 
-        mainMenu.addItem(buildKeysMenu())
-        mainMenu.addItem(buildTypeMenu())
         mainMenu.addItem(buildConnectMenu())
-        mainMenu.addItem(buildInstallMenu())
-        mainMenu.addItem(buildLocationMenu())
+        mainMenu.addItem(buildKeysMenu())
+        mainMenu.addItem(buildAppsMenu())
         mainMenu.addItem(buildRecordMenu())
-        mainMenu.addItem(buildBatteryMenu())
 
         NSApp.mainMenu = mainMenu
     }

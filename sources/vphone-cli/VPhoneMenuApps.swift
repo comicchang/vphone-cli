@@ -1,24 +1,48 @@
 import AppKit
 import Foundation
 
-// MARK: - Install Menu
+// MARK: - Apps Menu
 
 extension VPhoneMenuController {
-    func buildInstallMenu() -> NSMenuItem {
+    func buildAppsMenu() -> NSMenuItem {
         let item = NSMenuItem()
-        let menu = NSMenu(title: "Install")
+        let menu = NSMenu(title: "Apps")
         menu.autoenablesItems = false
+
+        let browse = makeItem("App Browser", action: #selector(openAppBrowser))
+        browse.isEnabled = false
+        appsListItem = browse
+        menu.addItem(browse)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let openURL = makeItem("Open URL...", action: #selector(openURL))
+        openURL.isEnabled = false
+        appsOpenURLItem = openURL
+        menu.addItem(openURL)
+
+        menu.addItem(NSMenuItem.separator())
 
         let install = makeItem("Install IPA/TIPA...", action: #selector(installIPAFromDisk))
         install.isEnabled = false
         installPackageItem = install
         menu.addItem(install)
+
         item.submenu = menu
         return item
     }
 
+    func updateAppsAvailability(available: Bool) {
+        appsListItem?.isEnabled = available
+        appsOpenURLItem?.isEnabled = available
+    }
+
     func updateInstallAvailability(available: Bool) {
         installPackageItem?.isEnabled = available
+    }
+
+    @objc func openAppBrowser() {
+        onAppsPressed?()
     }
 
     @objc func installIPAFromDisk() {
@@ -52,6 +76,32 @@ extension VPhoneMenuController {
                 )
             } catch {
                 showAlert(title: "Install App Package", message: "\(error)", style: .warning)
+            }
+        }
+    }
+
+    @objc func openURL() {
+        let alert = NSAlert()
+        alert.messageText = "Open URL"
+        alert.informativeText = "Enter URL to open on the guest:"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Open")
+        alert.addButton(withTitle: "Cancel")
+
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 400, height: 24))
+        input.placeholderString = "https://example.com"
+        alert.accessoryView = input
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let url = input.stringValue
+        guard !url.isEmpty else { return }
+
+        Task {
+            do {
+                try await control.openURL(url)
+                showAlert(title: "Open URL", message: "Opened \(url)", style: .informational)
+            } catch {
+                showAlert(title: "Open URL", message: "\(error)", style: .warning)
             }
         }
     }

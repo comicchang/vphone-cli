@@ -10,6 +10,7 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
     private var menuController: VPhoneMenuController?
     private var fileWindowController: VPhoneFileWindowController?
     private var keychainWindowController: VPhoneKeychainWindowController?
+    private var appWindowController: VPhoneAppWindowController?
     private var locationProvider: VPhoneLocationProvider?
     private var sigintSource: DispatchSourceSignal?
 
@@ -24,7 +25,7 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
         signal(SIGINT, SIG_IGN)
         let src = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
         src.setEventHandler {
-            print("\n[vphone] SIGINT - shutting down")
+            print("\n[vphone] SIGINT — shutting down")
             NSApp.terminate(nil)
         }
         src.activate()
@@ -109,6 +110,9 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
             let keychainWC = VPhoneKeychainWindowController()
             keychainWindowController = keychainWC
 
+            let appWC = VPhoneAppWindowController()
+            appWindowController = appWC
+
             let mc = VPhoneMenuController(keyHelper: keyHelper, control: control)
             mc.vm = vm
             mc.captureView = wc.captureView
@@ -120,6 +124,10 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
                 guard let keychainWC, let control else { return }
                 keychainWC.showWindow(control: control)
             }
+            mc.onAppsPressed = { [weak appWC, weak control] in
+                guard let appWC, let control else { return }
+                appWC.showWindow(control: control)
+            }
             if let provider = locationProvider {
                 mc.locationProvider = provider
             }
@@ -130,6 +138,9 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
             control.onConnect = { [weak mc, weak provider = locationProvider] caps in
                 mc?.updateConnectAvailability(available: true)
                 mc?.updateInstallAvailability(available: true)
+                mc?.updateAppsAvailability(available: caps.contains("apps"))
+                mc?.updateClipboardAvailability(available: caps.contains("clipboard"))
+                mc?.updateSettingsAvailability(available: true)
                 if caps.contains("location") {
                     mc?.updateLocationCapability(available: true)
                     // Auto-resume if user had toggle on
@@ -143,6 +154,9 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
             control.onDisconnect = { [weak mc, weak provider = locationProvider] in
                 mc?.updateConnectAvailability(available: false)
                 mc?.updateInstallAvailability(available: false)
+                mc?.updateAppsAvailability(available: false)
+                mc?.updateClipboardAvailability(available: false)
+                mc?.updateSettingsAvailability(available: false)
                 provider?.stopReplay()
                 provider?.stopForwarding()
                 mc?.updateLocationCapability(available: false)

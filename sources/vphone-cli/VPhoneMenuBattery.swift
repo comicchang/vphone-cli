@@ -3,8 +3,8 @@ import AppKit
 // MARK: - Battery Menu
 
 extension VPhoneMenuController {
-    func buildBatteryMenu() -> NSMenuItem {
-        let item = NSMenuItem()
+    func buildBatterySubmenu() -> NSMenuItem {
+        let item = NSMenuItem(title: "Battery", action: nil, keyEquivalent: "")
         let menu = NSMenu(title: "Battery")
 
         // Charge level presets

@@ -100,8 +100,12 @@ class VPhoneControl {
         let candidates = [
             Bundle.main.resourceURL?.appendingPathComponent("signcert.p12"),
             Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/signcert.p12"),
-            URL(fileURLWithPath: fm.currentDirectoryPath).appendingPathComponent("scripts/vphoned/signcert.p12"),
-            URL(fileURLWithPath: fm.currentDirectoryPath).appendingPathComponent("../scripts/vphoned/signcert.p12"),
+            URL(fileURLWithPath: fm.currentDirectoryPath).appendingPathComponent(
+                "scripts/vphoned/signcert.p12"
+            ),
+            URL(fileURLWithPath: fm.currentDirectoryPath).appendingPathComponent(
+                "../scripts/vphoned/signcert.p12"
+            ),
         ]
         for candidate in candidates.compactMap(\.self) {
             if fm.fileExists(atPath: candidate.path) {
@@ -485,8 +489,12 @@ class VPhoneControl {
         return KeychainResult(items: items, diagnostics: diag)
     }
 
-    func addKeychainItem(account: String = "vphone-test", service: String = "vphone", password: String = "testpass123") async throws -> Bool {
-        let req: [String: Any] = ["t": "keychain_add", "account": account, "service": service, "password": password]
+    func addKeychainItem(
+        account: String = "vphone-test", service: String = "vphone", password: String = "testpass123"
+    ) async throws -> Bool {
+        let req: [String: Any] = [
+            "t": "keychain_add", "account": account, "service": service, "password": password,
+        ]
         let (resp, _) = try await sendRequest(req)
         let ok = resp["ok"] as? Bool ?? false
         if !ok {
@@ -494,6 +502,158 @@ class VPhoneControl {
             throw ControlError.protocolError("keychain_add: \(msg)")
         }
         return true
+    }
+
+    // MARK: - Clipboard
+
+    struct ClipboardContent {
+        let text: String?
+        let types: [String]
+        let hasImage: Bool
+        let changeCount: Int
+        let imageData: Data?
+    }
+
+    func clipboardGet() async throws -> ClipboardContent {
+        let (resp, data) = try await sendRequest(["t": "clipboard_get"])
+        let text = resp["text"] as? String
+        let types = resp["types"] as? [String] ?? []
+        let hasImage = resp["has_image"] as? Bool ?? false
+        let changeCount = resp["change_count"] as? Int ?? 0
+        return ClipboardContent(
+            text: text, types: types, hasImage: hasImage, changeCount: changeCount, imageData: data
+        )
+    }
+
+    func clipboardSet(text: String) async throws {
+        _ = try await sendRequest(["t": "clipboard_set", "text": text])
+    }
+
+    func clipboardSet(imageData: Data) async throws {
+        guard let fd = connection?.fileDescriptor else {
+            throw ControlError.notConnected
+        }
+
+        nextRequestId += 1
+        let reqId = String(nextRequestId, radix: 16)
+        let header: [String: Any] = [
+            "v": Self.protocolVersion,
+            "t": "clipboard_set",
+            "id": reqId,
+            "type": "image",
+            "size": imageData.count,
+        ]
+        let timeout = Self.timeoutForRequest(type: "clipboard_set")
+
+        try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<Void, any Error>) in
+            addPending(id: reqId) { result in
+                switch result {
+                case .success: continuation.resume()
+                case let .failure(error): continuation.resume(throwing: error)
+                }
+            }
+            armRequestTimeout(id: reqId, type: "clipboard_set", timeout: timeout)
+
+            guard writeMessage(fd: fd, dict: header) else {
+                _ = removePending(id: reqId)
+                continuation.resume(throwing: ControlError.notConnected)
+                return
+            }
+            let ok = imageData.withUnsafeBytes { buf in
+                Self.writeFully(fd: fd, buf: buf.baseAddress!, count: imageData.count)
+            }
+            guard ok else {
+                _ = removePending(id: reqId)
+                continuation.resume(throwing: ControlError.protocolError("failed to write image data"))
+                return
+            }
+        }
+    }
+
+    // MARK: - App Management
+
+    struct AppInfo {
+        let bundleId: String
+        let name: String
+        let version: String
+        let type: String
+        let state: String
+        let pid: Int
+        let path: String
+        let dataContainer: String
+    }
+
+    func appList(filter: String = "all") async throws -> [AppInfo] {
+        let (resp, _) = try await sendRequest(["t": "app_list", "filter": filter])
+        guard let apps = resp["apps"] as? [[String: Any]] else {
+            throw ControlError.protocolError("missing apps in response")
+        }
+        return apps.map { app in
+            AppInfo(
+                bundleId: app["bundle_id"] as? String ?? "",
+                name: app["name"] as? String ?? "",
+                version: app["version"] as? String ?? "",
+                type: app["type"] as? String ?? "",
+                state: app["state"] as? String ?? "",
+                pid: app["pid"] as? Int ?? 0,
+                path: app["path"] as? String ?? "",
+                dataContainer: app["data_container"] as? String ?? ""
+            )
+        }
+    }
+
+    func appLaunch(bundleId: String, url: String? = nil) async throws -> Int {
+        var req: [String: Any] = ["t": "app_launch", "bundle_id": bundleId]
+        if let url { req["url"] = url }
+        let (resp, _) = try await sendRequest(req)
+        return resp["pid"] as? Int ?? 0
+    }
+
+    func appTerminate(bundleId: String) async throws {
+        _ = try await sendRequest(["t": "app_terminate", "bundle_id": bundleId])
+    }
+
+    func appForeground() async throws -> (bundleId: String, name: String, pid: Int) {
+        let (resp, _) = try await sendRequest(["t": "app_foreground"])
+        return (
+            bundleId: resp["bundle_id"] as? String ?? "",
+            name: resp["name"] as? String ?? "",
+            pid: resp["pid"] as? Int ?? 0
+        )
+    }
+
+    // MARK: - URL
+
+    func openURL(_ url: String) async throws {
+        let (resp, _) = try await sendRequest(["t": "open_url", "url": url])
+        let ok = resp["ok"] as? Bool ?? false
+        if !ok {
+            let msg = resp["msg"] as? String ?? "failed to open URL"
+            throw ControlError.guestError(msg)
+        }
+    }
+
+    // MARK: - Settings
+
+    func settingsGet(domain: String, key: String? = nil) async throws -> Any? {
+        var req: [String: Any] = ["t": "settings_get", "domain": domain]
+        if let key { req["key"] = key }
+        let (resp, _) = try await sendRequest(req)
+        return resp["value"]
+    }
+
+    func settingsSet(domain: String, key: String, value: Any, type: String? = nil) async throws {
+        var req: [String: Any] = ["t": "settings_set", "domain": domain, "key": key, "value": value]
+        if let type { req["type"] = type }
+        _ = try await sendRequest(req)
+    }
+
+    // MARK: - Accessibility
+
+    func accessibilityTree(depth: Int = -1) async throws -> [String: Any] {
+        let (resp, _) = try await sendRequest(["t": "accessibility_tree", "depth": depth])
+        return resp
     }
 
     // MARK: - Location
@@ -577,6 +737,8 @@ class VPhoneControl {
 
                 // Check for pending request callback
                 if let reqId, let pending = removePending(id: reqId) {
+                    nonisolated(unsafe) let safeMsg = msg
+
                     if type == "err" {
                         let detail = msg["msg"] as? String ?? "unknown error"
                         DispatchQueue.main.async { pending.handler(.failure(ControlError.guestError(detail))) }
@@ -591,23 +753,48 @@ class VPhoneControl {
                             if Self.readFully(fd: fd, buf: buf, count: size) {
                                 let data = Data(bytes: buf, count: size)
                                 buf.deallocate()
-                                DispatchQueue.main.async { pending.handler(.success((msg, data))) }
+                                DispatchQueue.main.async { pending.handler(.success((safeMsg, data))) }
                             } else {
                                 buf.deallocate()
-                                DispatchQueue.main.async { pending.handler(.failure(ControlError.protocolError("failed to read file data"))) }
+                                DispatchQueue.main.async {
+                                    pending.handler(.failure(ControlError.protocolError("failed to read file data")))
+                                }
                             }
                         } else {
-                            DispatchQueue.main.async { pending.handler(.success((msg, Data()))) }
+                            DispatchQueue.main.async { pending.handler(.success((safeMsg, Data()))) }
+                        }
+                        continue
+                    }
+
+                    // For clipboard_get with image, read inline binary payload
+                    if type == "clipboard_get", msg["has_image"] as? Bool == true {
+                        let size = msg["image_size"] as? Int ?? 0
+                        if size > 0 {
+                            let buf = UnsafeMutablePointer<UInt8>.allocate(capacity: size)
+                            if Self.readFully(fd: fd, buf: buf, count: size) {
+                                let data = Data(bytes: buf, count: size)
+                                buf.deallocate()
+                                DispatchQueue.main.async { pending.handler(.success((safeMsg, data))) }
+                            } else {
+                                buf.deallocate()
+                                DispatchQueue.main.async {
+                                    pending.handler(
+                                        .failure(ControlError.protocolError("failed to read clipboard image data"))
+                                    )
+                                }
+                            }
+                        } else {
+                            DispatchQueue.main.async { pending.handler(.success((safeMsg, nil))) }
                         }
                         continue
                     }
 
                     // Normal response (ok, pong, etc.)
-                    DispatchQueue.main.async { pending.handler(.success((msg, nil))) }
+                    DispatchQueue.main.async { pending.handler(.success((safeMsg, nil))) }
                     continue
                 }
 
-                // No pending request - handle as before (fire-and-forget)
+                // No pending request — handle as before (fire-and-forget)
                 switch type {
                 case "ok":
                     let detail = msg["msg"] as? String ?? ""
@@ -685,7 +872,8 @@ class VPhoneControl {
         switch type {
         case "file_get", "file_put", "ipa_install":
             transferRequestTimeout
-        case "devmode", "file_list", "file_delete", "file_rename", "file_mkdir", "keychain_list":
+        case "devmode", "file_list", "file_delete", "file_rename", "file_mkdir", "keychain_list",
+             "app_list", "app_launch", "open_url", "accessibility_tree":
             slowRequestTimeout
         default:
             defaultRequestTimeout
@@ -698,7 +886,9 @@ class VPhoneControl {
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + timeout) { [weak self] in
             guard let self else { return }
             guard let pending = removePending(id: id) else { return }
-            DispatchQueue.main.async { pending.handler(.failure(ControlError.requestTimedOut(type: type, seconds: timeoutSeconds))) }
+            DispatchQueue.main.async {
+                pending.handler(.failure(ControlError.requestTimedOut(type: type, seconds: timeoutSeconds)))
+            }
         }
     }
 
