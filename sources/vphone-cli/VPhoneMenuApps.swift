@@ -34,6 +34,9 @@ extension VPhoneMenuController {
 
     func updateAppsAvailability(available: Bool) {
         appsListItem?.isEnabled = available
+    }
+
+    func updateURLAvailability(available: Bool) {
         appsOpenURLItem?.isEnabled = available
     }
 

@@ -139,6 +139,7 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
                 mc?.updateConnectAvailability(available: true)
                 mc?.updateInstallAvailability(available: true)
                 mc?.updateAppsAvailability(available: caps.contains("apps"))
+                mc?.updateURLAvailability(available: caps.contains("url"))
                 mc?.updateClipboardAvailability(available: caps.contains("clipboard"))
                 mc?.updateSettingsAvailability(available: true)
                 if caps.contains("location") {
@@ -155,6 +156,7 @@ class VPhoneAppDelegate: NSObject, NSApplicationDelegate {
                 mc?.updateConnectAvailability(available: false)
                 mc?.updateInstallAvailability(available: false)
                 mc?.updateAppsAvailability(available: false)
+                mc?.updateURLAvailability(available: false)
                 mc?.updateClipboardAvailability(available: false)
                 mc?.updateSettingsAvailability(available: false)
                 provider?.stopReplay()
