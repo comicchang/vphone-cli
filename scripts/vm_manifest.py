@@ -4,6 +4,7 @@ vm_manifest.py — Generate VM manifest plist for vphone-cli.
 
 Compatible with security-pcc's VMBundle.Config format.
 """
+
 import argparse
 import plistlib
 import sys
@@ -58,7 +59,7 @@ def create_manifest(
         },
         "sepStorage": "SEPStorage",
     }
-    
+
     if platform_fusing is not None:
         manifest["platformFusing"] = platform_fusing
 

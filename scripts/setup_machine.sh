@@ -414,6 +414,30 @@ stop_process_tree() {
   wait "$pid" 2>/dev/null || true
 }
 
+kill_stale_vphone_procs() {
+  local vphone_bin="${PROJECT_ROOT}/.build/release/vphone-cli"
+  local -a stale_pids
+  stale_pids=(${(@f)$(pgrep -f "$vphone_bin" 2>/dev/null || true)})
+  (( ${#stale_pids[@]} == 0 )) && return
+
+  echo "[*] Found stale vphone-cli process(es) (pids: ${stale_pids[*]}); terminating..."
+  for pid in "${stale_pids[@]}"; do
+    [[ "$pid" == "$$" ]] && continue
+    stop_process_tree "$pid"
+  done
+
+  # Wait up to 8s for VZ file locks to clear (flock/fcntl locks may lag behind process exit)
+  local waited=0
+  while (( waited < 8 )); do
+    local -a remaining
+    remaining=(${(@f)$(collect_vm_lock_pids)})
+    (( ${#remaining[@]} == 0 )) && break
+    sleep 1
+    (( waited++ ))
+  done
+  echo "[+] Stale vphone-cli processes cleared"
+}
+
 force_release_vm_locks() {
   local -a lock_pids
   local pid
@@ -706,6 +730,7 @@ start_boot_dfu() {
     return
   fi
 
+  kill_stale_vphone_procs
   check_vm_storage_locks
 
   : > "$DFU_LOG"
@@ -971,6 +996,10 @@ main() {
     run_make "Project setup" setup_tools
     run_make "Project setup" build
   fi
+
+  # Activate venv so all child scripts (cfw_install, patchers, etc.) use the
+  # project Python with capstone/keystone/pyimg4 installed, not the bare system python3.
+  export PATH="$PROJECT_ROOT/.venv/bin:$PATH"
 
   run_make "Firmware prep" vm_new
   run_make "Firmware prep" fw_prepare

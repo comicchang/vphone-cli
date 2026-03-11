@@ -15,6 +15,19 @@ set -euo pipefail
 VM_DIR="${1:-.}"
 SCRIPT_DIR="${0:a:h}"
 
+# ── Python resolver — prefer project venv over whatever is in PATH ─
+# Resolves to .venv/bin/python3 relative to the project root (parent of
+# scripts/), falling back to the system python3 when the venv is absent.
+_resolve_python3() {
+    local venv_py="${SCRIPT_DIR:h}/.venv/bin/python3"
+    if [[ -x "$venv_py" ]]; then
+        echo "$venv_py"
+    else
+        command -v python3 || true
+    fi
+}
+PYTHON3="$(_resolve_python3)"
+
 # ════════════════════════════════════════════════════════════════
 # Step 1: Run base CFW install (skip halt — we continue with JB phases)
 # ════════════════════════════════════════════════════════════════
@@ -225,10 +238,10 @@ fi
 # LC_LOAD_DYLIB command after stripping LC_CODE_SIGNATURE.
 if [[ -d "$JB_INPUT_DIR/basebin" ]]; then
     echo "  Injecting LC_LOAD_DYLIB for /b (short launchdhook alias)..."
-    python3 "$SCRIPT_DIR/patchers/cfw.py" inject-dylib "$TEMP_DIR/launchd" "/b"
+    "$PYTHON3" "$SCRIPT_DIR/patchers/cfw.py" inject-dylib "$TEMP_DIR/launchd" "/b"
 fi
 
-python3 "$SCRIPT_DIR/patchers/cfw.py" patch-launchd-jetsam "$TEMP_DIR/launchd"
+"$PYTHON3" "$SCRIPT_DIR/patchers/cfw.py" patch-launchd-jetsam "$TEMP_DIR/launchd"
 
 # Re-sign with original entitlements to avoid "operation not permitted" on spawn
 if [[ -s "$TEMP_DIR/launchd.entitlements" ]]; then
@@ -375,7 +388,7 @@ if [[ -f "$SETUP_PLIST" ]]; then
     # Inject into launchd.plist so launchd starts it at boot
     echo "  Injecting com.vphone.jb-setup into launchd.plist..."
     scp_from "/mnt1/System/Library/xpc/launchd.plist" "$TEMP_DIR/launchd.plist"
-    python3 -c "
+    "$PYTHON3" -c "
 import plistlib, sys
 with open(sys.argv[1], 'rb') as f:
     target = plistlib.load(f)
