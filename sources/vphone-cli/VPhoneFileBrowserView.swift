@@ -83,12 +83,20 @@ struct VPhoneFileBrowserView: View {
         } rows: {
             ForEach(model.filteredFiles) { file in
                 TableRow(file)
+                    .draggable(FileDragItem(file: file, control: model.control))
             }
         }
         .contextMenu(forSelectionType: VPhoneRemoteFile.ID.self) { ids in
             contextMenu(for: ids)
         } primaryAction: { ids in
             primaryAction(for: ids)
+        }
+        .onKeyPress(.space) {
+            model.quickLookSelected()
+            return .handled
+        }
+        .onChange(of: model.selection) {
+            model.closeQuickLook()
         }
     }
 
@@ -172,13 +180,14 @@ struct VPhoneFileBrowserView: View {
             .disabled(!model.canGoBack)
             .keyboardShortcut(.leftArrow, modifiers: .command)
         }
-        ToolbarItem {
+        ToolbarItem(placement: .navigation) {
             Button {
-                Task { await model.refresh() }
+                model.goForward()
             } label: {
-                Label("Refresh", systemImage: "arrow.clockwise")
+                Label("Forward", systemImage: "chevron.right")
             }
-            .keyboardShortcut("r", modifiers: .command)
+            .disabled(!model.canGoForward)
+            .keyboardShortcut(.rightArrow, modifiers: .command)
         }
         ToolbarItem {
             Button {
@@ -211,6 +220,14 @@ struct VPhoneFileBrowserView: View {
                 Label("Delete", systemImage: "trash")
             }
             .disabled(model.selection.isEmpty)
+        }
+        ToolbarItem {
+            Button {
+                Task { await model.refresh() }
+            } label: {
+                Label("Refresh", systemImage: "arrow.clockwise")
+            }
+            .keyboardShortcut("r", modifiers: .command)
         }
     }
 
@@ -343,5 +360,27 @@ struct VPhoneFileBrowserView: View {
 
     func formatBytes(_ bytes: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    }
+}
+
+// MARK: - Drag out
+
+private struct FileDragItem: Transferable {
+    let file: VPhoneRemoteFile
+    let control: VPhoneControl
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .data) { item in
+            guard !item.file.isDirectoryLike else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            let data = try await item.control.downloadFile(path: item.file.path)
+            let tempDir = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            let tempURL = tempDir.appendingPathComponent(item.file.name)
+            try data.write(to: tempURL)
+            return SentTransferredFile(tempURL)
+        }
     }
 }

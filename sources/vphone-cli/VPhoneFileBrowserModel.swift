@@ -5,6 +5,9 @@ import Observation
 @MainActor
 class VPhoneFileBrowserModel {
     let control: VPhoneControl
+    private let quickLookController: VPhoneQuickLookController
+    /// Tracks an in-flight Quick Look download so it can be cancelled on selection change.
+    private var quickLookTask: Task<Void, Never>?
 
     var currentPath = "/var/mobile"
     var files: [VPhoneRemoteFile] = []
@@ -22,11 +25,13 @@ class VPhoneFileBrowserModel {
         transferName != nil
     }
 
-    /// Navigation stack
+    /// Navigation stacks
     private var pathHistory: [String] = []
+    private var forwardHistory: [String] = []
 
-    init(control: VPhoneControl) {
+    init(control: VPhoneControl, quickLookController: VPhoneQuickLookController) {
         self.control = control
+        self.quickLookController = quickLookController
     }
 
     // MARK: - Computed
@@ -66,6 +71,7 @@ class VPhoneFileBrowserModel {
 
     func navigate(to path: String) {
         pathHistory.append(currentPath)
+        forwardHistory.removeAll()
         currentPath = path
         selection.removeAll()
         Task { await refresh() }
@@ -73,7 +79,16 @@ class VPhoneFileBrowserModel {
 
     func goBack() {
         guard let prev = pathHistory.popLast() else { return }
+        forwardHistory.append(currentPath)
         currentPath = prev
+        selection.removeAll()
+        Task { await refresh() }
+    }
+
+    func goForward() {
+        guard let next = forwardHistory.popLast() else { return }
+        pathHistory.append(currentPath)
+        currentPath = next
         selection.removeAll()
         Task { await refresh() }
     }
@@ -81,19 +96,48 @@ class VPhoneFileBrowserModel {
     func goToBreadcrumb(_ path: String) {
         if path == currentPath { return }
         pathHistory.append(currentPath)
+        forwardHistory.removeAll()
         currentPath = path
         selection.removeAll()
         Task { await refresh() }
     }
 
-    var canGoBack: Bool {
-        !pathHistory.isEmpty
-    }
+    var canGoBack: Bool { !pathHistory.isEmpty }
+    var canGoForward: Bool { !forwardHistory.isEmpty }
 
     func openItem(_ file: VPhoneRemoteFile) {
         if file.isDirectoryLike {
             navigate(to: file.path)
         }
+    }
+
+    // MARK: - Quick Look
+
+    func quickLookSelected() {
+        guard let id = selection.first,
+              let file = filteredFiles.first(where: { $0.id == id }),
+              !file.isDirectoryLike
+        else { return }
+
+        quickLookTask?.cancel()
+
+        quickLookTask = Task { @MainActor in
+            do {
+                let data = try await control.downloadFile(path: file.path)
+                guard !Task.isCancelled else { return }
+                quickLookController.open(data: data, filename: file.name)
+            } catch {
+                guard !Task.isCancelled else { return }
+                self.error = "Quick Look download failed: \(error)"
+            }
+            quickLookTask = nil
+        }
+    }
+
+    func closeQuickLook() {
+        quickLookTask?.cancel()
+        quickLookTask = nil
+        quickLookController.close()
     }
 
     // MARK: - Refresh
