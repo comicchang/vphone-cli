@@ -17,6 +17,9 @@
 # Usage: make cfw_install
 set -euo pipefail
 
+# ── Restore caller's PATH — Nix /etc/zshenv resets PATH on zsh startup ─
+[[ -n "${_VPHONE_PATH:-}" ]] && export PATH="$_VPHONE_PATH"
+
 VM_DIR="${1:-.}"
 SCRIPT_DIR="${0:a:h}"
 CFW_SKIP_HALT="${CFW_SKIP_HALT:-0}"

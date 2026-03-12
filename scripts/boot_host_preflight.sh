@@ -51,10 +51,8 @@ run_capture() {
   shift
 
   local log_file="${TMP_DIR}/${label}.log"
-  set +e
-  "$@" >"$log_file" 2>&1
-  local rc=$?
-  set -e
+  local rc=0
+  "$@" >"$log_file" 2>&1 || rc=$?
 
   (( QUIET == 0 )) && echo "[${label}] exit=${rc}"
   if (( QUIET == 0 )) && [[ -s "$log_file" ]]; then
