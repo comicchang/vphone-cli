@@ -317,7 +317,28 @@ PY
 
 download_file() {
     local src="$1" out="$2"
-    if command -v curl >/dev/null 2>&1; then
+    if command -v aria2c >/dev/null 2>&1; then
+        # aria2c: fast multi-connection downloader
+        # -x16: max 16 connections per server
+        # -s16: split into 16 parts
+        # -k1M: min split size 1MB
+        # -c: continue/resume download
+        # --allow-overwrite=true: overwrite existing file
+        # --auto-file-renaming=false: don't rename automatically
+        local dir="${out%/*}"
+        local file="${out##*/}"
+        [[ -n "$dir" && "$dir" != "$out" ]] || dir="."
+        aria2c \
+            --allow-overwrite=true \
+            --auto-file-renaming=false \
+            -x 16 \
+            -s 16 \
+            -k 1M \
+            -c \
+            -d "$dir" \
+            -o "$file" \
+            "$src"
+    elif command -v curl >/dev/null 2>&1; then
         local rc=0
         curl --fail --location --progress-bar -C - -o "$out" "$src" || rc=$?
         # 33 = HTTP range error — typically means file is already fully downloaded
@@ -326,7 +347,7 @@ download_file() {
     elif command -v wget >/dev/null 2>&1; then
         wget --no-check-certificate --show-progress -c -O "$out" "$src"
     else
-        die "Need 'curl' or 'wget' to download $src"
+        die "Need 'aria2c', 'curl' or 'wget' to download $src"
     fi
 }
 
