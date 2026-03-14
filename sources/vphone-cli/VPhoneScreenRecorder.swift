@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import AVFoundation
 import CoreVideo
 import ObjectiveC.runtime
@@ -11,7 +12,7 @@ class VPhoneScreenRecorder {
     private enum CaptureError: LocalizedError {
         case captureFailed
         case clipboardWriteFailed
-        case pngEncodingFailed
+        case encodingFailed
 
         var errorDescription: String? {
             switch self {
@@ -19,7 +20,7 @@ class VPhoneScreenRecorder {
                 "Failed to capture a frame from the virtual machine."
             case .clipboardWriteFailed:
                 "Failed to copy the screenshot to the pasteboard."
-            case .pngEncodingFailed:
+            case .encodingFailed:
                 "Failed to encode the screenshot as PNG."
             }
         }
@@ -130,29 +131,37 @@ class VPhoneScreenRecorder {
 
     func copyScreenshotToPasteboard(view: NSView) async throws {
         let cgImage = try await captureStillImage(from: view)
-        let image = NSImage(
-            cgImage: cgImage,
-            size: NSSize(width: cgImage.width, height: cgImage.height)
-        )
+
+        let data = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(data, "public.jpeg" as CFString, 1, nil) else {
+            throw CaptureError.clipboardWriteFailed
+        }
+        CGImageDestinationAddImage(dest, cgImage, nil)
+        guard CGImageDestinationFinalize(dest) else {
+            throw CaptureError.clipboardWriteFailed
+        }
 
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        guard pasteboard.writeObjects([image]) else {
-            throw CaptureError.clipboardWriteFailed
-        }
+        pasteboard.setData(data as Data, forType: .init("public.jpeg"))
 
         print("[record] screenshot copied to clipboard")
     }
 
     func saveScreenshot(view: NSView) async throws -> URL {
         let cgImage = try await captureStillImage(from: view)
-        let bitmap = NSBitmapImageRep(cgImage: cgImage)
-        guard let pngData = bitmap.representation(using: .png, properties: [:]) else {
-            throw CaptureError.pngEncodingFailed
+        let url = screenshotOutputURL()
+
+        guard let dest = CGImageDestinationCreateWithURL(
+            url as CFURL, "public.jpeg" as CFString, 1, nil
+        ) else {
+            throw CaptureError.encodingFailed
+        }
+        CGImageDestinationAddImage(dest, cgImage, nil)
+        guard CGImageDestinationFinalize(dest) else {
+            throw CaptureError.encodingFailed
         }
 
-        let url = screenshotOutputURL()
-        try pngData.write(to: url, options: .atomic)
         print("[record] screenshot saved - \(url.path)")
         return url
     }
@@ -300,7 +309,7 @@ class VPhoneScreenRecorder {
     }
 
     private func screenshotOutputURL() -> URL {
-        desktopDirectory().appendingPathComponent("vphone-screenshot-\(timestampString()).png")
+        desktopDirectory().appendingPathComponent("vphone-screenshot-\(timestampString()).jpg")
     }
 
     private func timestampString() -> String {
