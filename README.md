@@ -95,7 +95,9 @@ git clone --recurse-submodules https://github.com/Lakr233/vphone-cli.git
 
 ```bash
 make setup_machine            # full automation through "First Boot" (includes restore/ramdisk/CFW)
-# options: NONE_INTERACTIVE=1 SUDO_PASSWORD=...
+# options: NONE_INTERACTIVE=1 SUDO_PASSWORD=... 
+# DEV=1 for dev variant (+ TXM entitlement/debug bypasses)
+# JB=1 for jailbreak variant (+ full security bypass)
 ```
 
 ## Manual Setup
@@ -205,7 +207,7 @@ make boot
 In a separate terminal, start iproxy tunnels:
 
 ```bash
-iproxy 2222 22222   # SSH (dropbear)
+iproxy 2222 22222    # SSH (dropbear)
 iproxy 2222 22       # SSH (JB: if you install openssh-server from Sileo)
 iproxy 5901 5901     # VNC
 iproxy 5910 5910     # RPC
