@@ -54,7 +54,7 @@ Apple の Virtualization.framework と PCC の研究用 VM インフラを使用
 
   もう一度再起動します。
 
-- **方法 2：SIP はほぼ有効のまま、デバッグ制限のみ無効化、[`amfidont`](https://github.com/zqxwce/amfidont) を使用**
+- **方法 2：SIP はほぼ有効のまま、デバッグ制限のみ無効化、[`amfidont`](https://github.com/zqxwce/amfidont) または [`amfree`](https://github.com/retX0/amfree) を使用**
 
   復旧モードで：
 
@@ -66,8 +66,13 @@ Apple の Virtualization.framework と PCC の研究用 VM インフラを使用
   通常の macOS に再起動した後：
 
   ```bash
+  # amfidont の場合:
   xcrun python3 -m pip install amfidont
   sudo amfidont --path [PATH_TO_VPHONE_DIR]
+  
+  # または amfree の場合:
+  brew install retX0/tap/amfree
+  sudo amfree --path [PATH_TO_VPHONE_DIR]
   ```
 
 **依存関係のインストール:**
@@ -239,7 +244,7 @@ AMFI/デバッグ制限が正しくバイパスされていません。以下の
   ```
 
 - **方法 2（デバッグ制限のみ無効化）：**
-  復旧モードで `csrutil enable --without debug`（完全な SIP 無効化は不要）を使用し、[`amfidont`](https://github.com/zqxwce/amfidont) をインストール/ロードして AMFI のその他の機能は有効のままにします。
+  復旧モードで `csrutil enable --without debug`（完全な SIP 無効化は不要）を使用し、[`amfidont`](https://github.com/zqxwce/amfidont) または [`amfree`](https://github.com/retX0/amfree) をインストール/ロードして AMFI のその他の機能は有効のままにします。
 
 **Q: システムアプリ（App Store、メッセージなど）がダウンロード・インストールできません**
 

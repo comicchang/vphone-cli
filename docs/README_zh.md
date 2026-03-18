@@ -54,7 +54,7 @@
 
   再重启一次。
 
-- **方式 2：保持 SIP 大部分启用，仅禁用调试限制，使用 [`amfidont`](https://github.com/zqxwce/amfidont)**
+- **方式 2：保持 SIP 大部分启用，仅禁用调试限制，使用 [`amfidont`](https://github.com/zqxwce/amfidont) 或 [`amfree`](https://github.com/retX0/amfree)**
 
   在恢复模式中：
 
@@ -66,8 +66,13 @@
   重新启动回 macOS 后：
 
   ```bash
+  # 使用 amfidont：
   xcrun python3 -m pip install amfidont
   sudo amfidont --path [PATH_TO_VPHONE_DIR]
+  
+  # 或使用 amfree：
+  brew install retX0/tap/amfree
+  sudo amfree --path [PATH_TO_VPHONE_DIR]
   ```
 
 **安装依赖：**
@@ -241,7 +246,7 @@ AMFI/调试限制未正确绕过。选择以下任一方式：
   ```
 
 - **方式 2（仅禁用调试限制）：**
-  在恢复模式中使用 `csrutil enable --without debug`（不完全禁用 SIP），然后安装/加载 [`amfidont`](https://github.com/zqxwce/amfidont)，保持 AMFI 其他功能不变。
+  在恢复模式中使用 `csrutil enable --without debug`（不完全禁用 SIP），然后安装/加载 [`amfidont`](https://github.com/zqxwce/amfidont) 或 [`amfree`](https://github.com/retX0/amfree)，保持 AMFI 其他功能不变。
 
 **问：系统应用（App Store、信息等）无法下载或安装。**
 

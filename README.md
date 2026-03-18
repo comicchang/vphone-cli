@@ -54,7 +54,7 @@ Boot into Recovery (long press power button), open Terminal, then choose one set
 
   Restart once more.
 
-- **Option 2: Keep SIP mostly enabled, disable only debug restrictions, use [`amfidont`](https://github.com/zqxwce/amfidont)**
+- **Option 2: Keep SIP mostly enabled, disable only debug restrictions, use [`amfidont`](https://github.com/zqxwce/amfidont) or [`amfree`](https://github.com/retX0/amfree)**
 
   In Recovery:
 
@@ -66,11 +66,16 @@ Boot into Recovery (long press power button), open Terminal, then choose one set
   After restarting into macOS:
 
   ```bash
+  # Using amfidont:
   xcrun python3 -m pip install amfidont
   sudo amfidont --path [PATH_TO_VPHONE_DIR]
+  
+  # OR Using amfree:
+  brew install retX0/tap/amfree
+  sudo amfree --path [PATH_TO_VPHONE_DIR]
   ```
 
-  Repo helper:
+  Repo helper (for amfidont):
 
   ```bash
   make amfidont_allow_vphone
@@ -250,9 +255,9 @@ AMFI/debug restrictions are not bypassed correctly. Choose one setup path:
   ```
 
 - **Option 2 (debug restrictions only):**
-  use Recovery mode `csrutil enable --without debug` (no full SIP disable), then install/load [`amfidont`](https://github.com/zqxwce/amfidont) while keeping AMFI otherwise enabled.
+  use Recovery mode `csrutil enable --without debug` (no full SIP disable), then install/load [`amfidont`](https://github.com/zqxwce/amfidont) or [`amfree`](https://github.com/retX0/amfree) while keeping AMFI otherwise enabled.
   For this repo, `make amfidont_allow_vphone` packages the required encoded-path
-  and CDHash allowlist startup.
+  and CDHash allowlist startup (if using amfidont).
 
 **Q: `make boot` / `make boot_dfu` starts and then fails with `VZErrorDomain Code=2 "Virtualization is not available on this hardware."`**
 
