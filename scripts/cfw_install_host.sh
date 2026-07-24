@@ -55,6 +55,69 @@ fi
 export PATH="$P"
 PY="${VPHONE_PYTHON:-$PROJ/.venv/bin/python3}"
 
+# Pre-cleanup: detach any leftover attachment of this VM's Disk.img from a
+# prior interrupted run.  hdiutil attach -nomount creates kernel-level
+# attachments that lsof cannot see; hdiutil info reveals them.
+_pre_cleanup() {
+  local img_path="$1"
+  local -a dev_nodes
+  local dev
+
+  # Find any hdiutil attachment that references this image path.
+  # Each hdiutil info section: image-path line first, then /dev/disk entries.
+  # Match image-path → set flag, then grab the FIRST /dev/disk in that section.
+  dev_nodes=(${(@f)$(hdiutil info 2>/dev/null | awk -v target="$img_path" '
+    /^====/          { dev=""; seen=0; want=0 }
+    /^image-path/    { if ($0 ~ target) want=1 }
+    /^\/dev\/disk/   { if (!seen) { dev=$1; seen=1; if (want) print dev } }
+  ')})
+
+  if (( ${#dev_nodes[@]} == 0 )); then
+    return 0
+  fi
+
+  echo "[!] Disk.img is already attached via hdiutil (likely from a prior interrupted run):"
+  for dev in "${dev_nodes[@]}"; do
+    echo "    $dev"
+  done
+
+  # Unmount any cfwhost mount points first.
+  local mnt
+  for mnt in /private/tmp/cfwhost/mnt{1,3,5}; do
+    if mount | grep -q "on $mnt "; then
+      echo "[*] Unmounting leftover: $mnt"
+      if ! umount "$mnt" 2>/dev/null && ! diskutil unmount force "$mnt" 2>/dev/null; then
+        echo "[-] Failed to unmount leftover cfwhost mount: $mnt" >&2
+      fi
+    fi
+  done
+
+  # Detach the disk image at the kernel level.
+  for dev in "${dev_nodes[@]}"; do
+    echo "[*] Detaching leftover: $dev"
+    if ! hdiutil detach "$dev" 2>/dev/null && ! diskutil eject "$dev" 2>/dev/null; then
+      echo "[-] Failed to detach leftover hdiutil device: $dev" >&2
+    fi
+  done
+
+  # Verify clean.
+  local -a remaining
+  remaining=(${(@f)$(hdiutil info 2>/dev/null | awk -v target="$img_path" '
+    /^====/          { dev=""; seen=0; want=0 }
+    /^image-path/    { if ($0 ~ target) want=1 }
+    /^\/dev\/disk/   { if (!seen) { dev=$1; seen=1; if (want) print dev } }
+  ')})
+  if (( ${#remaining[@]} > 0 )); then
+    echo "[-] Could not detach leftover attachments: ${remaining[*]}" >&2
+    echo "    Run: sudo hdiutil detach ${remaining[1]}" >&2
+    exit 1
+  fi
+
+  echo "[+] Cleaned up leftover hdiutil attachment(s)"
+}
+
+_pre_cleanup "$IMG"
+
 if lsof "$IMG" >/dev/null 2>&1; then
   echo "[-] $IMG is in use — stop the VM first." >&2; exit 1
 fi
@@ -68,12 +131,24 @@ SYS=$(diskutil apfs list "$CONT" 2>/dev/null | awk '/APFS Volume Disk \(Role\):/
 echo "[*] attached: container=$CONT system=$SYS"
 
 cleanup() {
+  local m rc=0
   for m in /private/tmp/cfwhost/mnt1 /private/tmp/cfwhost/mnt3 /private/tmp/cfwhost/mnt5; do
-    umount "$m" 2>/dev/null || true
+    if mount 2>/dev/null | grep -q "on $m "; then
+      if ! umount "$m" 2>/dev/null; then
+        echo "[-] cleanup: failed to unmount $m" >&2
+        rc=1
+      fi
+    fi
   done
-  hdiutil detach "$BASEDISK" 2>/dev/null || diskutil eject "$BASEDISK" 2>/dev/null || true
+  if [[ -n "${BASEDISK:-}" ]]; then
+    if ! hdiutil detach "$BASEDISK" 2>/dev/null && ! diskutil eject "$BASEDISK" 2>/dev/null; then
+      echo "[-] cleanup: failed to detach $BASEDISK" >&2
+      rc=1
+    fi
+  fi
+  return $rc
 }
-trap cleanup EXIT
+trap cleanup EXIT INT TERM
 
 echo "[*] running $INSTALLER (files placed on host mounts)..."
 # via env: an expansion-produced ${VAR:+NAME=val} isn't parsed as a shell assignment.
@@ -84,7 +159,7 @@ echo "[*] running $INSTALLER (files placed on host mounts)..."
     zsh "$SCRIPT_DIR/$INSTALLER" . )
 
 cleanup
-trap - EXIT
+trap - EXIT INT TERM
 
 echo "[*] flipping boot snapshot offline (com.apple.os.update -> live volume)..."
 "$PY" "$PROJ/tools/apfs_snap_rename.py" "$IMG"

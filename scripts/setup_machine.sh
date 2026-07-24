@@ -183,39 +183,89 @@ collect_vm_lock_pids() {
 }
 
 check_vm_storage_locks() {
-  if ! command -v lsof >/dev/null 2>&1; then
-    echo "[!] lsof not found; skipping VM lock preflight."
-    return
-  fi
+  local img_path="${VM_DIR_ABS}/Disk.img"
+  local -a lock_pids hdi_devs
+  local dev mnt hdi_issue=0
 
-  local -a lock_pids
-  lock_pids=(${(@f)$(collect_vm_lock_pids)})
-  (( ${#lock_pids[@]} == 0 )) && return
-
-  echo "[-] VM storage files are currently in use: ${VM_DIR_ABS}"
-  echo "    This usually means another vphone process is still running."
-
-  local pid proc_info
-  for pid in "${lock_pids[@]}"; do
-    [[ -z "$pid" || "$pid" == "$$" ]] && continue
-    proc_info="$(ps -o pid=,ppid=,command= -p "$pid" 2>/dev/null || true)"
-    [[ -n "$proc_info" ]] && echo "    $proc_info" || echo "    pid=$pid"
-  done
-
-  if [[ "$AUTO_KILL_VM_LOCKS" == "1" ]]; then
-    echo "[*] AUTO_KILL_VM_LOCKS=1 set; terminating lock holder processes..."
-    for pid in "${lock_pids[@]}"; do
-      [[ -z "$pid" || "$pid" == "$$" ]] && continue
-      stop_process_tree "$pid"
-    done
-    sleep 1
-
+  # ── lsof-based check (process-level file locks) ──
+  if command -v lsof >/dev/null 2>&1; then
     lock_pids=(${(@f)$(collect_vm_lock_pids)})
-    (( ${#lock_pids[@]} == 0 )) && { echo "[+] Cleared VM storage locks"; return; }
-    echo "[-] VM storage locks still present after AUTO_KILL_VM_LOCKS attempt."
+    if (( ${#lock_pids[@]} > 0 )); then
+      echo "[-] VM storage files are currently in use: ${VM_DIR_ABS}"
+      echo "    This usually means another vphone process is still running."
+
+      local pid proc_info
+      for pid in "${lock_pids[@]}"; do
+        [[ -z "$pid" || "$pid" == "$$" ]] && continue
+        proc_info="$(ps -o pid=,ppid=,command= -p "$pid" 2>/dev/null || true)"
+        [[ -n "$proc_info" ]] && echo "    $proc_info" || echo "    pid=$pid"
+      done
+
+      if [[ "$AUTO_KILL_VM_LOCKS" == "1" ]]; then
+        echo "[*] AUTO_KILL_VM_LOCKS=1 set; terminating lock holder processes..."
+        for pid in "${lock_pids[@]}"; do
+          [[ -z "$pid" || "$pid" == "$$" ]] && continue
+          stop_process_tree "$pid"
+        done
+        sleep 1
+
+        lock_pids=(${(@f)$(collect_vm_lock_pids)})
+        if (( ${#lock_pids[@]} == 0 )); then
+          echo "[+] Cleared VM storage locks"
+        else
+          echo "[-] VM storage locks still present after AUTO_KILL_VM_LOCKS attempt."
+          die "Stop those processes and retry. You can also set AUTO_KILL_VM_LOCKS=1."
+        fi
+      else
+        die "Stop those processes and retry. You can also set AUTO_KILL_VM_LOCKS=1."
+      fi
+    fi
+  else
+    echo "[!] lsof not found; skipping VM lock preflight."
   fi
 
-  die "Stop those processes and retry. You can also set AUTO_KILL_VM_LOCKS=1."
+  # ── hdiutil-based check (kernel-level disk attachments) ──
+  # cfw_install_host.sh uses hdiutil attach -nomount, which creates kernel
+  # attachments that lsof cannot see.  This function runs as a regular user
+  # and cannot detach them — it detects and reports.
+  #
+  # In "cfw" mode ($1 == "cfw"): only warn — cfw_install_host.sh's _pre_cleanup
+  #   (which runs as root) will auto-clean before attaching.
+  # In boot mode (default): die — no self-healing is available downstream.
+  local cfw_mode=0
+  [[ "${1:-}" == "cfw" ]] && cfw_mode=1
+
+  if command -v hdiutil >/dev/null 2>&1 && [[ -f "$img_path" ]]; then
+    hdi_devs=(${(@f)$(hdiutil info 2>/dev/null | awk -v target="$img_path" '
+      /^====/          { dev=""; seen=0; want=0 }
+      /^image-path/    { if ($0 ~ target) want=1 }
+      /^\/dev\/disk/   { if (!seen) { dev=$1; seen=1; if (want) print dev } }
+    ')})
+
+    if (( ${#hdi_devs[@]} > 0 )); then
+      echo "[-] Disk.img is attached at the kernel level via hdiutil:"
+      for dev in "${hdi_devs[@]}"; do
+        echo "    $dev"
+      done
+      echo "    This is usually from a prior interrupted cfw_install_host run."
+      hdi_issue=1
+
+      # Check for leftover cfwhost mount points.
+      for mnt in /private/tmp/cfwhost/mnt{1,3,5}; do
+        if mount 2>/dev/null | grep -q "on $mnt "; then
+          echo "    Plus leftover cfwhost mount: $mnt"
+          hdi_issue=1
+        fi
+      done
+
+      if (( cfw_mode )); then
+        echo "[*] cfw_install_host.sh will auto-clean this before proceeding."
+      else
+        echo "[*] Fix: sudo hdiutil detach ${hdi_devs[1]}"
+        die "Disk.img is still attached from a prior cfw_install_host run."
+      fi
+    fi
+  fi
 }
 
 list_descendants() {
@@ -329,6 +379,8 @@ start_first_boot() {
 
   BOOT_FIFO="$(mktemp -u "${TMPDIR:-/tmp}/vphone-first-boot.XXXXXX")"
   mkfifo "$BOOT_FIFO"
+
+  run_amfree
 
   (make "$target" <"$BOOT_FIFO" >"$BOOT_LOG" 2>&1) &
   BOOT_PID=$!
@@ -572,6 +624,17 @@ run_make_sudo() {
   fi
 }
 
+run_amfree() {
+  if ! command -v amfree &>/dev/null; then
+    echo "[!] amfree not found — signed binary may be rejected" >&2
+    echo "    Install: brew install amfree  (or see amfree docs)" >&2
+    return
+  fi
+  echo "[*] Running amfree for build directory..."
+  sudo amfree --path "${PROJECT_ROOT}/.build"
+  echo "[+] amfree applied"
+}
+
 start_boot_dfu() {
   mkdir -p "$LOG_DIR"
 
@@ -585,6 +648,8 @@ start_boot_dfu() {
   # Remove stale prediction file so load_device_identity waits for the fresh
   # one written by this boot, avoiding an ECID mismatch race.
   rm -f "${VM_DIR_ABS}/udid-prediction.txt"
+
+  run_amfree
 
   : > "$DFU_LOG"
   echo "[*] Starting DFU boot in background..."
@@ -608,7 +673,22 @@ stop_boot_dfu() {
   fi
   DFU_PID=""
   force_release_vm_locks
+
+  # Wait for Disk.img file lock to be fully released (macOS may lag)
+  local img="${VM_DIR_ABS}/Disk.img"
+  local waited=0
+  while (( waited < 10 )); do
+    if ! lsof "$img" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+    waited=$(( waited + 1 ))
+  done
+  if lsof "$img" >/dev/null 2>&1; then
+    echo "[!] Warning: Disk.img still has open file handles after ${waited}s" >&2
+  fi
 }
+
 
 wait_for_post_restore_reboot() {
   local remaining="${POST_RESTORE_KILL_DELAY}"
@@ -767,6 +847,8 @@ main() {
   run_make "Firmware prep" vm_new
   if [[ "$LESS_MODE" -eq 0 ]]; then
     run_make "Firmware prep" fw_prepare
+    run_amfree
+
     run_make "Firmware patch" "$fw_patch_target"
   else
     VARIANT=less run_make "Firmware prep" fw_prepare
@@ -793,7 +875,7 @@ main() {
     # (SUDO_ASKPASS from setup_sudo_noninteractive when SUDO_PASSWORD is set).
     echo ""
     echo "=== CFW install (host-mount) ==="
-    check_vm_storage_locks
+    check_vm_storage_locks cfw
     run_make "CFW install" cfw_install_host VARIANT="$cfw_variant" SPOOF_BUILD="${SPOOF_BUILD:-}"
   fi
 
