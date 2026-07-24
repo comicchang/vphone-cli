@@ -260,12 +260,17 @@ class VPhoneHostControl {
                     return
                 }
                 do {
+                    if screenDelay > 0 {
+                        try? await Task.sleep(nanoseconds: UInt64(screenDelay) * 1_000_000)
+                    }
                     if let outputPath {
                         let url = try await recorder.saveScreenshot(view: view, to: URL(fileURLWithPath: outputPath))
                         result.path = url.path
                     }
-                    // Always include compact image for screenshot command
-                    result.imageBase64 = await controller.captureCompactScreenshot()
+                    // Always include compact image for screenshot command unless explicitly disabled.
+                    if wantScreen {
+                        result.imageBase64 = await controller.captureCompactScreenshot()
+                    }
                     result.ok = true
                 } catch {
                     result.error = "\(error)"
@@ -405,6 +410,122 @@ class VPhoneHostControl {
 
             semaphore.wait()
             writeResponse(fd, ok: result.ok, error: result.error, image: result.imageBase64)
+
+        case "open_url":
+            guard let url = json["url"] as? String else {
+                writeResponse(fd, ok: false, error: "open_url requires url")
+                return
+            }
+            let semaphore = DispatchSemaphore(value: 0)
+            let result = ResultBox()
+
+            Task { @MainActor in
+                defer { semaphore.signal() }
+                guard let controller, let ctl = controller.control, ctl.isConnected else {
+                    result.error = "guest not connected"
+                    return
+                }
+                do {
+                    try await ctl.openURL(url)
+                    result.ok = true
+                    if wantScreen {
+                        try? await Task.sleep(nanoseconds: UInt64(screenDelay) * 1_000_000)
+                        result.imageBase64 = await controller.captureCompactScreenshot()
+                    }
+                } catch {
+                    result.error = "\(error)"
+                }
+            }
+
+            semaphore.wait()
+            writeResponse(fd, ok: result.ok, error: result.error, image: result.imageBase64)
+
+        case "app_launch":
+            guard let bundleId = json["bundle_id"] as? String else {
+                writeResponse(fd, ok: false, error: "app_launch requires bundle_id")
+                return
+            }
+            let url = json["url"] as? String
+            let semaphore = DispatchSemaphore(value: 0)
+            let result = ResultBox()
+
+            Task { @MainActor in
+                defer { semaphore.signal() }
+                guard let controller, let ctl = controller.control, ctl.isConnected else {
+                    result.error = "guest not connected"
+                    return
+                }
+                do {
+                    let pid = try await ctl.appLaunch(bundleId: bundleId, url: url)
+                    result.ok = true
+                    result.path = "\(pid)"  // reuse path field for pid
+                    if wantScreen {
+                        try? await Task.sleep(nanoseconds: UInt64(screenDelay) * 1_000_000)
+                        result.imageBase64 = await controller.captureCompactScreenshot()
+                    }
+                } catch {
+                    result.error = "\(error)"
+                }
+            }
+
+            semaphore.wait()
+            writeResponse(fd, ok: result.ok, path: result.path, error: result.error, image: result.imageBase64)
+
+        case "ipa_install":
+            guard let ipaPath = json["path"] as? String else {
+                writeResponse(fd, ok: false, error: "ipa_install requires path (local file path)")
+                return
+            }
+            let localURL = URL(fileURLWithPath: ipaPath)
+            guard FileManager.default.fileExists(atPath: ipaPath) else {
+                writeResponse(fd, ok: false, error: "file not found: \(ipaPath)")
+                return
+            }
+            let semaphore = DispatchSemaphore(value: 0)
+            let result = ResultBox()
+
+            Task { @MainActor in
+                defer { semaphore.signal() }
+                guard let controller, let ctl = controller.control, ctl.isConnected else {
+                    result.error = "guest not connected"
+                    return
+                }
+                do {
+                    let msg = try await ctl.installIPA(localURL: localURL)
+                    result.ok = true
+                    result.path = msg
+                } catch {
+                    result.error = "\(error)"
+                }
+            }
+
+            semaphore.wait()
+            writeResponse(fd, ok: result.ok, path: result.path, error: result.error, image: nil)
+        case "app_terminate":
+            guard let bundleId = json["bundle_id"] as? String else {
+                writeResponse(fd, ok: false, error: "app_terminate requires bundle_id")
+                return
+            }
+            let semaphore = DispatchSemaphore(value: 0)
+            let result = ResultBox()
+
+            Task { @MainActor in
+                defer { semaphore.signal() }
+                guard let controller, let ctl = controller.control, ctl.isConnected else {
+                    result.error = "guest not connected"
+                    return
+                }
+                do {
+                    try await ctl.appTerminate(bundleId: bundleId)
+                    result.ok = true
+                    result.path = "terminated \(bundleId)"
+                } catch {
+                    result.error = "\(error)"
+                }
+            }
+
+            semaphore.wait()
+            writeResponse(fd, ok: result.ok, path: result.path, error: result.error, image: nil)
 
         default:
             writeResponse(fd, ok: false, error: "unknown command: \(type)")

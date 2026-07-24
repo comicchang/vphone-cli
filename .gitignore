@@ -312,7 +312,7 @@ __marimo__/
 .streamlit/secrets.toml
 *.resolved
 /VM
-/ipsws/
+/ipsws
 .limd/
 .tools/
 /.swiftpm
@@ -333,3 +333,16 @@ setup_logs/
 /vm.backups
 /vm-*/
 /debs/
+.serena/
+.memsearch/
+.omo/run-continuation/
+vm_*.png
+verify/results/pyramid*/
+local-verify/
+
+# Logseq agent directories (drafts, ipc, mailbox — runtime data)
+.drafts/
+mi-docs/
+
+# VM data directories (vm26/, vm27/ etc.)
+/vm[0-9]*/

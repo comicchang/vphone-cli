@@ -8,12 +8,9 @@ VM_DIR      ?= vm
 # (e.g. external SSD) VM_DIR values. `abspath` leaves absolute paths intact
 # and joins relative ones against CURDIR — use this for the VM directory arg.
 VM_DIR_ABS  := $(abspath $(VM_DIR))
-# CPU cores, memory (MB), disk size (GB) — used only during vm_new.
-# NB: no inline comments on these `?=` lines — make would fold the trailing
-# whitespace into the value (e.g. CPU="8   ") and break numeric consumers.
-CPU         ?= 8
-MEMORY      ?= 8192
-DISK_SIZE   ?= 64
+CPU         ?= 8          # CPU cores (only used during vm_new)
+MEMORY      ?= 8192       # Memory in MB (only used during vm_new)
+DISK_SIZE   ?= 64         # Disk size in GB (only used during vm_new)
 BACKUPS_DIR ?= vm.backups
 NAME        ?=
 BACKUP_INCLUDE_IPSW ?= 0
@@ -112,10 +109,8 @@ help:
 	@echo "  make fw_patch_dev            Patch boot chain with Swift pipeline (dev mode TXM patches)"
 	@echo "  make fw_patch_jb             Patch boot chain with Swift pipeline (dev + JB extensions)"
 	@echo "    Options: FORCE_EXC_GUARD=1        (see fw_patch above)"
-	@echo "             FRIDA=1                  Opt in to the Frida Stalker kernel relaxations"
 	@echo "  make fw_patch_exp            Patch boot chain with Swift pipeline (JB + EXP experimental)"
 	@echo "    Options: FORCE_EXC_GUARD=1        (see fw_patch above)"
-	@echo "             FRIDA=1                  Opt in to the Frida Stalker kernel relaxations"
 	@echo ""
 	@echo "Testing:"
 	@echo "  make test_jb_patches         Run all JB kernel patches (incl. Sandbox) over every supported cloudOS kernel"
@@ -160,6 +155,7 @@ setup_machine:
 	NO_BINPACK="$(NO_BINPACK)" \
 	NO_VPHONED="$(NO_VPHONED)" \
 	SPOOF_BUILD="$(SPOOF_BUILD)" \
+	VM_DIR="$(VM_DIR)" \
 	zsh $(SCRIPTS)/setup_machine.sh \
 		$(if $(filter 1 true yes YES TRUE,$(JB)),--jb,) \
 		$(if $(filter 1 true yes YES TRUE,$(DEV)),--dev,) \
@@ -225,6 +221,7 @@ $(BINARY): $(SWIFT_SOURCES) Package.swift $(ENTITLEMENTS)
 	@echo "  signed OK"
 
 bundle: build $(INFO_PLIST)
+	@rm -rf $(BUNDLE)/Contents/MacOS
 	@mkdir -p $(BUNDLE)/Contents/MacOS $(BUNDLE)/Contents/Resources
 	@cp -f $(BINARY) $(BUNDLE_BIN)
 	@cp -f $(INFO_PLIST) $(BUNDLE)/Contents/Info.plist
@@ -257,7 +254,7 @@ vphoned:
 
 vm_new:
 	CPU="$(CPU)" MEMORY="$(MEMORY)" \
-	zsh $(SCRIPTS)/vm_create.sh --dir "$(VM_DIR)" --disk-size $(DISK_SIZE)
+	zsh $(SCRIPTS)/vm_create.sh --dir $(VM_DIR) --disk-size $(DISK_SIZE)
 
 vm_backup:
 	VM_DIR="$(VM_DIR)" BACKUPS_DIR="$(BACKUPS_DIR)" NAME="$(NAME)" BACKUP_INCLUDE_IPSW="$(BACKUP_INCLUDE_IPSW)" \
@@ -326,17 +323,18 @@ boot_binary_check: $(BINARY)
 	$(call BOOT_BINARY_CHECK,--assert-bootable)
 
 boot: bundle vphoned boot_binary_check
-	cd "$(VM_DIR)" && "$(CURDIR)/$(BUNDLE_BIN)" \
+	cd $(VM_DIR) && "$(CURDIR)/$(BUNDLE_BIN)" \
 		--config ./config.plist
 
 boot_less: bundle boot_binary_check_less
-	cd "$(VM_DIR)" && "$(CURDIR)/$(BUNDLE_BIN)" \
+	cd $(VM_DIR) && "$(CURDIR)/$(BUNDLE_BIN)" \
 		--config ./config.plist \
 		--variant less \
 		$(if $(filter 1 true yes YES TRUE,$(NO_VPHONED)),--no-vphoned,)
 
-boot_dfu: build boot_binary_check
-	cd "$(VM_DIR)" && "$(CURDIR)/$(BINARY)" \
+boot_dfu: patcher_build
+	codesign --force --sign - --entitlements $(ENTITLEMENTS) $(PATCHER_BINARY)
+	cd $(VM_DIR) && "$(CURDIR)/$(PATCHER_BINARY)" \
 		--config ./config.plist \
 		--dfu
 
@@ -347,7 +345,7 @@ boot_dfu: build boot_binary_check
 .PHONY: fw_prepare fw_patch fw_patch_less fw_patch_dev fw_patch_jb
 
 fw_prepare:
-	cd "$(VM_DIR)" && bash "$(CURDIR)/$(SCRIPTS)/fw_prepare.sh"
+	cd $(VM_DIR) && bash "$(CURDIR)/$(SCRIPTS)/fw_prepare.sh"
 
 fw_patch: patcher_build
 	"$(CURDIR)/$(PATCHER_BINARY)" patch-firmware --vm-directory "$(VM_DIR_ABS)" --variant regular \
@@ -357,8 +355,6 @@ UID := $(shell id -u)
 ifeq ($(UID),0)
 fw_patch_less: patcher_build
 	"$(CURDIR)/$(PATCHER_BINARY)" patch-firmware --vm-directory "$(VM_DIR_ABS)" \
-	--variant less \
-	$(if $(filter 1 true yes YES TRUE,$(NO_BINPACK)),--no-binpack,)
 	$(if $(filter 1 true yes YES TRUE,$(NO_VPHONED)),--no-vphoned,)
 else
 fw_patch_less:
@@ -371,14 +367,11 @@ fw_patch_dev: patcher_build
 
 fw_patch_jb: patcher_build
 	"$(CURDIR)/$(PATCHER_BINARY)" patch-firmware --vm-directory "$(VM_DIR_ABS)" --variant jb \
-	$(if $(filter 1 true yes YES TRUE,$(FORCE_EXC_GUARD)),--force-exc-guard,) \
-	$(if $(filter 1 true yes YES TRUE,$(FRIDA)),--frida,)
+	$(if $(filter 1 true yes YES TRUE,$(FORCE_EXC_GUARD)),--force-exc-guard,)
 
 fw_patch_exp: patcher_build
 	"$(CURDIR)/$(PATCHER_BINARY)" patch-firmware --vm-directory "$(VM_DIR_ABS)" --variant exp \
-	$(if $(filter 1 true yes YES TRUE,$(FORCE_EXC_GUARD)),--force-exc-guard,) \
-	$(if $(filter 1 true yes YES TRUE,$(FRIDA)),--frida,)
-
+	$(if $(filter 1 true yes YES TRUE,$(FORCE_EXC_GUARD)),--force-exc-guard,)
 .PHONY: test_jb_patches
 
 # Run the full JB kernel patch layer (every hook, incl. all Sandbox ops hooks)
@@ -485,13 +478,13 @@ cfw_install_dev:
 	$(MAKE) cfw_install_host VARIANT=dev
 
 cfw_install_jb:
-	$(MAKE) cfw_install_host VARIANT=jb FRIDA="$(FRIDA)"
+	$(MAKE) cfw_install_host VARIANT=jb
 
 cfw_install_exp:
-	$(MAKE) cfw_install_host VARIANT=exp SPOOF_BUILD="$(SPOOF_BUILD)" FRIDA="$(FRIDA)"
+	$(MAKE) cfw_install_host VARIANT=exp SPOOF_BUILD="$(SPOOF_BUILD)"
 
 # CFW install: place files via host mount + flip the boot snapshot offline.
 # VM must be off; re-execs under sudo.
 #   Options: VARIANT=regular|dev|jb|exp (default exp)  SPOOF_BUILD=<id> (exp)
 cfw_install_host:
-	$(if $(SPOOF_BUILD),SPOOF_BUILD="$(SPOOF_BUILD)") $(if $(filter 1 true yes YES TRUE,$(FRIDA)),VPHONE_FRIDA=1) zsh "$(CURDIR)/$(SCRIPTS)/cfw_install_host.sh" --variant $(if $(VARIANT),$(VARIANT),exp) "$(VM_DIR_ABS)"
+	$(if $(SPOOF_BUILD),SPOOF_BUILD="$(SPOOF_BUILD)") zsh "$(CURDIR)/$(SCRIPTS)/cfw_install_host.sh" --variant $(if $(VARIANT),$(VARIANT),exp) "$(VM_DIR_ABS)"
