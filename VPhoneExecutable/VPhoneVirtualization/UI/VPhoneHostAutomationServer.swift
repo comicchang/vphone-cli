@@ -28,6 +28,10 @@ import ImageIO
 ///   {"t":"key","name":"home"}                   → hardware key (home/power/volup/voldown)
 ///   {"t":"key","name":"cmd+v"}                  → any other name goes to vphoned `input.key`
 ///   {"t":"type","text":"Hello"}                 → set guest clipboard
+///   {"t":"open_url","url":"https://example.com"} → open a URL in the guest
+///   {"t":"app_launch","bundle_id":"com.example.App"} → launch a guest app
+///   {"t":"ipa_install","path":"/path/to/app.ipa"} → install a local IPA
+///   {"t":"app_terminate","bundle_id":"com.example.App"} → terminate a guest app
 ///   {"t":"ping"}                                → vphoned request/response
 ///   {"t":"rpc","method":"input.type","params":{"text":"ls\n"}}
 ///                                               → any vphoned method; its result is in `"result"`
@@ -212,6 +216,43 @@ class VPhoneHostAutomationServer {
                     return Self.reply(ok: false, error: "type requires text")
                 }
                 try await connectedControl().clipboardSet(text: text)
+
+            case "open_url":
+                guard let url = json["url"] as? String else {
+                    return Self.reply(ok: false, error: "open_url requires url")
+                }
+                try await connectedControl().openURL(url)
+
+            case "app_launch":
+                guard let bundleID = json["bundle_id"] as? String else {
+                    return Self.reply(ok: false, error: "app_launch requires bundle_id")
+                }
+                var params: [String: Any] = ["bundle_id": bundleID]
+                if let url = json["url"] as? String {
+                    params["url"] = url
+                }
+                let result = try await connectedControl().callAfterQueuedInput("apps.launch", params: params)
+                let image = wantScreen ? await settledCompactScreenshot(delayMs: screenDelay) : nil
+                let path = (result["pid"] as? Int).map { String($0) }
+                return Self.reply(ok: true, path: path, image: image, result: result)
+
+            case "ipa_install":
+                guard let path = json["path"] as? String else {
+                    return Self.reply(ok: false, error: "ipa_install requires path")
+                }
+                let localURL = URL(fileURLWithPath: path)
+                guard FileManager.default.fileExists(atPath: path) else {
+                    return Self.reply(ok: false, error: "file not found: \(path)")
+                }
+                let message = try await connectedControl().installIPA(localURL: localURL)
+                return Self.reply(ok: true, path: message)
+
+            case "app_terminate":
+                guard let bundleID = json["bundle_id"] as? String else {
+                    return Self.reply(ok: false, error: "app_terminate requires bundle_id")
+                }
+                let result = try await connectedControl().appTerminate(bundleID: bundleID)
+                return Self.reply(ok: true, path: "terminated \(bundleID)", result: result)
 
             case "rpc":
                 guard let method = json["method"] as? String, !method.isEmpty else {

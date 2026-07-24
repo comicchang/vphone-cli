@@ -325,7 +325,7 @@ __marimo__/
 # file belongs in the tree.
 !Package.resolved
 /VM
-/ipsws/
+/ipsws
 .limd/
 .tools/
 /.swiftpm
@@ -356,3 +356,16 @@ setup_logs/
 VPhoneLaunchpad/Configuration/Developer.xcconfig
 VPhoneLaunchpad/Configuration/DevelopmentDeveloper.xcconfig
 .claude/worktrees
+
+
+
+vm_*.png
+verify/results/pyramid*/
+local-verify/
+
+
+
+
+
+# VM data directories (vm26/, vm27/ etc.)
+/vm[0-9]*/
