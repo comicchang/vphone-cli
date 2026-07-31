@@ -28,6 +28,9 @@ import ImageIO
 ///   {"t":"key","name":"home"}                   → hardware key (home/power/volup/voldown)
 ///   {"t":"key","name":"cmd+v"}                  → any other name goes to vphoned `input.key`
 ///   {"t":"type","text":"Hello"}                 → set guest clipboard
+///   {"t":"touch","phase":0,"x":0.5,"y":0.5}     → guest HID digitizer event
+///   {"t":"file_list","path":"/var/mobile"}       → list guest directory entries
+///   {"t":"file_delete","path":"/var/mobile/tmp/x"} → delete a guest file
 ///   {"t":"open_url","url":"https://example.com"} → open a URL in the guest
 ///   {"t":"app_launch","bundle_id":"com.example.App"} → launch a guest app
 ///   {"t":"ipa_install","path":"/path/to/app.ipa"} → install a local IPA
@@ -216,6 +219,32 @@ class VPhoneHostAutomationServer {
                     return Self.reply(ok: false, error: "type requires text")
                 }
                 try await connectedControl().clipboardSet(text: text)
+
+            case "touch":
+                guard let phase = json["phase"] as? Int,
+                      let x = json["x"] as? Double,
+                      let y = json["y"] as? Double
+                else {
+                    return Self.reply(
+                        ok: false,
+                        error: "touch requires phase(0/1/3), x, y (normalized 0..1)")
+                }
+                touchControl().sendTouch(phase: phase, x: x, y: y)
+                return Self.reply(ok: true)
+
+            case "file_list":
+                guard let path = json["path"] as? String else {
+                    return Self.reply(ok: false, error: "file_list requires path")
+                }
+                let entries = try await connectedControl().listFiles(path: path)
+                return Self.reply(ok: true, entries: entries)
+
+            case "file_delete":
+                guard let path = json["path"] as? String else {
+                    return Self.reply(ok: false, error: "file_delete requires path")
+                }
+                try await connectedControl().deleteFile(path: path)
+                return Self.reply(ok: true)
 
             case "open_url":
                 guard let url = json["url"] as? String else {
@@ -504,10 +533,14 @@ class VPhoneHostAutomationServer {
         error: String? = nil,
         image: String? = nil,
         result: [String: Any]? = nil,
+        entries: [[String: Any]]? = nil,
     ) -> Data {
         var dict: [String: Any] = ["ok": ok]
         if let result {
             dict["result"] = result
+        }
+        if let entries {
+            dict["entries"] = entries
         }
         if let path {
             dict["path"] = path

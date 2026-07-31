@@ -196,15 +196,20 @@ struct VPhoneCustomFirmwareInstaller {
         var systemMounted = false
         var dataMounted = false
         defer {
+            _ = try? tool("/bin/sync", [], quiet: true)
             if dataMounted,
                (try? tool("/sbin/umount", [data.path], quiet: true)) == nil
             {
-                _ = try? tool("/sbin/umount", ["-f", data.path], quiet: true)
+                if (try? tool("/sbin/umount", ["-f", data.path], quiet: true)) == nil {
+                    _ = try? tool("/usr/sbin/diskutil", ["unmount", "force", data.path], quiet: true)
+                }
             }
             if systemMounted,
                (try? tool("/sbin/umount", [system.path], quiet: true)) == nil
             {
-                _ = try? tool("/sbin/umount", ["-f", system.path], quiet: true)
+                if (try? tool("/sbin/umount", ["-f", system.path], quiet: true)) == nil {
+                    _ = try? tool("/usr/sbin/diskutil", ["unmount", "force", system.path], quiet: true)
+                }
             }
         }
         systemMounted = true
@@ -227,12 +232,16 @@ struct VPhoneCustomFirmwareInstaller {
             )
         }
         try patchPreboot(volumes: volumes, work: work, plan: plan)
-        _ = try tool("/sbin/umount", [data.path])
-        dataMounted = false
-        _ = try tool("/sbin/umount", [system.path])
-        systemMounted = false
-        _ = try tool("/usr/bin/hdiutil", ["detach", baseDisk], quiet: true)
-        diskAttached = false
+        _ = try? tool("/bin/sync", [], quiet: true)
+        if (try? tool("/sbin/umount", [data.path], quiet: true)) != nil {
+            dataMounted = false
+        }
+        if (try? tool("/sbin/umount", [system.path], quiet: true)) != nil {
+            systemMounted = false
+        }
+        if (try? tool("/usr/bin/hdiutil", ["detach", baseDisk], quiet: true)) != nil {
+            diskAttached = false
+        }
         if cloned {
             try VPhoneAPFSSnapshot.rename(imageAt: image)
         } else {
@@ -1064,6 +1073,7 @@ struct VPhoneCustomFirmwareInstaller {
     }
 
     private func detachImage(at mount: URL) throws {
+        _ = try? tool("/bin/sync", [], quiet: true)
         do {
             _ = try tool("/usr/bin/hdiutil", ["detach", mount.path], quiet: true)
         } catch {
