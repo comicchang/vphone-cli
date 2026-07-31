@@ -312,6 +312,62 @@ class VPhoneHostControl {
             semaphore.wait()
             writeResponse(fd, ok: result.ok, error: result.error, image: result.imageBase64)
 
+        case "touch":
+            // Guest-side HID digitizer injection (bypasses VZ USB touchscreen)
+            guard let phase = json["phase"] as? Int,
+                  let x = json["x"] as? Double, let y = json["y"] as? Double else {
+                writeResponse(fd, ok: false, error: "touch requires phase(0/1/3), x, y (normalized 0..1)")
+                return
+            }
+            Task { @MainActor in
+                controller?.control?.sendTouch(phase: phase, x: x, y: y)
+            }
+            writeResponse(fd, ok: true, error: nil, image: nil)
+
+        case "file_delete":
+            guard let path = json["path"] as? String else {
+                writeResponse(fd, ok: false, error: "file_delete requires path")
+                return
+            }
+            Task { @MainActor in
+                do {
+                    try await controller?.control?.deleteFile(path: path)
+                    writeResponse(fd, ok: true, error: nil, image: nil)
+                } catch {
+                    writeResponse(fd, ok: false, error: "file_delete failed: \(error)", image: nil)
+                }
+            }
+
+        case "file_list":
+            guard let path = json["path"] as? String else {
+                writeResponse(fd, ok: false, error: "file_list requires path")
+                return
+            }
+            Task { @MainActor in
+                do {
+                    let entries = try await controller?.control?.listFiles(path: path) ?? []
+                    let dict: [String: Any] = ["ok": true, "entries": entries]
+                    guard let data = try? JSONSerialization.data(withJSONObject: dict),
+                          var json = String(data: data, encoding: .utf8) else {
+                        writeResponse(fd, ok: false, error: "file_list serialization failed", image: nil)
+                        return
+                    }
+                    json += "\n"
+                    json.withCString { ptr in
+                        var remaining = strlen(ptr)
+                        var offset = 0
+                        while remaining > 0 {
+                            let written = write(fd, ptr.advanced(by: offset), remaining)
+                            if written <= 0 { break }
+                            offset += written
+                            remaining -= written
+                        }
+                    }
+                } catch {
+                    writeResponse(fd, ok: false, error: "file_list failed: \(error)", image: nil)
+                }
+            }
+
         case "swipe":
             guard let x1 = json["x1"] as? Double, let y1 = json["y1"] as? Double,
                   let x2 = json["x2"] as? Double, let y2 = json["y2"] as? Double

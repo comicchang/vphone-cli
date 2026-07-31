@@ -81,7 +81,8 @@ _pre_cleanup() {
     echo "    $dev"
   done
 
-  # Unmount any cfwhost mount points first.
+  # Unmount any cfwhost mount points first (flush pending writes first).
+  sync 2>/dev/null || true
   local mnt
   for mnt in /private/tmp/cfwhost/mnt{1,3,5}; do
     if mount | grep -q "on $mnt "; then
@@ -132,9 +133,11 @@ echo "[*] attached: container=$CONT system=$SYS"
 
 cleanup() {
   local m rc=0
+  # Flush pending writes so umount doesn't fail with EBUSY.
+  sync 2>/dev/null || true
   for m in /private/tmp/cfwhost/mnt1 /private/tmp/cfwhost/mnt3 /private/tmp/cfwhost/mnt5; do
     if mount 2>/dev/null | grep -q "on $m "; then
-      if ! umount "$m" 2>/dev/null; then
+      if ! umount "$m" 2>/dev/null && ! diskutil unmount force "$m" 2>/dev/null; then
         echo "[-] cleanup: failed to unmount $m" >&2
         rc=1
       fi
@@ -158,7 +161,7 @@ echo "[*] running $INSTALLER (files placed on host mounts)..."
     ${VPHONE_FRIDA:+VPHONE_FRIDA="$VPHONE_FRIDA"} \
     zsh "$SCRIPT_DIR/$INSTALLER" . )
 
-cleanup
+cleanup || true
 trap - EXIT INT TERM
 
 echo "[*] flipping boot snapshot offline (com.apple.os.update -> live volume)..."
