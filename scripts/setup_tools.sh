@@ -25,7 +25,7 @@ ensure_repo_submodule() {
 
 # ── Brew packages ──────────────────────────────────────────────
 
-echo "[1/4] Checking brew packages..."
+echo "[1/5] Checking brew packages..."
 
 BREW_PACKAGES=(aria2 gnu-tar openssl@3 ldid-procursus sshpass zstd cmake)
 BREW_MISSING=()
@@ -43,9 +43,17 @@ else
     echo "  All brew packages installed"
 fi
 
+echo "[2/5] vendor submodules"
+
+VENDOR_SUBMODULES=(vendor/swift-argument-parser vendor/Dynamic vendor/libcapstone-spm vendor/libimg4-spm vendor/MachOKit)
+for vsm in "${VENDOR_SUBMODULES[@]}"; do
+    ensure_repo_submodule "$vsm"
+done
+echo "  All vendor submodules initialized"
+
 # ── Trustcache ─────────────────────────────────────────────────
 
-echo "[2/4] trustcache"
+echo "[3/5] trustcache"
 
 TRUSTCACHE_BIN="$TOOLS_PREFIX/bin/trustcache"
 if [[ -x "$TRUSTCACHE_BIN" ]]; then
@@ -74,8 +82,7 @@ fi
 
 # ── insert_dylib ───────────────────────────────────────────────
 
-echo "[3/4] insert_dylib"
-
+echo "[4/5] insert_dylib"
 INSERT_DYLIB_BIN="$TOOLS_PREFIX/bin/insert_dylib"
 if [[ -x "$INSERT_DYLIB_BIN" ]]; then
     echo "  Already built: $INSERT_DYLIB_BIN"
@@ -89,8 +96,7 @@ else
 fi
 
 # ── Python venv ────────────────────────────────────────────────
-
-echo "[4/4] Python venv"
+echo "[5/5] Python venv"
 zsh "$SCRIPT_DIR/setup_venv.sh"
 
 echo ""
