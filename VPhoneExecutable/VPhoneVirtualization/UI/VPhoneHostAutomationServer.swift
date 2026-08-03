@@ -25,7 +25,7 @@ import ImageIO
 ///   {"t":"screenshot","path":"/tmp/shot.png"}   → save to explicit path (PNG/JPEG by extension)
 ///   {"t":"tap","x":645,"y":1398}                → tap at pixel coordinates
 ///   {"t":"swipe","x1":645,"y1":2600,"x2":645,"y2":1400,"ms":300}  → swipe
-///   {"t":"key","name":"home"}                   → hardware key (home/power/volup/voldown)
+///   {"t":"key","name":"home"}                   → hardware key (home/power/volup/voldown/spotlight)
 ///   {"t":"key","name":"cmd+v"}                  → any other name goes to vphoned `input.key`
 ///   {"t":"type","text":"Hello"}                 → set guest clipboard
 ///   {"t":"touch","phase":0,"x":0.5,"y":0.5}     → guest HID digitizer event
@@ -319,6 +319,12 @@ class VPhoneHostAutomationServer {
 
     private func pressKey(_ name: String) async throws {
         let control = try connectedControl()
+        if name == "spotlight" {
+            control.sendHIDDown(page: 0x07, usage: 0xE3)
+            control.sendHIDPress(page: 0x07, usage: 0x2C)
+            control.sendHIDUp(page: 0x07, usage: 0xE3)
+            return
+        }
         let hidKey: (page: UInt32, usage: UInt32)? = switch name {
         case "home": (0x0C, 0x40)
         case "power": (0x0C, 0x30)
