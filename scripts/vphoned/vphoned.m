@@ -114,8 +114,7 @@ static NSString *primary_ipv4_address(void) {
   for (struct ifaddrs *cur = ifap; cur != NULL; cur = cur->ifa_next) {
     if (cur->ifa_addr == NULL || cur->ifa_addr->sa_family != AF_INET)
       continue;
-    if ((cur->ifa_flags & IFF_UP) == 0 ||
-        (cur->ifa_flags & IFF_LOOPBACK) != 0)
+    if ((cur->ifa_flags & IFF_UP) == 0 || (cur->ifa_flags & IFF_LOOPBACK) != 0)
       continue;
 
     char buf[INET_ADDRSTRLEN] = {0};
@@ -349,9 +348,9 @@ static BOOL handle_client(int fd) {
     } mutableCopy];
     NSOperatingSystemVersion osv =
         [[NSProcessInfo processInfo] operatingSystemVersion];
-    helloResp[@"ios"] =
-        [NSString stringWithFormat:@"%ld.%ld.%ld", (long)osv.majorVersion,
-                                   (long)osv.minorVersion, (long)osv.patchVersion];
+    helloResp[@"ios"] = [NSString
+        stringWithFormat:@"%ld.%ld.%ld", (long)osv.majorVersion,
+                         (long)osv.minorVersion, (long)osv.patchVersion];
     NSString *ip = primary_ipv4_address();
     if (ip)
       helloResp[@"ip"] = ip;
@@ -485,6 +484,11 @@ int main(int argc, char *argv[]) {
       unlink(CACHE_PATH);
     }
 #endif
+
+    // Ignore SIGPIPE: vsock disconnect triggers EPIPE on write(), and the
+    // default handler kills the process with exit code 141.  We handle
+    // write failures via return codes already (vp_write_fully checks n<=0).
+    signal(SIGPIPE, SIG_IGN);
 
     if (!vp_hid_load())
       return 1;
