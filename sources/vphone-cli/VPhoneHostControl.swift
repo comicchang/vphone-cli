@@ -231,6 +231,9 @@ class VPhoneHostControl {
 
   private nonisolated static func handleClient(_ fd: Int32, controller: VPhoneHostControl?) {
     defer { close(fd) }
+    // Prevent SIGPIPE: client may close before we write response.
+    var opt: Int32 = 1
+    _ = setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &opt, 4)
 
     guard let line = readLine(from: fd) else { return }
 

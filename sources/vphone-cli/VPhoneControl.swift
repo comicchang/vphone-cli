@@ -159,6 +159,7 @@ class VPhoneControl {
                 guard let self else { return }
                 guard self.isCurrentAttempt(attemptToken) else { return }
                 switch result {
+                case let .success(conn):
                     // Prevent SIGPIPE on guest disconnect (vsock EPIPE kills host process).
                     var opt: Int32 = 1
                     _ = Darwin.setsockopt(conn.fileDescriptor, SOL_SOCKET, SO_NOSIGPIPE, &opt, 4)
