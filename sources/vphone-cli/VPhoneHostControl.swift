@@ -412,6 +412,34 @@ class VPhoneHostControl {
       semaphore.wait()
       writeResponse(fd, ok: result.ok, error: result.error, image: result.imageBase64)
 
+    case "touchswipe":
+      guard let x1 = json["x1"] as? Double, let y1 = json["y1"] as? Double,
+        let x2 = json["x2"] as? Double, let y2 = json["y2"] as? Double
+      else {
+        writeResponse(fd, ok: false, error: "touchswipe requires x1, y1, x2, y2")
+        return
+      }
+      let dur = json["ms"] as? Int ?? 500
+      let semaphore2 = DispatchSemaphore(value: 0)
+      let result2 = ResultBox()
+      Task { @MainActor in
+        defer { semaphore2.signal() }
+        guard let controller, let view = controller.captureView, view.window != nil else {
+          result2.error = "no active VM view"
+          return
+        }
+        view.injectTouchSwipe(
+          fromX: x1, fromY: y1, toX: x2, toY: y2,
+          screenWidth: controller.screenWidth, screenHeight: controller.screenHeight,
+          durationMs: dur)
+        result2.ok = true
+        if wantScreen {
+          try? await Task.sleep(nanoseconds: UInt64(dur + screenDelay) * 1_000_000)
+          result2.imageBase64 = await controller.captureCompactScreenshot()
+        }
+      }
+      semaphore2.wait()
+      writeResponse(fd, ok: result2.ok, error: result2.error, image: result2.imageBase64)
     case "key":
       guard let name = json["name"] as? String else {
         writeResponse(fd, ok: false, error: "key requires name (home/power/volup/voldown)")
