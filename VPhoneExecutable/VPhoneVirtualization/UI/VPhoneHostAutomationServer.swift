@@ -25,6 +25,7 @@ import ImageIO
 ///   {"t":"screenshot","path":"/tmp/shot.png"}   → save to explicit path (PNG/JPEG by extension)
 ///   {"t":"tap","x":645,"y":1398}                → tap at pixel coordinates
 ///   {"t":"swipe","x1":645,"y1":2600,"x2":645,"y2":1400,"ms":300}  → swipe
+///   {"t":"touchswipe","x1":0,"y1":1,"x2":0.2,"y2":0.8,"ms":500}  → guest-touch swipe
 ///   {"t":"key","name":"home"}                   → hardware key (home/power/volup/voldown/spotlight)
 ///   {"t":"key","name":"cmd+v"}                  → any other name goes to vphoned `input.key`
 ///   {"t":"type","text":"Hello"}                 → set guest clipboard
@@ -204,6 +205,16 @@ class VPhoneHostAutomationServer {
                     return Self.reply(ok: false, error: "swipe requires x1, y1, x2, y2")
                 }
                 try await swipe(x1: x1, y1: y1, x2: x2, y2: y2, durationMs: json["ms"] as? Int ?? 300)
+
+            case "touchswipe":
+                guard let x1 = json["x1"] as? Double,
+                      let y1 = json["y1"] as? Double,
+                      let x2 = json["x2"] as? Double,
+                      let y2 = json["y2"] as? Double
+                else {
+                    return Self.reply(ok: false, error: "touchswipe requires x1, y1, x2, y2")
+                }
+                try await swipe(x1: x1, y1: y1, x2: x2, y2: y2, durationMs: json["ms"] as? Int ?? 500)
 
             case "key":
                 guard let name = json["name"] as? String else {
