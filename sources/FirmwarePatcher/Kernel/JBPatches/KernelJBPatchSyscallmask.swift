@@ -79,17 +79,26 @@ extension KernelJBPatcher {
 
         // mov x17, x0  (save RO selector that was in x0 before the pre-setter BL)
         let movX17X0: UInt32 = 0xAA00_03F1 // ORR X17, XZR, X0
-        emit(callOff, ARM64.encodeU32(movX17X0),
-             patchID: "jb.syscallmask.save_selector",
-             description: "mov x17,x0 [syscallmask C22 save RO selector]")
+        emit(
+            callOff,
+            ARM64.encodeU32(movX17X0),
+            patchID: "jb.syscallmask.save_selector",
+            description: "mov x17,x0 [syscallmask C22 save RO selector]"
+        )
 
-        emit(branchOff, branchToCave,
-             patchID: "jb.syscallmask.tail_redirect",
-             description: "b cave [syscallmask C22 mutate mask then setter]")
+        emit(
+            branchOff,
+            branchToCave,
+            patchID: "jb.syscallmask.tail_redirect",
+            description: "b cave [syscallmask C22 mutate mask then setter]"
+        )
 
-        emit(caveOff, caveBytes,
-             patchID: "jb.syscallmask.c22_cave",
-             description: "syscallmask C22 cave (ff blob 0x\(String(format: "%X", Self.syscallmaskFFBlobSize)) + structural mutator + setter tail)")
+        emit(
+            caveOff,
+            caveBytes,
+            patchID: "jb.syscallmask.c22_cave",
+            description: "syscallmask C22 cave (ff blob 0x\(String(format: "%X", Self.syscallmaskFFBlobSize)) + structural mutator + setter tail)"
+        )
 
         return true
     }

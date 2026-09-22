@@ -15,9 +15,13 @@ struct ResourcesTests {
         // Fake a dev tree: <root>/.build/release/vphone-cli with a <root>/scripts dir.
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(
-            at: root.appendingPathComponent(".build/release"), withIntermediateDirectories: true)
+            at: root.appendingPathComponent(".build/release"),
+            withIntermediateDirectories: true
+        )
         try FileManager.default.createDirectory(
-            at: root.appendingPathComponent("scripts"), withIntermediateDirectories: true)
+            at: root.appendingPathComponent("scripts"),
+            withIntermediateDirectories: true
+        )
         defer { try? FileManager.default.removeItem(at: root) }
         let exe = root.appendingPathComponent(".build/release/vphone-cli").path
         let r = VPhoneResources.resolve(executablePath: exe)

@@ -10,9 +10,11 @@ enum VPhoneFirmwareSelection {
     /// specified → returns the inputs unchanged (fw_prepare defaults fill gaps).
     static func resolve(iphone: String?, cloudos: String?) throws -> VPhoneFirmwareSources {
         try VPhoneFirmwarePicker.resolve(
-            iphone: iphone, cloudos: cloudos,
+            iphone: iphone,
+            cloudos: cloudos,
             isInteractive: isTTY,
             read: { readLine(strippingNewline: true) },
-            write: { err($0) })
+            write: { err($0) }
+        )
     }
 }

@@ -66,7 +66,9 @@ class VPhoneMenuController {
         let appMenu = NSMenu(title: "vphone")
         #if canImport(VPhoneBuildInfo)
             let buildItem = NSMenuItem(
-                title: "Build: \(VPhoneBuildInfo.commitHash)", action: nil, keyEquivalent: ""
+                title: "Build: \(VPhoneBuildInfo.commitHash)",
+                action: nil,
+                keyEquivalent: ""
             )
         #else
             let buildItem = NSMenuItem(title: "Build: unknown", action: nil, keyEquivalent: "")
@@ -75,7 +77,9 @@ class VPhoneMenuController {
         appMenu.addItem(buildItem)
         appMenu.addItem(NSMenuItem.separator())
         appMenu.addItem(
-            withTitle: "Quit vphone", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"
+            withTitle: "Quit vphone",
+            action: #selector(NSApplication.terminate(_:)),
+            keyEquivalent: "q"
         )
         appMenuItem.submenu = appMenu
         mainMenu.addItem(appMenuItem)
@@ -89,10 +93,14 @@ class VPhoneMenuController {
         let windowMenuItem = NSMenuItem()
         let windowMenu = NSMenu(title: "Window")
         windowMenu.addItem(
-            withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"
+            withTitle: "Close",
+            action: #selector(NSWindow.performClose(_:)),
+            keyEquivalent: "w"
         )
         windowMenu.addItem(
-            withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"
+            withTitle: "Minimize",
+            action: #selector(NSWindow.performMiniaturize(_:)),
+            keyEquivalent: "m"
         )
         windowMenuItem.submenu = windowMenu
         mainMenu.addItem(windowMenuItem)

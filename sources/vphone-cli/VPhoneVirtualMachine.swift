@@ -137,14 +137,16 @@ class VPhoneVirtualMachine: NSObject, VZVirtualMachineDelegate {
         config.platform = platform
         config.cpuCount = max(options.cpuCount, VZVirtualMachineConfiguration.minimumAllowedCPUCount)
         config.memorySize = max(
-            options.memorySize, VZVirtualMachineConfiguration.minimumAllowedMemorySize
+            options.memorySize,
+            VZVirtualMachineConfiguration.minimumAllowedMemorySize
         )
 
         // Display
         let gfx = VZMacGraphicsDeviceConfiguration()
         gfx.displays = [
             VZMacGraphicsDisplayConfiguration(
-                widthInPixels: options.screenWidth, heightInPixels: options.screenHeight,
+                widthInPixels: options.screenWidth,
+                heightInPixels: options.screenHeight,
                 pixelsPerInch: options.screenPPI
             ),
         ]
@@ -371,7 +373,8 @@ class VPhoneVirtualMachine: NSObject, VZVirtualMachineDelegate {
     }
 
     nonisolated func virtualMachine(
-        _: VZVirtualMachine, networkDevice _: VZNetworkDevice,
+        _: VZVirtualMachine,
+        networkDevice _: VZNetworkDevice,
         attachmentWasDisconnectedWithError error: Error
     ) {
         print("[vphone] Network error: \(error)")

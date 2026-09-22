@@ -37,10 +37,13 @@ extension KernelJBPatcher {
             guard let bBytes = ARM64Encoder.encodeB(from: blOff, to: allowTarget) else { continue }
 
             log("  [+] dyld anchor func at 0x\(String(format: "%X", funcStart)), patch BL at 0x\(String(format: "%X", blOff))")
-            emit(blOff, bBytes,
-                 patchID: "jb.load_dylinker.policy_bypass",
-                 virtualAddress: fileOffsetToVA(blOff),
-                 description: "b #0x\(String(format: "%X", allowTarget - blOff)) [_load_dylinker policy bypass]")
+            emit(
+                blOff,
+                bBytes,
+                patchID: "jb.load_dylinker.policy_bypass",
+                virtualAddress: fileOffsetToVA(blOff),
+                description: "b #0x\(String(format: "%X", allowTarget - blOff)) [_load_dylinker policy bypass]"
+            )
             return true
         }
 

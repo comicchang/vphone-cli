@@ -15,8 +15,14 @@ public enum VPhoneBundleOps {
         public let romSource: URL
         public let sepromSource: URL
 
-        public init(name: String, cpuCount: UInt, memoryMB: UInt64, diskSizeGB: UInt64,
-                    romSource: URL, sepromSource: URL) {
+        public init(
+            name: String,
+            cpuCount: UInt,
+            memoryMB: UInt64,
+            diskSizeGB: UInt64,
+            romSource: URL,
+            sepromSource: URL
+        ) {
             self.name = name; self.cpuCount = cpuCount; self.memoryMB = memoryMB
             self.diskSizeGB = diskSizeGB; self.romSource = romSource; self.sepromSource = sepromSource
         }
@@ -87,8 +93,10 @@ public enum VPhoneBundleOps {
     // MARK: - Config editing
 
     public static func updateConfig(
-        bundleNamed name: String, in library: VPhoneLibrary,
-        cpuCount: UInt?, memoryMB: UInt64?,
+        bundleNamed name: String,
+        in library: VPhoneLibrary,
+        cpuCount: UInt?,
+        memoryMB: UInt64?,
         networkMode: VPhoneVirtualMachineManifest.NetworkConfig.NetworkMode? = nil,
         bridgeInterface: String? = nil
     ) throws -> VPhoneBundle {
@@ -97,7 +105,8 @@ public enum VPhoneBundleOps {
         let network = editsNetwork
             ? try VPhoneNetworking.merge(
                 into: bundle.manifest.networkConfig,
-                mode: networkMode, bridgeInterface: bridgeInterface)
+                mode: networkMode,
+                bridgeInterface: bridgeInterface)
             : nil
         let updated = bundle.manifest.updating(
             cpuCount: cpuCount,
@@ -110,7 +119,9 @@ public enum VPhoneBundleOps {
     // MARK: - Rename / delete
 
     public static func rename(
-        bundleNamed name: String, to newName: String, in library: VPhoneLibrary
+        bundleNamed name: String,
+        to newName: String,
+        in library: VPhoneLibrary
     ) throws -> VPhoneBundle {
         try requireValidName(newName)
         let src = try library.bundle(named: name).url
@@ -134,7 +145,9 @@ public enum VPhoneBundleOps {
     /// fresh device on next boot. NOTE: SEPStorage is copied as-is — cloning an
     /// already-restored VM may need a re-restore for a fully clean identity.
     public static func clone(
-        bundleNamed name: String, to newName: String, in library: VPhoneLibrary
+        bundleNamed name: String,
+        to newName: String,
+        in library: VPhoneLibrary
     ) throws -> VPhoneBundle {
         try requireValidName(newName)
         let src = try library.bundle(named: name).url
@@ -202,8 +215,11 @@ public enum VPhoneBundleOps {
     /// where `totalBytes` is the bundle's on-disk logical size (minus excludes).
     @discardableResult
     public static func export(
-        bundleNamed name: String, to outFile: URL, includeIPSW: Bool,
-        compression: ExportCompression = .fast, in library: VPhoneLibrary,
+        bundleNamed name: String,
+        to outFile: URL,
+        includeIPSW: Bool,
+        compression: ExportCompression = .fast,
+        in library: VPhoneLibrary,
         progress: ((Int64, Int64) -> Void)? = nil
     ) throws -> URL {
         _ = try library.bundle(named: name)  // validate it exists
@@ -222,7 +238,10 @@ public enum VPhoneBundleOps {
         let consumer = ["-cf", outFile.path] + compression.tarArgs + ["@-"]
 
         let total = progress != nil
-            ? archivedLogicalSize(bundleDir: library.url(forName: name), libraryRoot: library.root, includeIPSW: includeIPSW)
+            ? archivedLogicalSize(
+                bundleDir: library.url(forName: name),
+                libraryRoot: library.root,
+                includeIPSW: includeIPSW)
             : 0
         let err = try VPhoneProcessRunner.runCountingTarPipe(
             producerArgs: producer, sourceFile: nil, consumerArgs: consumer
@@ -234,7 +253,9 @@ public enum VPhoneBundleOps {
     /// On-disk logical size of the members `export` will archive, mirroring the
     /// tar `--exclude` patterns so the progress total matches the streamed bytes.
     private static func archivedLogicalSize(
-        bundleDir: URL, libraryRoot: URL, includeIPSW: Bool
+        bundleDir: URL,
+        libraryRoot: URL,
+        includeIPSW: Bool
     ) -> Int64 {
         let fm = FileManager.default
         guard let en = fm.enumerator(
@@ -259,7 +280,9 @@ public enum VPhoneBundleOps {
     /// `(bytesDone, totalBytes)` as the compressed file is fed into `tar -x`,
     /// where `totalBytes` is the archive's size on disk.
     public static func importArchive(
-        from inFile: URL, name: String?, in library: VPhoneLibrary,
+        from inFile: URL,
+        name: String?,
+        in library: VPhoneLibrary,
         progress: ((Int64, Int64) -> Void)? = nil
     ) throws -> VPhoneBundle {
         let fm = FileManager.default

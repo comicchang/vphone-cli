@@ -181,7 +181,10 @@ NSDictionary *vp_handle_apps_command(NSDictionary *msg) {
             service,
             sel_registerName(
                 "terminateApplication:forReason:andReport:withDescription:"),
-            bundleID, 5, NO, @"vphoned terminate request");
+            bundleID,
+            5,
+            NO,
+            @"vphoned terminate request");
       }
     } else {
       // Fallback: kill by PID

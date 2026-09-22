@@ -4,7 +4,9 @@ import VPhoneCore
 
 struct VPhoneVMLaunchCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "launch", abstract: "Boot a VM bundle (runs host preflight first)")
+        commandName: "launch",
+        abstract: "Boot a VM bundle (runs host preflight first)"
+    )
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "VM name") var name: String?
@@ -43,8 +45,11 @@ struct VPhoneVMLaunchCommand: ParsableCommand {
         var preflightEnv = ProcessInfo.processInfo.environment
         preflightEnv["VPHONE_CLI_BIN"] = bootBinary.path
         let pre = try VPhoneProcessRunner.runCapturing(
-            URL(fileURLWithPath: "/bin/zsh"), [layout.preflightScript.path] + preflightArgs,
-            cwd: resources.base, env: preflightEnv)
+            URL(fileURLWithPath: "/bin/zsh"),
+            [layout.preflightScript.path] + preflightArgs,
+            cwd: resources.base,
+            env: preflightEnv
+        )
         if !pre.stdout.isEmpty { print(pre.stdout, terminator: "") }
         guard pre.succeeded else {
             FileHandle.standardError.write(Data(pre.stderr.utf8))
@@ -94,7 +99,9 @@ struct VPhoneVMLaunchCommand: ParsableCommand {
 
 struct VPhoneVMStopCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "stop", abstract: "Stop a running VM bundle")
+        commandName: "stop",
+        abstract: "Stop a running VM bundle"
+    )
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "VM name") var name: String?
@@ -107,7 +114,9 @@ struct VPhoneVMStopCommand: ParsableCommand {
 
         func runningPIDs() -> [Int32] {
             guard let r = try? VPhoneProcessRunner.runCapturing(
-                URL(fileURLWithPath: "/usr/sbin/lsof"), ["-t", "--", disk.path]) else { return [] }
+                URL(fileURLWithPath: "/usr/sbin/lsof"),
+                ["-t", "--", disk.path]
+            ) else { return [] }
             return VPhoneLsof.parsePIDs(r.stdout)
         }
 

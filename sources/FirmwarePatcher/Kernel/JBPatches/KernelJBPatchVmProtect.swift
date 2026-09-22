@@ -50,10 +50,13 @@ extension KernelJBPatcher {
                 return false
             }
             let delta = target - brOff
-            emit(brOff, bBytes,
-                 patchID: "kernelcache_jb.vm_map_protect",
-                 virtualAddress: fileOffsetToVA(brOff),
-                 description: "b #0x\(String(format: "%X", delta)) [_vm_map_protect skip W^X downgrade]")
+            emit(
+                brOff,
+                bBytes,
+                patchID: "kernelcache_jb.vm_map_protect",
+                virtualAddress: fileOffsetToVA(brOff),
+                description: "b #0x\(String(format: "%X", delta)) [_vm_map_protect skip W^X downgrade]"
+            )
             return true
         }
 

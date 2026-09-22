@@ -7,15 +7,21 @@ struct RestoreInfoTests {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let manifest = VPhoneVirtualMachineManifest(
-            cpuCount: 2, memorySize: 1024 * 1024, romImages: .init(avpBooter: "a", avpSEPBooter: "b"))
+            cpuCount: 2,
+            memorySize: 1024 * 1024,
+            romImages: .init(avpBooter: "a", avpSEPBooter: "b")
+        )
         return VPhoneBundle(url: root, manifest: manifest)
     }
 
     /// Write a restore dir with the two BuildManifest plists. Omit a key by
     /// passing nil for its value to exercise the missing-key path.
     private func makeRestoreDir(
-        in bundle: VPhoneBundle, iosVersion: String?, iosBuild: String?,
-        cloudVersion: String?, cloudBuild: String?
+        in bundle: VPhoneBundle,
+        iosVersion: String?,
+        iosBuild: String?,
+        cloudVersion: String?,
+        cloudBuild: String?
     ) throws {
         let dir = bundle.url.appendingPathComponent("iPhone17,3_27.0_24A5390f_Restore")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -33,8 +39,13 @@ struct RestoreInfoTests {
     @Test func derivesBothVersionsFromPlists() throws {
         let b = try makeBundle()
         defer { try? FileManager.default.removeItem(at: b.url) }
-        try makeRestoreDir(in: b, iosVersion: "27.0", iosBuild: "24A5390f",
-                           cloudVersion: "26.4", cloudBuild: "23E5207q")
+        try makeRestoreDir(
+            in: b,
+            iosVersion: "27.0",
+            iosBuild: "24A5390f",
+            cloudVersion: "26.4",
+            cloudBuild: "23E5207q"
+        )
         let info = VPhoneRestoreInfo.derive(fromBundle: b)
         #expect(info?.ios == .init(version: "27.0", build: "24A5390f"))
         #expect(info?.cloudOS == .init(version: "26.4", build: "23E5207q"))
@@ -49,8 +60,13 @@ struct RestoreInfoTests {
     @Test func deriveNilWhenVersionKeyMissing() throws {
         let b = try makeBundle()
         defer { try? FileManager.default.removeItem(at: b.url) }
-        try makeRestoreDir(in: b, iosVersion: "27.0", iosBuild: "24A5390f",
-                           cloudVersion: nil, cloudBuild: "23E5207q")
+        try makeRestoreDir(
+            in: b,
+            iosVersion: "27.0",
+            iosBuild: "24A5390f",
+            cloudVersion: nil,
+            cloudBuild: "23E5207q"
+        )
         #expect(VPhoneRestoreInfo.derive(fromBundle: b) == nil)
     }
 
@@ -59,7 +75,8 @@ struct RestoreInfoTests {
         defer { try? FileManager.default.removeItem(at: b.url) }
         let info = VPhoneRestoreInfo(
             ios: .init(version: "18.6.2", build: "22G100"),
-            cloudOS: .init(version: "26.1", build: "23B85"))
+            cloudOS: .init(version: "26.1", build: "23B85")
+        )
         try info.write(toBundle: b)
         #expect(VPhoneRestoreInfo.load(fromBundle: b) == info)
     }
@@ -67,8 +84,13 @@ struct RestoreInfoTests {
     @Test func loadFallsBackToDeriveWhenNoJSON() throws {
         let b = try makeBundle()
         defer { try? FileManager.default.removeItem(at: b.url) }
-        try makeRestoreDir(in: b, iosVersion: "27.0", iosBuild: "24A5390f",
-                           cloudVersion: "26.4", cloudBuild: "23E5207q")
+        try makeRestoreDir(
+            in: b,
+            iosVersion: "27.0",
+            iosBuild: "24A5390f",
+            cloudVersion: "26.4",
+            cloudBuild: "23E5207q"
+        )
         // No restore-info.json written — load() must derive from the plists.
         let info = VPhoneRestoreInfo.load(fromBundle: b)
         #expect(info?.ios.version == "27.0")
@@ -78,8 +100,13 @@ struct RestoreInfoTests {
     @Test func bundleReportCarriesRestoreInfo() throws {
         let b = try makeBundle()
         defer { try? FileManager.default.removeItem(at: b.url) }
-        try makeRestoreDir(in: b, iosVersion: "27.0", iosBuild: "24A5390f",
-                           cloudVersion: "26.4", cloudBuild: "23E5207q")
+        try makeRestoreDir(
+            in: b,
+            iosVersion: "27.0",
+            iosBuild: "24A5390f",
+            cloudVersion: "26.4",
+            cloudBuild: "23E5207q"
+        )
         let report = VPhoneBundleReport(bundle: b)
         #expect(report.restoreInfo?.ios.build == "24A5390f")
         #expect(report.restoreInfo?.cloudOS.build == "23E5207q")
@@ -97,7 +124,8 @@ struct RestoreInfoTests {
         defer { try? FileManager.default.removeItem(at: b.url) }
         try VPhoneRestoreInfo(
             ios: .init(version: "18.6.2", build: "22G100"),
-            cloudOS: .init(version: "26.1", build: "23B85")).write(toBundle: b)
+            cloudOS: .init(version: "26.1", build: "23B85")
+        ).write(toBundle: b)
 
         let merged = try VPhoneRestoreInfo.recordVariant("exp", toBundle: b)
         #expect(merged?.variant == "exp")

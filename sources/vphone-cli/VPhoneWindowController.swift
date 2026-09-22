@@ -18,8 +18,13 @@ class VPhoneWindowController: NSObject, NSToolbarDelegate {
     }
 
     func showWindow(
-        for vm: VZVirtualMachine, screenWidth: Int, screenHeight: Int, screenScale: Double,
-        keyHelper: VPhoneKeyHelper, control: VPhoneControl, ecid: String?
+        for vm: VZVirtualMachine,
+        screenWidth: Int,
+        screenHeight: Int,
+        screenScale: Double,
+        keyHelper: VPhoneKeyHelper,
+        control: VPhoneControl,
+        ecid: String?
     ) {
         self.control = control
         self.ecid = ecid
@@ -34,7 +39,8 @@ class VPhoneWindowController: NSObject, NSToolbarDelegate {
 
         let scale = CGFloat(screenScale)
         let windowSize = NSSize(
-            width: CGFloat(screenWidth) / scale, height: CGFloat(screenHeight) / scale
+            width: CGFloat(screenWidth) / scale,
+            height: CGFloat(screenHeight) / scale
         )
 
         let window = NSWindow(
@@ -100,7 +106,8 @@ class VPhoneWindowController: NSObject, NSToolbarDelegate {
     // MARK: - NSToolbarDelegate
 
     nonisolated func toolbar(
-        _: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
+        _: NSToolbar,
+        itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
         willBeInsertedIntoToolbar _: Bool
     ) -> NSToolbarItem? {
         MainActor.assumeIsolated {
@@ -109,7 +116,8 @@ class VPhoneWindowController: NSObject, NSToolbarDelegate {
                 item.label = "Home"
                 item.toolTip = "Home Button"
                 item.image = NSImage(
-                    systemSymbolName: "circle.circle", accessibilityDescription: "Home"
+                    systemSymbolName: "circle.circle",
+                    accessibilityDescription: "Home"
                 )
                 item.target = self
                 item.action = #selector(homePressed)

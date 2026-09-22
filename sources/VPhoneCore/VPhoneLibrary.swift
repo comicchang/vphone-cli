@@ -54,7 +54,9 @@ public struct VPhoneLibrary: Sendable {
         let fm = FileManager.default
         guard fm.fileExists(atPath: root.path) else { return ([], []) }
         let entries = try fm.contentsOfDirectory(
-            at: root, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles])
+            at: root,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles])
         var bundles: [VPhoneBundle] = []
         var skipped: [VPhoneLibrarySkip] = []
         for url in entries

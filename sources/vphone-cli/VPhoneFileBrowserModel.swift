@@ -204,7 +204,10 @@ class VPhoneFileBrowserModel {
                 await downloadDirectory(remotePath: child.path, name: child.name, to: localDir)
             } else {
                 await downloadFile(
-                    remotePath: child.path, name: child.name, size: child.size, to: localDir
+                    remotePath: child.path,
+                    name: child.name,
+                    size: child.size,
+                    to: localDir
                 )
             }
             if error != nil { return }

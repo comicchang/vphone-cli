@@ -53,7 +53,8 @@ public enum VPhoneRestoreOps {
         for aea in entries where aea.lastPathComponent.hasSuffix(".dmg.aea") {
             guard try isAEAEncrypted(aea) else { continue }
             let code = try VPhoneProcessRunner.runStreaming(
-                URL(fileURLWithPath: "/usr/bin/env"), ["ipsw", "fw", "aea", "-o", dir.path, aea.path])
+                URL(fileURLWithPath: "/usr/bin/env"),
+                ["ipsw", "fw", "aea", "-o", dir.path, aea.path])
             guard code == 0 else { throw VPhoneRestoreError.aeaDecryptFailed(aea.lastPathComponent) }
             // ipsw wrote <dir>/<name minus .aea>; move it onto the .aea filename.
             // Confirm the decrypted output exists BEFORE removing the original (mv -f semantics).

@@ -56,10 +56,13 @@ extension KernelJBPatcher {
 
         let patchOff = unique[0]
         let va = fileOffsetToVA(patchOff)
-        emit(patchOff, ARM64.nop,
-             patchID: "kernelcache_jb.nvram_verify_permission",
-             virtualAddress: va,
-             description: "NOP [verifyPermission NVRAM]")
+        emit(
+            patchOff,
+            ARM64.nop,
+            patchID: "kernelcache_jb.nvram_verify_permission",
+            virtualAddress: va,
+            description: "NOP [verifyPermission NVRAM]"
+        )
         return true
     }
 }

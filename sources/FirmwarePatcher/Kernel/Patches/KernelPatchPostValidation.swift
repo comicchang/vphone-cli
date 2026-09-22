@@ -46,10 +46,13 @@ extension KernelPatcher {
                 guard insn.mnemonic == "tbnz" else { continue }
 
                 let va = fileOffsetToVA(scan)
-                emit(scan, ARM64.nop,
-                     patchID: "kernel.post_validation.nop_tbnz",
-                     virtualAddress: va,
-                     description: "NOP \(insn.mnemonic) \(insn.operandString) [txm post-validation]")
+                emit(
+                    scan,
+                    ARM64.nop,
+                    patchID: "kernel.post_validation.nop_tbnz",
+                    virtualAddress: va,
+                    description: "NOP \(insn.mnemonic) \(insn.operandString) [txm post-validation]"
+                )
                 return true
             }
         }
@@ -143,10 +146,13 @@ extension KernelPatcher {
         }
 
         let patchOff = uniqueHits[0]
-        emit(patchOff, ARM64.cmpW0W0,
-             patchID: "kernel.post_validation.cmp_w0_w0",
-             virtualAddress: fileOffsetToVA(patchOff),
-             description: "cmp w0,w0 (was cmp w0,#imm) [postValidation]")
+        emit(
+            patchOff,
+            ARM64.cmpW0W0,
+            patchID: "kernel.post_validation.cmp_w0_w0",
+            virtualAddress: fileOffsetToVA(patchOff),
+            description: "cmp w0,w0 (was cmp w0,#imm) [postValidation]"
+        )
         return true
     }
 

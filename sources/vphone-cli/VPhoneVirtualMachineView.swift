@@ -133,7 +133,10 @@ class VPhoneVirtualMachineView: VZVirtualMachineView {
         let options: [NSPasteboard.ReadingOptionKey: Any] = [
             .urlReadingFileURLsOnly: true,
         ]
-        guard let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL] else {
+        guard let urls = sender.draggingPasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: options
+        ) as? [URL] else {
             return nil
         }
         return urls.first(where: VPhoneInstallPackage.isSupportedFile)
@@ -188,7 +191,12 @@ class VPhoneVirtualMachineView: VZVirtualMachineView {
 
     /// Inject a tap at pixel coordinates (matching screenshot image dimensions).
     func injectTap(pixelX: Double, pixelY: Double, screenWidth: Int, screenHeight: Int) {
-        let localPoint = pixelToLocal(pixelX: pixelX, pixelY: pixelY, screenWidth: screenWidth, screenHeight: screenHeight)
+        let localPoint = pixelToLocal(
+            pixelX: pixelX,
+            pixelY: pixelY,
+            screenWidth: screenWidth,
+            screenHeight: screenHeight
+        )
         let windowPoint = convert(localPoint, to: nil)
 
         if let downEvent = synthesizeMouseEvent(type: .leftMouseDown, at: windowPoint) {
@@ -204,10 +212,20 @@ class VPhoneVirtualMachineView: VZVirtualMachineView {
 
     /// Inject a swipe from one pixel coordinate to another.
     func injectSwipe(
-        fromX: Double, fromY: Double, toX: Double, toY: Double,
-        screenWidth: Int, screenHeight: Int, durationMs: Int = 300
+        fromX: Double,
+        fromY: Double,
+        toX: Double,
+        toY: Double,
+        screenWidth: Int,
+        screenHeight: Int,
+        durationMs: Int = 300
     ) {
-        let startLocal = pixelToLocal(pixelX: fromX, pixelY: fromY, screenWidth: screenWidth, screenHeight: screenHeight)
+        let startLocal = pixelToLocal(
+            pixelX: fromX,
+            pixelY: fromY,
+            screenWidth: screenWidth,
+            screenHeight: screenHeight
+        )
         let endLocal = pixelToLocal(pixelX: toX, pixelY: toY, screenWidth: screenWidth, screenHeight: screenHeight)
         let startWindow = convert(startLocal, to: nil)
         let endWindow = convert(endLocal, to: nil)

@@ -81,7 +81,12 @@ extension IBootPatcher {
             return
         }
 
-        emit(bhsSites[0], ARM64.nop, id: "\(component).rootfs_bhs_0x400", description: "rootfs: NOP b.hs size check (0x400)")
+        emit(
+            bhsSites[0],
+            ARM64.nop,
+            id: "\(component).rootfs_bhs_0x400",
+            description: "rootfs: NOP b.hs size check (0x400)"
+        )
     }
 
     /// Find `ldr xR, [xN, #0x78]; cbz xR` preceding the unique `mov w8, #0x110`
@@ -114,8 +119,12 @@ extension IBootPatcher {
                i2.mnemonic == "cbz",
                i2.operandString.hasPrefix("x")
             {
-                emit(scan + 4, ARM64.nop, id: "\(component).rootfs_null_check_0x78",
-                     description: "rootfs: NOP cbz x8 null check (#0x78)")
+                emit(
+                    scan + 4,
+                    ARM64.nop,
+                    id: "\(component).rootfs_null_check_0x78",
+                    description: "rootfs: NOP cbz x8 null check (#0x78)"
+                )
                 return
             }
             scan -= 4

@@ -285,7 +285,8 @@ extension VPhoneMenuController {
                 let display: String
                 if let dict = value as? [String: Any] {
                     let data = try JSONSerialization.data(
-                        withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]
+                        withJSONObject: dict,
+                        options: [.prettyPrinted, .sortedKeys]
                     )
                     display = String(data: data, encoding: .utf8) ?? "\(dict)"
                 } else {
@@ -387,10 +388,14 @@ extension VPhoneMenuController {
         Task {
             do {
                 try await control.settingsSet(
-                    domain: domain, key: key, value: value, type: type.isEmpty ? nil : type
+                    domain: domain,
+                    key: key,
+                    value: value,
+                    type: type.isEmpty ? nil : type
                 )
                 showAlert(
-                    title: "Write Setting", message: "Set \(domain).\(key) = \(rawValue)",
+                    title: "Write Setting",
+                    message: "Set \(domain).\(key) = \(rawValue)",
                     style: .informational
                 )
             } catch {

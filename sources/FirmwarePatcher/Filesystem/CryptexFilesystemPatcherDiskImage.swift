@@ -32,7 +32,12 @@ extension CryptexFilesystemPatcher {
             let destinationPath = destinationRoot.appendingPathComponent(suffix)
             guard let ok = try? destinationPath.checkResourceIsReachable(), ok else {
                 // try FileManager.default.copyItem(at: fileURL, to: destinationPath)
-                let result = copyfile(fileURL.path, destinationPath.path, nil, copyfile_flags_t(COPYFILE_SECURITY | COPYFILE_DATA))
+                let result = copyfile(
+                    fileURL.path,
+                    destinationPath.path,
+                    nil,
+                    copyfile_flags_t(COPYFILE_SECURITY | COPYFILE_DATA)
+                )
                 if result < 0 {
                     print("Unable to copy \(destinationPath.path). Check permissions and free space, then try again.")
                 }
@@ -45,7 +50,12 @@ extension CryptexFilesystemPatcher {
                 values.isSymbolicLink != vals.isSymbolicLink {
                 try FileManager.default.removeItem(at: destinationPath)
                 // try FileManager.default.copyItem(at: fileURL, to: destinationPath)
-                let result = copyfile(fileURL.path, destinationPath.path, nil, copyfile_flags_t(COPYFILE_SECURITY | COPYFILE_DATA))
+                let result = copyfile(
+                    fileURL.path,
+                    destinationPath.path,
+                    nil,
+                    copyfile_flags_t(COPYFILE_SECURITY | COPYFILE_DATA)
+                )
                 if result < 0 {
                     print("Unable to copy \(destinationPath.path). Check permissions and free space, then try again.")
                 }

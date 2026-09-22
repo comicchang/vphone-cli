@@ -41,9 +41,14 @@ extension CryptexFilesystemPatcher {
         if vphoned {
             let vphonedSrc = scriptDir.appendingPathComponent("vphoned")
             let vphonedLaunchdPlist = vphonedSrc.appending(path: "vphoned.plist")
-            try FileManager.default.copyItem(at: vphonedLaunchdPlist,
-                                             to: target.appending(path: "System/Library/LaunchDaemons/vphoned.plist"))
-            try FileManager.default.copyItem(at: vphonedLaunchdPlist, to: launchDaemonsPath.appending(path: vphonedLaunchdPlist.lastPathComponent))
+            try FileManager.default.copyItem(
+                at: vphonedLaunchdPlist,
+                to: target.appending(path: "System/Library/LaunchDaemons/vphoned.plist")
+            )
+            try FileManager.default.copyItem(
+                at: vphonedLaunchdPlist,
+                to: launchDaemonsPath.appending(path: vphonedLaunchdPlist.lastPathComponent)
+            )
         }
         if cfw {
             let launchDaemonsDir = cfwInput.appending(path: "cfw_input/jb/LaunchDaemons")

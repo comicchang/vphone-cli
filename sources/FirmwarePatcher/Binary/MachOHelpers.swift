@@ -52,8 +52,11 @@ public enum MachOParser {
                 let fileSize = data.loadLE(UInt64.self, at: offset + 48)
 
                 segments.append(MachOSegmentInfo(
-                    name: name, vmAddr: vmAddr, vmSize: vmSize,
-                    fileOffset: fileOff, fileSize: fileSize
+                    name: name,
+                    vmAddr: vmAddr,
+                    vmSize: vmSize,
+                    fileOffset: fileOff,
+                    fileSize: fileSize
                 ))
             }
             offset += Int(cmdsize)
@@ -96,8 +99,11 @@ public enum MachOParser {
 
                     let key = "\(segName),\(sectName)"
                     sections[key] = MachOSectionInfo(
-                        segmentName: segName, sectionName: sectName,
-                        address: addr, size: size, fileOffset: fileOff
+                        segmentName: segName,
+                        sectionName: sectName,
+                        address: addr,
+                        size: size,
+                        fileOffset: fileOff
                     )
                     sectOff += 80
                 }

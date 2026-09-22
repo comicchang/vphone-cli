@@ -155,8 +155,16 @@ static CMSampleBufferRef cfx_build_cmsb(void) {
 
   CVPixelBufferRef pb = NULL;
   CVReturn cvr = CVPixelBufferCreateWithBytes(
-      kCFAllocatorDefault, w, h, kCVPixelFormatType_32BGRA,
-      pixels, bpr, cfx_release_bytes, NULL, NULL, &pb);
+      kCFAllocatorDefault,
+      w,
+      h,
+      kCVPixelFormatType_32BGRA,
+      pixels,
+      bpr,
+      cfx_release_bytes,
+      NULL,
+      NULL,
+      &pb);
   if (cvr != kCVReturnSuccess || !pb) { free(pixels); return NULL; }
   CMVideoFormatDescriptionRef desc = NULL;
   OSStatus s = CMVideoFormatDescriptionCreateForImageBuffer(
@@ -273,7 +281,14 @@ static void cfx_deliver_capturePhoto(id output, id delegate) {
     if (!sbuf) { cfxlog(@"[capturePhoto] build_cmsb returned NULL"); return; }
     cfxlog(@"[capturePhoto] dispatching deprecated didFinishProcessingPhotoSampleBuffer:");
     ((void (*)(id, SEL, id, CMSampleBufferRef, CMSampleBufferRef, id, id, id))objc_msgSend)(
-        delegate, oldSel, output, sbuf, NULL, (id)nil, (id)nil, (id)nil);
+        delegate,
+        oldSel,
+        output,
+        sbuf,
+        NULL,
+        (id)nil,
+        (id)nil,
+        (id)nil);
     CFRelease(sbuf);
     return;
   }
@@ -399,7 +414,10 @@ static id cfx_pv_initWithSession_hook(id self, SEL _cmd, AVCaptureSession *sessi
   id ret = ((Fn)cfx_orig_pv_initWithSession)(self, _cmd, session);
   BOOL forVcam = (session != nil) && cfx_session_is_for_vcam(session);
   cfxlog(@"[PVLayer initWithSession:%p] ret=%p forVcam=%d cls=%@",
-         session, ret, forVcam, NSStringFromClass([ret class]));
+         session,
+         ret,
+         forVcam,
+         NSStringFromClass([ret class]));
   if (ret && forVcam) cfx_adopt_preview_layer(ret);
   return ret;
 }
@@ -413,7 +431,11 @@ static id cfx_pv_initWithSessionMakeConnection_hook(id self, SEL _cmd,
       self, _cmd, session, makeConnection);
   BOOL forVcam = (session != nil) && cfx_session_is_for_vcam(session);
   cfxlog(@"[PVLayer _initWithSession:%p makeConnection:%d] ret=%p forVcam=%d cls=%@",
-         session, makeConnection, ret, forVcam, NSStringFromClass([ret class]));
+         session,
+         makeConnection,
+         ret,
+         forVcam,
+         NSStringFromClass([ret class]));
   if (ret && forVcam) cfx_adopt_preview_layer(ret);
   return ret;
 }
@@ -497,7 +519,8 @@ static void cfx_start_scan_timer(void) {
   cfx_scan_timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, q);
   dispatch_source_set_timer(cfx_scan_timer,
                               dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)),
-                              1000000000ull, 100000000ull);
+                              1000000000ull,
+                              100000000ull);
   dispatch_source_set_event_handler(cfx_scan_timer, ^{
     @autoreleasepool { cfx_scan_preview_layers(); }
   });
@@ -680,16 +703,27 @@ static NSData *cfx_build_jpeg_from_shm(void) {
   CGDataProviderRef dp = CGDataProviderCreateWithData(
       NULL, copy, len, cfx_cg_release_data);
   CGImageRef img = CGImageCreate(
-      w, h, 8, 32, bpr, cs,
+      w,
+      h,
+      8,
+      32,
+      bpr,
+      cs,
       (CGBitmapInfo)(kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst),
-      dp, NULL, false, kCGRenderingIntentDefault);
+      dp,
+      NULL,
+      false,
+      kCGRenderingIntentDefault);
   CGDataProviderRelease(dp);
   CGColorSpaceRelease(cs);
   if (!img) return nil;
 
   NSMutableData *data = [NSMutableData data];
   CGImageDestinationRef dest = CGImageDestinationCreateWithData(
-      (CFMutableDataRef)data, (CFStringRef)@"public.jpeg", 1, NULL);
+      (CFMutableDataRef)data,
+      (CFStringRef)@"public.jpeg",
+      1,
+      NULL);
   if (!dest) { CGImageRelease(img); return nil; }
   CGImageDestinationAddImage(dest, img, NULL);
   BOOL ok = CGImageDestinationFinalize(dest);
@@ -711,9 +745,17 @@ static CGImageRef cfx_build_cgimage_from_shm(void) CF_RETURNS_RETAINED {
   CGDataProviderRef dp = CGDataProviderCreateWithData(
       NULL, copy, len, cfx_cg_release_data);
   CGImageRef img = CGImageCreate(
-      w, h, 8, 32, bpr, cs,
+      w,
+      h,
+      8,
+      32,
+      bpr,
+      cs,
       (CGBitmapInfo)(kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst),
-      dp, NULL, false, kCGRenderingIntentDefault);
+      dp,
+      NULL,
+      false,
+      kCGRenderingIntentDefault);
   CGDataProviderRelease(dp);
   CGColorSpaceRelease(cs);
   return img;
@@ -910,7 +952,9 @@ static id cfx_build_avcapturephoto_with_request(IOSurfaceRef surf,
       });
   if (result) {
     cfxlog(@"AVCapturePhoto built: %p (captureRequest=%p, sel=%@)",
-           result, captureRequest, NSStringFromSelector(initSel));
+           result,
+           captureRequest,
+           NSStringFromSelector(initSel));
   }
   return result;
 }
@@ -1007,8 +1051,9 @@ static void cfx_drive_capture(id output, id delegate, id settings) {
   IOSurfaceRef surf = cfx_build_iosurface_from_shm(&w, &h);
   if (!surf || !w || !h) {
     cfxlog(@"[drive] no IOSurface — falling back to error finish");
-    NSError *err = [NSError errorWithDomain:AVFoundationErrorDomain code:-11800
-                                  userInfo:@{NSLocalizedDescriptionKey:@"Unable to take the photo. Try again."}];
+    NSError *err = [NSError errorWithDomain:AVFoundationErrorDomain
+                                       code:-11800
+                                   userInfo:@{NSLocalizedDescriptionKey:@"Unable to take the photo. Try again."}];
     SEL finishSel = @selector(captureOutput:didFinishCaptureForResolvedSettings:error:);
     if ([delegate respondsToSelector:finishSel]) {
       ((void (*)(id, SEL, id, id, id))objc_msgSend)(delegate, finishSel, output, nil, err);

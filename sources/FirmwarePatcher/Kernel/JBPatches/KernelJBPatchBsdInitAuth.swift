@@ -78,10 +78,13 @@ extension KernelJBPatcher {
             return true
         }
 
-        emit(branchOff, ARM64.nop,
-             patchID: "jb.bsd_init_auth.nop_cbnz",
-             virtualAddress: fileOffsetToVA(branchOff),
-             description: "NOP cbnz (rootvp auth) [_bsd_init]")
+        emit(
+            branchOff,
+            ARM64.nop,
+            patchID: "jb.bsd_init_auth.nop_cbnz",
+            virtualAddress: fileOffsetToVA(branchOff),
+            description: "NOP cbnz (rootvp auth) [_bsd_init]"
+        )
         return true
     }
 

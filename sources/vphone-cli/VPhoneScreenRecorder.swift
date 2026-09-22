@@ -150,7 +150,10 @@ class VPhoneScreenRecorder {
         let utType = url.pathExtension.lowercased() == "png" ? "public.png" : "public.jpeg"
 
         guard let dest = CGImageDestinationCreateWithURL(
-            url as CFURL, utType as CFString, 1, nil
+            url as CFURL,
+            utType as CFString,
+            1,
+            nil
         ) else {
             throw CaptureError.encodingFailed
         }

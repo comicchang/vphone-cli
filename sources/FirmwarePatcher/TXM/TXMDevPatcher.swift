@@ -293,17 +293,23 @@ public final class TXMDevPatcher: TXMPatcher {
                 return
             }
 
-            emit(body, ARM64.movW0_0xA1,
-                 patchID: "txm_dev.selector24_bypass_mov",
-                 description: "selector24 bypass: mov w0, #0xa1 (PASS)")
+            emit(
+                body,
+                ARM64.movW0_0xA1,
+                patchID: "txm_dev.selector24_bypass_mov",
+                description: "selector24 bypass: mov w0, #0xa1 (PASS)"
+            )
 
             guard let bInsn = ARM64Encoder.encodeB(from: body + 4, to: epilogueOff) else {
                 log("  [-] TXM: selector24 branch encoding failed")
                 return
             }
-            emit(body + 4, bInsn,
-                 patchID: "txm_dev.selector24_bypass_b",
-                 description: "selector24 bypass: b epilogue")
+            emit(
+                body + 4,
+                bInsn,
+                patchID: "txm_dev.selector24_bypass_b",
+                description: "selector24 bypass: b epilogue"
+            )
             return
         }
 
@@ -343,9 +349,12 @@ public final class TXMDevPatcher: TXMPatcher {
             return
         }
 
-        emit(cands[0], ARM64.movX0_1,
-             patchID: "txm_dev.get_task_allow",
-             description: "get-task-allow: bl -> mov x0,#1")
+        emit(
+            cands[0],
+            ARM64.movX0_1,
+            patchID: "txm_dev.get_task_allow",
+            description: "get-task-allow: bl -> mov x0,#1"
+        )
     }
 
     /// Selector 42|29 patch via dynamic cave shellcode + branch redirect.
@@ -412,24 +421,50 @@ public final class TXMDevPatcher: TXMPatcher {
             log("  [-] TXM: selector42|29 branch-to-cave encoding failed")
             return
         }
-        emit(stubOff, branchToShellcode,
-             patchID: "txm_dev.sel42_29_branch",
-             description: "selector42|29: branch to shellcode")
+        emit(
+            stubOff,
+            branchToShellcode,
+            patchID: "txm_dev.sel42_29_branch",
+            description: "selector42|29: branch to shellcode"
+        )
 
         // Shellcode body at cave
-        emit(cave, ARM64.nop, patchID: "txm_dev.sel42_29_shell_nop", description: "selector42|29 shellcode pad: udf -> nop")
-        emit(cave + 4, ARM64.movX0_1, patchID: "txm_dev.sel42_29_shell_mov1", description: "selector42|29 shellcode: mov x0,#1")
-        emit(cave + 8, ARM64.strbW0X20_30, patchID: "txm_dev.sel42_29_shell_strb", description: "selector42|29 shellcode: strb w0,[x20,#0x30]")
-        emit(cave + 12, ARM64.movX0X20, patchID: "txm_dev.sel42_29_shell_mov20", description: "selector42|29 shellcode: mov x0,x20")
+        emit(
+            cave,
+            ARM64.nop,
+            patchID: "txm_dev.sel42_29_shell_nop",
+            description: "selector42|29 shellcode pad: udf -> nop"
+        )
+        emit(
+            cave + 4,
+            ARM64.movX0_1,
+            patchID: "txm_dev.sel42_29_shell_mov1",
+            description: "selector42|29 shellcode: mov x0,#1"
+        )
+        emit(
+            cave + 8,
+            ARM64.strbW0X20_30,
+            patchID: "txm_dev.sel42_29_shell_strb",
+            description: "selector42|29 shellcode: strb w0,[x20,#0x30]"
+        )
+        emit(
+            cave + 12,
+            ARM64.movX0X20,
+            patchID: "txm_dev.sel42_29_shell_mov20",
+            description: "selector42|29 shellcode: mov x0,x20"
+        )
 
         // Branch back to stub_off + 4 (skip the redirected first instruction)
         guard let branchBack = ARM64Encoder.encodeB(from: cave + 16, to: stubOff + 4) else {
             log("  [-] TXM: selector42|29 branch-back encoding failed")
             return
         }
-        emit(cave + 16, branchBack,
-             patchID: "txm_dev.sel42_29_shell_ret",
-             description: "selector42|29 shellcode: branch back")
+        emit(
+            cave + 16,
+            branchBack,
+            patchID: "txm_dev.sel42_29_shell_ret",
+            description: "selector42|29 shellcode: branch back"
+        )
     }
 
     /// Force debugger entitlement check to return true (BL → mov w0, #1).
@@ -476,9 +511,12 @@ public final class TXMDevPatcher: TXMPatcher {
             return
         }
 
-        emit(cands[0], ARM64.movW0_1,
-             patchID: "txm_dev.debugger_entitlement",
-             description: "debugger entitlement: bl -> mov w0,#1")
+        emit(
+            cands[0],
+            ARM64.movW0_1,
+            patchID: "txm_dev.debugger_entitlement",
+            description: "debugger entitlement: bl -> mov w0,#1"
+        )
     }
 
     /// Developer-mode bypass: NOP conditional guard before deny log path.
@@ -515,8 +553,11 @@ public final class TXMDevPatcher: TXMPatcher {
             return
         }
 
-        emit(cands[0], ARM64.nop,
-             patchID: "txm_dev.developer_mode_bypass",
-             description: "developer mode bypass")
+        emit(
+            cands[0],
+            ARM64.nop,
+            patchID: "txm_dev.developer_mode_bypass",
+            description: "developer mode bypass"
+        )
     }
 }

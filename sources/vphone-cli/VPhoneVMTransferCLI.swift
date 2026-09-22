@@ -7,7 +7,8 @@ struct VPhoneVMCloneCommand: ParsableCommand {
         commandName: "clone",
         abstract: "Clone a VM bundle (fast APFS clone; resets device identity)",
         discussion: "The clone boots as a fresh device (nvram/machineIdentifier/shsh cleared). "
-            + "SEPStorage is copied as-is; a cloned, already-restored VM may need re-restoring.")
+            + "SEPStorage is copied as-is; a cloned, already-restored VM may need re-restoring."
+    )
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "source VM name") var name: String?
@@ -23,7 +24,9 @@ struct VPhoneVMCloneCommand: ParsableCommand {
 
 struct VPhoneVMExportCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "export", abstract: "Export a VM bundle to a compressed archive (.tzst, or .txz with --max)")
+        commandName: "export",
+        abstract: "Export a VM bundle to a compressed archive (.tzst, or .txz with --max)"
+    )
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "VM name") var name: String?
@@ -36,9 +39,13 @@ struct VPhoneVMExportCommand: ParsableCommand {
         let compression: VPhoneBundleOps.ExportCompression = max ? .max : .fast
         let bar = VPhoneProgressBar(label: "exporting \(name)")
         let outURL = try VPhoneBundleOps.export(
-            bundleNamed: name, to: URL(fileURLWithPath: out), includeIPSW: includeIpsw,
-            compression: compression, in: lib.library,
-            progress: { done, total in bar.update(done: done, total: total) })
+            bundleNamed: name,
+            to: URL(fileURLWithPath: out),
+            includeIPSW: includeIpsw,
+            compression: compression,
+            in: lib.library,
+            progress: { done, total in bar.update(done: done, total: total) }
+        )
         bar.finish()
         print("exported \(name) → \(outURL.path)")
     }
@@ -46,7 +53,9 @@ struct VPhoneVMExportCommand: ParsableCommand {
 
 struct VPhoneVMImportCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "import", abstract: "Import a VM bundle from a compressed archive (compressor auto-detected)")
+        commandName: "import",
+        abstract: "Import a VM bundle from a compressed archive (compressor auto-detected)"
+    )
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "input archive path") var input: String
@@ -55,8 +64,11 @@ struct VPhoneVMImportCommand: ParsableCommand {
     func run() throws {
         let bar = VPhoneProgressBar(label: "importing")
         let bundle = try VPhoneBundleOps.importArchive(
-            from: URL(fileURLWithPath: input), name: name, in: lib.library,
-            progress: { done, total in bar.update(done: done, total: total) })
+            from: URL(fileURLWithPath: input),
+            name: name,
+            in: lib.library,
+            progress: { done, total in bar.update(done: done, total: total) }
+        )
         bar.finish()
         print("imported → \(bundle.name)")
     }

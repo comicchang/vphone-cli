@@ -97,7 +97,8 @@ final class VPhoneTestPatternProducer: VPhoneFrameProducer, @unchecked Sendable 
             height: height,
             bytesPerRow: bytesPerRow,
             timestampNS: ts,
-            pixels: Data(bytes))
+            pixels: Data(bytes)
+        )
     }
 
     // MARK: - HSV helpers
@@ -154,7 +155,8 @@ final class VPhoneVideoFileProducer: VPhoneFrameProducer, @unchecked Sendable {
     private func restartReader() throws {
         guard let track = asset.tracks(withMediaType: .video).first else {
             throw NSError(
-                domain: "VPhoneVideoFileProducer", code: 1,
+                domain: "VPhoneVideoFileProducer",
+                code: 1,
                 userInfo: [NSLocalizedDescriptionKey:
                     "\(url.lastPathComponent): no video track"])
         }
@@ -169,7 +171,8 @@ final class VPhoneVideoFileProducer: VPhoneFrameProducer, @unchecked Sendable {
         r.add(output)
         guard r.startReading() else {
             throw NSError(
-                domain: "VPhoneVideoFileProducer", code: 2,
+                domain: "VPhoneVideoFileProducer",
+                code: 2,
                 userInfo: [NSLocalizedDescriptionKey:
                     "AVAssetReader.startReading failed: \(r.error?.localizedDescription ?? "?")"])
         }
@@ -213,10 +216,12 @@ final class VPhoneVideoFileProducer: VPhoneFrameProducer, @unchecked Sendable {
                 }
             }
             return VPhoneCameraFrame(
-                width: width, height: height,
+                width: width,
+                height: height,
                 bytesPerRow: bytesPerRow,
                 timestampNS: UInt64(ProcessInfo.processInfo.systemUptime * 1e9),
-                pixels: out)
+                pixels: out
+            )
         }
 
         // Slow path: resize via Core Image. Stretches to fit; pick aspect
@@ -236,12 +241,15 @@ final class VPhoneVideoFileProducer: VPhoneFrameProducer, @unchecked Sendable {
                 rowBytes: bytesPerRow,
                 bounds: CGRect(x: 0, y: 0, width: width, height: height),
                 format: .BGRA8,
-                colorSpace: CGColorSpaceCreateDeviceRGB())
+                colorSpace: CGColorSpaceCreateDeviceRGB()
+            )
         }
         return VPhoneCameraFrame(
-            width: width, height: height,
+            width: width,
+            height: height,
             bytesPerRow: bytesPerRow,
             timestampNS: UInt64(ProcessInfo.processInfo.systemUptime * 1e9),
-            pixels: out)
+            pixels: out
+        )
     }
 }

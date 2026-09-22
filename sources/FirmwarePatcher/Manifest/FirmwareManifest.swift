@@ -100,7 +100,11 @@ public enum FirmwareManifest {
         let buildIdentity = try buildEraseIdentity(
             cloudIdentities: cloudIdentities,
             iPhoneIdentities: iPhoneIdentities,
-            prod: prod, res: res, vp: vp, vpr: vpr, iErase: iErase
+            prod: prod,
+            res: res,
+            vp: vp,
+            vpr: vpr,
+            iErase: iErase
         )
 
         // Assemble BuildManifest.
@@ -203,7 +207,11 @@ public enum FirmwareManifest {
     static func buildEraseIdentity(
         cloudIdentities C: [PlistDict],
         iPhoneIdentities I: [PlistDict],
-        prod: Int, res: Int, vp: Int, vpr: Int, iErase: Int
+        prod: Int,
+        res: Int,
+        vp: Int,
+        vpr: Int,
+        iErase: Int
     ) throws -> PlistDict {
         // Identity base from vresearch101ap PROD.
         var bi = deepCopyPlistDict(C[prod])

@@ -61,7 +61,8 @@ extension IBootPatcher {
         let raw = buffer.original
 
         // Find the anchor string
-        var anchor: Int? = raw.range(of: Data("rd=md0".utf8)).map { raw.distance(from: raw.startIndex, to: $0.lowerBound) }
+        var anchor: Int? = raw.range(of: Data("rd=md0".utf8))
+            .map { raw.distance(from: raw.startIndex, to: $0.lowerBound) }
         if anchor == nil {
             anchor = raw.range(of: Data("BootArgs".utf8)).map { raw.distance(from: raw.startIndex, to: $0.lowerBound) }
         }

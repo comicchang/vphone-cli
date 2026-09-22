@@ -57,11 +57,14 @@ public struct PatchRecord: Codable, Equatable, Sendable {
 extension PatchRecord: CustomStringConvertible {
     public var description: String {
         let addr = virtualAddress.map { String(format: " (VA 0x%llX)", $0) } ?? ""
-        return String(format: "  0x%06X%@: %@ → %@  [%@]",
-                      fileOffset, addr,
-                      beforeDisasm.isEmpty ? originalBytes.hex : beforeDisasm,
-                      afterDisasm.isEmpty ? patchedBytes.hex : afterDisasm,
-                      patchID)
+        return String(
+            format: "  0x%06X%@: %@ → %@  [%@]",
+            fileOffset,
+            addr,
+            beforeDisasm.isEmpty ? originalBytes.hex : beforeDisasm,
+            afterDisasm.isEmpty ? patchedBytes.hex : afterDisasm,
+            patchID
+        )
     }
 }
 

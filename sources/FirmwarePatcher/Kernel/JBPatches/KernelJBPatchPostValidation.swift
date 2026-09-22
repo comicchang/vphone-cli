@@ -84,10 +84,13 @@ extension KernelJBPatcher {
         }
 
         let patchOff = uniqueHits[0]
-        emit(patchOff, ARM64.cmpW0W0,
-             patchID: "jb.post_validation.cmp_w0_w0",
-             virtualAddress: fileOffsetToVA(patchOff),
-             description: "cmp w0,w0 [postValidation additional]")
+        emit(
+            patchOff,
+            ARM64.cmpW0W0,
+            patchID: "jb.post_validation.cmp_w0_w0",
+            virtualAddress: fileOffsetToVA(patchOff),
+            description: "cmp w0,w0 [postValidation additional]"
+        )
         return true
     }
 }

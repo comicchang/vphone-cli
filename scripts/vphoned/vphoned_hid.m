@@ -61,7 +61,9 @@ BOOL vp_hid_load(void) {
     if (!gClient) { NSLog(@"vphoned: IOHIDEventSystemClientCreate returned NULL"); return NO; }
 
     dispatch_queue_attr_t attr = dispatch_queue_attr_make_with_qos_class(
-        DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INTERACTIVE, 0);
+        DISPATCH_QUEUE_SERIAL,
+        QOS_CLASS_USER_INTERACTIVE,
+        0);
     gHIDQueue = dispatch_queue_create("com.vphone.vphoned.hid", attr);
 
     NSLog(@"vphoned: IOKit loaded");

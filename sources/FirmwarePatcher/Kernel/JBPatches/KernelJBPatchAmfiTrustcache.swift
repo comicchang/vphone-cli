@@ -130,10 +130,34 @@ extension KernelJBPatcher {
         let va2 = fileOffsetToVA(funcStart + 8)
         let va3 = fileOffsetToVA(funcStart + 12)
 
-        emit(funcStart, ARM64.movX0_1, patchID: "amfi_trustcache_1", virtualAddress: va0, description: "mov x0,#1 [AMFIIsCDHashInTrustCache]")
-        emit(funcStart + 4, ARM64.cbzX2_8, patchID: "amfi_trustcache_2", virtualAddress: va1, description: "cbz x2,+8 [AMFIIsCDHashInTrustCache]")
-        emit(funcStart + 8, ARM64.strX0X2, patchID: "amfi_trustcache_3", virtualAddress: va2, description: "str x0,[x2] [AMFIIsCDHashInTrustCache]")
-        emit(funcStart + 12, ARM64.ret, patchID: "amfi_trustcache_4", virtualAddress: va3, description: "ret [AMFIIsCDHashInTrustCache]")
+        emit(
+            funcStart,
+            ARM64.movX0_1,
+            patchID: "amfi_trustcache_1",
+            virtualAddress: va0,
+            description: "mov x0,#1 [AMFIIsCDHashInTrustCache]"
+        )
+        emit(
+            funcStart + 4,
+            ARM64.cbzX2_8,
+            patchID: "amfi_trustcache_2",
+            virtualAddress: va1,
+            description: "cbz x2,+8 [AMFIIsCDHashInTrustCache]"
+        )
+        emit(
+            funcStart + 8,
+            ARM64.strX0X2,
+            patchID: "amfi_trustcache_3",
+            virtualAddress: va2,
+            description: "str x0,[x2] [AMFIIsCDHashInTrustCache]"
+        )
+        emit(
+            funcStart + 12,
+            ARM64.ret,
+            patchID: "amfi_trustcache_4",
+            virtualAddress: va3,
+            description: "ret [AMFIIsCDHashInTrustCache]"
+        )
         return true
     }
 }

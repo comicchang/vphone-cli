@@ -18,8 +18,7 @@ struct FirmwareCatalogReportTests {
 
     @Test func roundTripsJSON() throws {
         let report = VPhoneFirmwareCatalog.report
-        let back = try JSONDecoder().decode(
-            VPhoneFirmwareCatalogReport.self, from: try JSONEncoder().encode(report))
+        let back = try JSONDecoder().decode(VPhoneFirmwareCatalogReport.self, from: try JSONEncoder().encode(report))
         #expect(back == report)
     }
 }

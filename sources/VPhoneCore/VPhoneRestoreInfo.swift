@@ -77,8 +77,10 @@ public struct VPhoneRestoreInfo: Codable, Equatable, Sendable {
     {
         guard let base = load(fromBundle: bundle) else { return nil }
         let merged = VPhoneRestoreInfo(
-            ios: base.ios, cloudOS: base.cloudOS,
-            variant: variant, device: device(forVariant: variant))
+            ios: base.ios,
+            cloudOS: base.cloudOS,
+            variant: variant,
+            device: device(forVariant: variant))
         try merged.write(toBundle: bundle)
         return merged
     }
@@ -96,7 +98,8 @@ public struct VPhoneRestoreInfo: Codable, Equatable, Sendable {
 
     static func findRestoreDirectory(inBundle bundle: VPhoneBundle) -> URL? {
         let entries = (try? FileManager.default.contentsOfDirectory(
-            at: bundle.url, includingPropertiesForKeys: nil)) ?? []
+            at: bundle.url,
+            includingPropertiesForKeys: nil)) ?? []
         return entries
             .filter { $0.lastPathComponent.hasPrefix("iPhone") && $0.lastPathComponent.hasSuffix("_Restore") }
             .max { $0.lastPathComponent < $1.lastPathComponent }

@@ -142,9 +142,13 @@ class VPhoneHostControl {
         // Draw into grayscale context
         let gray = CGColorSpaceCreateDeviceGray()
         guard let ctx = CGContext(
-            data: nil, width: dstW, height: dstH,
-            bitsPerComponent: 8, bytesPerRow: dstW,
-            space: gray, bitmapInfo: CGImageAlphaInfo.none.rawValue
+            data: nil,
+            width: dstW,
+            height: dstH,
+            bitsPerComponent: 8,
+            bytesPerRow: dstW,
+            space: gray,
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
         ) else { return nil }
 
         // High contrast: bump brightness
@@ -245,8 +249,10 @@ class VPhoneHostControl {
                     return
                 }
                 view.injectTap(
-                    pixelX: x, pixelY: y,
-                    screenWidth: controller.screenWidth, screenHeight: controller.screenHeight
+                    pixelX: x,
+                    pixelY: y,
+                    screenWidth: controller.screenWidth,
+                    screenHeight: controller.screenHeight
                 )
                 result.ok = true
                 if wantScreen {
@@ -276,8 +282,12 @@ class VPhoneHostControl {
                     return
                 }
                 view.injectSwipe(
-                    fromX: x1, fromY: y1, toX: x2, toY: y2,
-                    screenWidth: controller.screenWidth, screenHeight: controller.screenHeight,
+                    fromX: x1,
+                    fromY: y1,
+                    toX: x2,
+                    toY: y2,
+                    screenWidth: controller.screenWidth,
+                    screenHeight: controller.screenHeight,
                     durationMs: durationMs
                 )
                 result.ok = true
@@ -382,7 +392,11 @@ class VPhoneHostControl {
     }
 
     private nonisolated static func writeResponse(
-        _ fd: Int32, ok: Bool, path: String? = nil, error: String? = nil, image: String? = nil
+        _ fd: Int32,
+        ok: Bool,
+        path: String? = nil,
+        error: String? = nil,
+        image: String? = nil
     ) {
         var dict: [String: Any] = ["ok": ok]
         if let path { dict["path"] = path }

@@ -53,10 +53,13 @@ extension KernelJBPatcher {
 
         let patchOff = hits[0]
         let va = fileOffsetToVA(patchOff)
-        emit(patchOff, ARM64.nop,
-             patchID: "kernelcache_jb.task_for_pid",
-             virtualAddress: va,
-             description: "NOP [_task_for_pid pid==0 gate]")
+        emit(
+            patchOff,
+            ARM64.nop,
+            patchID: "kernelcache_jb.task_for_pid",
+            virtualAddress: va,
+            description: "NOP [_task_for_pid pid==0 gate]"
+        )
         return true
     }
 

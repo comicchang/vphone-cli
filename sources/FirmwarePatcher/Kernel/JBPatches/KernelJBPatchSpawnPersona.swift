@@ -37,14 +37,20 @@ extension KernelJBPatcher {
         let (firstCbz, secondCbz) = sites
         let va1 = fileOffsetToVA(firstCbz)
         let va2 = fileOffsetToVA(secondCbz)
-        emit(firstCbz, ARM64.nop,
-             patchID: "kernelcache_jb.spawn_validate_persona.cbz1",
-             virtualAddress: va1,
-             description: "NOP [_spawn_validate_persona pid-slot guard]")
-        emit(secondCbz, ARM64.nop,
-             patchID: "kernelcache_jb.spawn_validate_persona.cbz2",
-             virtualAddress: va2,
-             description: "NOP [_spawn_validate_persona persona-slot guard]")
+        emit(
+            firstCbz,
+            ARM64.nop,
+            patchID: "kernelcache_jb.spawn_validate_persona.cbz1",
+            virtualAddress: va1,
+            description: "NOP [_spawn_validate_persona pid-slot guard]"
+        )
+        emit(
+            secondCbz,
+            ARM64.nop,
+            patchID: "kernelcache_jb.spawn_validate_persona.cbz2",
+            virtualAddress: va2,
+            description: "NOP [_spawn_validate_persona persona-slot guard]"
+        )
         return true
     }
 

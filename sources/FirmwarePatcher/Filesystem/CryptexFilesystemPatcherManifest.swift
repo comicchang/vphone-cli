@@ -15,7 +15,12 @@ extension CryptexFilesystemPatcher {
         )
     }
 
-    func setUpdatedComponentsInManifest(filesystem: URL, trustcache: URL, metadata: URL, rootHash: URL) throws -> PlistDict {
+    func setUpdatedComponentsInManifest(
+        filesystem: URL,
+        trustcache: URL,
+        metadata: URL,
+        rootHash: URL
+    ) throws -> PlistDict {
         var root = try parsePlist(data: buildManiest)
         guard var buildIdentities = root["BuildIdentities"] as? [Any],
               buildIdentities.count > 0,
@@ -25,28 +30,44 @@ extension CryptexFilesystemPatcher {
         var identityManifest = try getChildPlistDict(parent: buildIdentity, key: "Manifest")
 
         // We assume that the filesystem is already placed in the restore directory.
-        identityManifest = try updateManifestComponentPath(identityManifest: identityManifest, component: "OS", at: filesystem)
+        identityManifest = try updateManifestComponentPath(
+            identityManifest: identityManifest,
+            component: "OS",
+            at: filesystem
+        )
 
         let newTrustcachePath = self.restoreDir.appending(path: "Firmware").appending(path: trustcache.lastPathComponent)
         if trustcache != newTrustcachePath && FileManager.default.fileExists(atPath: newTrustcachePath.path) {
             try FileManager.default.removeItem(at: newTrustcachePath)
         }
         try FileManager.default.moveItem(at: trustcache, to: newTrustcachePath)
-        identityManifest = try updateManifestComponentPath(identityManifest: identityManifest, component: "StaticTrustCache", at: newTrustcachePath)
+        identityManifest = try updateManifestComponentPath(
+            identityManifest: identityManifest,
+            component: "StaticTrustCache",
+            at: newTrustcachePath
+        )
 
         let newMetadataPath = self.restoreDir.appending(path: "Firmware").appending(path: metadata.lastPathComponent)
         if metadata != newMetadataPath && FileManager.default.fileExists(atPath: newMetadataPath.path) {
             try FileManager.default.removeItem(at: newMetadataPath)
         }
         try FileManager.default.moveItem(at: metadata, to: newMetadataPath)
-        identityManifest = try updateManifestComponentPath(identityManifest: identityManifest, component: "Ap,SystemVolumeCanonicalMetadata", at: newMetadataPath)
+        identityManifest = try updateManifestComponentPath(
+            identityManifest: identityManifest,
+            component: "Ap,SystemVolumeCanonicalMetadata",
+            at: newMetadataPath
+        )
 
         let newRootHashPath = self.restoreDir.appending(path: "Firmware").appending(path: rootHash.lastPathComponent)
         if rootHash != newRootHashPath && FileManager.default.fileExists(atPath: newRootHashPath.path) {
             try FileManager.default.removeItem(at: newRootHashPath)
         }
         try FileManager.default.moveItem(at: rootHash, to: newRootHashPath)
-        identityManifest = try updateManifestComponentPath(identityManifest: identityManifest, component: "SystemVolume", at: newRootHashPath)
+        identityManifest = try updateManifestComponentPath(
+            identityManifest: identityManifest,
+            component: "SystemVolume",
+            at: newRootHashPath
+        )
 
         buildIdentity["Manifest"] = identityManifest
         buildIdentities[0] = buildIdentity

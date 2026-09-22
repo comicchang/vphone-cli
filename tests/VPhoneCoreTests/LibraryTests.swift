@@ -17,9 +17,10 @@ struct LibraryTests {
         let dir = root.appendingPathComponent(name)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let manifest = VPhoneVirtualMachineManifest(
-            cpuCount: 8, memorySize: 8 * 1024 * 1024 * 1024,
-            romImages: .init(avpBooter: "AVPBooter.vresearch1.bin",
-                             avpSEPBooter: "AVPSEPBooter.vresearch1.bin"))
+            cpuCount: 8,
+            memorySize: 8 * 1024 * 1024 * 1024,
+            romImages: .init(avpBooter: "AVPBooter.vresearch1.bin", avpSEPBooter: "AVPSEPBooter.vresearch1.bin")
+        )
         try manifest.write(to: dir.appendingPathComponent("config.plist"))
     }
 
@@ -30,7 +31,9 @@ struct LibraryTests {
         try writeBundle("beta", in: root)
         // A stray dir without config.plist must be ignored.
         try FileManager.default.createDirectory(
-            at: root.appendingPathComponent("junk"), withIntermediateDirectories: true)
+            at: root.appendingPathComponent("junk"),
+            withIntermediateDirectories: true
+        )
 
         let names = try VPhoneLibrary(root: root).bundles().map(\.name)
         #expect(names == ["alpha", "beta"])

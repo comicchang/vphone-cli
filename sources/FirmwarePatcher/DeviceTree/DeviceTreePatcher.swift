@@ -140,8 +140,11 @@ public final class DeviceTreePatcher: Patcher {
             pos += Self.align4(length)
 
             node.properties.append(DTProperty(
-                name: name, length: length, flags: flags,
-                value: value, valueOffset: valueOffset
+                name: name,
+                length: length,
+                flags: flags,
+                value: value,
+                valueOffset: valueOffset
             ))
         }
 
@@ -331,11 +334,13 @@ public final class DeviceTreePatcher: Patcher {
             patches.append(record)
 
             if verbose {
-                print(String(format: "  0x%06X: %@ → %@  [%@]",
-                             prop.valueOffset,
-                             originalBytes.hex,
-                             newValue.hex,
-                             patch.patchID))
+                print(String(
+                    format: "  0x%06X: %@ → %@  [%@]",
+                    prop.valueOffset,
+                    originalBytes.hex,
+                    newValue.hex,
+                    patch.patchID
+                ))
             }
         }
 

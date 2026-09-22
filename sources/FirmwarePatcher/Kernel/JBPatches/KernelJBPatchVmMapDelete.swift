@@ -59,10 +59,13 @@ extension KernelJBPatcher {
         }
 
         for (gate, bytes) in replacements {
-            emit(gate.offset, bytes,
-                 patchID: "kernelcache_frida.vm_map_delete_immutable_code",
-                 virtualAddress: fileOffsetToVA(gate.offset),
-                 description: "\(gate.nonzero ? "tbnz" : "tbz") entry max_protection.X [vm_map_delete immutable-code \(gate.shape), --frida]")
+            emit(
+                gate.offset,
+                bytes,
+                patchID: "kernelcache_frida.vm_map_delete_immutable_code",
+                virtualAddress: fileOffsetToVA(gate.offset),
+                description: "\(gate.nonzero ? "tbnz" : "tbz") entry max_protection.X [vm_map_delete immutable-code \(gate.shape), --frida]"
+            )
         }
         return true
     }
@@ -117,8 +120,12 @@ extension KernelJBPatcher {
                   exec == argTarget.target
             else { continue }
             return VmMapDeleteGate(
-                offset: Int(insns[i + 1].address), register: flagsReg,
-                nonzero: false, target: exec, shape: "shape-A")
+                offset: Int(insns[i + 1].address),
+                register: flagsReg,
+                nonzero: false,
+                target: exec,
+                shape: "shape-A"
+            )
         }
 
         // Shape B: developer mode is checked first, then the current-X test branches
@@ -132,8 +139,12 @@ extension KernelJBPatcher {
                   exec == permTarget
             else { continue }
             return VmMapDeleteGate(
-                offset: Int(insns[i].address), register: flagsReg,
-                nonzero: true, target: exec, shape: "shape-B")
+                offset: Int(insns[i].address),
+                register: flagsReg,
+                nonzero: true,
+                target: exec,
+                shape: "shape-B"
+            )
         }
 
         return nil

@@ -138,7 +138,9 @@ extension CryptexFilesystemPatcher {
         guard let colonIndex = line.firstIndex(of: ":") else { return [] }
 
         let afterColon = line[line.index(after: colonIndex)...]
-        let beforeAscii = afterColon.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false).first ?? afterColon
+        let beforeAscii = afterColon
+            .split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
+            .first ?? afterColon
 
         let tokens = beforeAscii.split(whereSeparator: \.isWhitespace)
         var bytes: [UInt8] = []

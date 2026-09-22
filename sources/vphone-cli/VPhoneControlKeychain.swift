@@ -19,7 +19,9 @@ extension VPhoneControl {
     }
 
     func addKeychainItem(
-        account: String = "vphone-test", service: String = "vphone", password: String = "testpass123"
+        account: String = "vphone-test",
+        service: String = "vphone",
+        password: String = "testpass123"
     ) async throws {
         let req: [String: Any] = [
             "t": "keychain_add", "account": account, "service": service, "password": password,

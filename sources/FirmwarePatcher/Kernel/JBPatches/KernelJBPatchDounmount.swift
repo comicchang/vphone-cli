@@ -26,10 +26,13 @@ extension KernelJBPatcher {
             return false
         }
 
-        emit(patchOff, ARM64.nop,
-             patchID: "jb.dounmount.nop_cleanup_bl",
-             virtualAddress: fileOffsetToVA(patchOff),
-             description: "NOP [_dounmount upstream cleanup call]")
+        emit(
+            patchOff,
+            ARM64.nop,
+            patchID: "jb.dounmount.nop_cleanup_bl",
+            virtualAddress: fileOffsetToVA(patchOff),
+            description: "NOP [_dounmount upstream cleanup call]"
+        )
         return true
     }
 

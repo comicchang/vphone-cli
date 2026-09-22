@@ -69,10 +69,13 @@ extension KernelJBPatcher {
                 log("  [-] failed to assemble/verify cleared flags at 0x\(String(format: "%X", setterOff))")
                 return false
             }
-            emit(setterOff, bytes,
-                 patchID: "kernelcache_frida.thread_set_state_entitlement_flag",
-                 virtualAddress: fileOffsetToVA(setterOff),
-                 description: "clear TSSF_CHECK_ENTITLEMENT (0x201 -> 0x1) [thread_set_state user setter, --frida]")
+            emit(
+                setterOff,
+                bytes,
+                patchID: "kernelcache_frida.thread_set_state_entitlement_flag",
+                virtualAddress: fileOffsetToVA(setterOff),
+                description: "clear TSSF_CHECK_ENTITLEMENT (0x201 -> 0x1) [thread_set_state user setter, --frida]"
+            )
         }
         return true
     }

@@ -435,7 +435,9 @@ struct IM4PPayloadParityTests {
             .appendingPathComponent("ipsws/patch_refactor_input")
 
         let rawIBSS = try Data(contentsOf: baseDir.appendingPathComponent("raw_payloads/ibss.bin"))
-        let (im4pPayload, _) = try IM4PHandler.load(contentsOf: baseDir.appendingPathComponent("Firmware/dfu/iBSS.vresearch101.RELEASE.im4p"))
+        let (im4pPayload, _) = try IM4PHandler.load(
+            contentsOf: baseDir.appendingPathComponent("Firmware/dfu/iBSS.vresearch101.RELEASE.im4p")
+        )
 
         #expect(im4pPayload == rawIBSS)
 

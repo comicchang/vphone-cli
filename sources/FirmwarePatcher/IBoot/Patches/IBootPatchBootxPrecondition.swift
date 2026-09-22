@@ -90,8 +90,12 @@ extension IBootPatcher {
             return
         }
         let gate = gates.first!
-        emit(gate, ARM64.nop, id: "\(component).bootx_precondition",
-             description: "bootx precondition: NOP gate TBZ")
+        emit(
+            gate,
+            ARM64.nop,
+            id: "\(component).bootx_precondition",
+            description: "bootx precondition: NOP gate TBZ"
+        )
     }
 
     /// Enumerate 5-insn `MOVZ + 3×MOVK + RET` functions assembling a 64-bit

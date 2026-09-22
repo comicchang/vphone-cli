@@ -43,10 +43,13 @@ extension KernelJBPatcher {
 
         let site = candidates[0]
         let va = fileOffsetToVA(site)
-        emit(site, ARM64.cmpXzrXzr,
-             patchID: "task_conversion_eval",
-             virtualAddress: va,
-             description: "cmp xzr,xzr [_task_conversion_eval_internal]")
+        emit(
+            site,
+            ARM64.cmpXzrXzr,
+            patchID: "task_conversion_eval",
+            virtualAddress: va,
+            description: "cmp xzr,xzr [_task_conversion_eval_internal]"
+        )
         return true
     }
 

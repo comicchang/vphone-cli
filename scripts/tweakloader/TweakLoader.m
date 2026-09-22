@@ -158,10 +158,8 @@ static void TLOnImageAdded(const struct mach_header *mh, intptr_t slide) {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         for (NSString *dylibPath in toLoad) {
             void *h = dlopen(dylibPath.fileSystemRepresentation, RTLD_NOW | RTLD_GLOBAL);
-            if (h) TLLog(@"framework-deferred-load %@ -> %p (triggered by %@)",
-                         dylibPath, h, imagePath);
-            else   TLLog(@"framework-deferred-load failed for %@: %s",
-                         dylibPath, dlerror() ?: "unknown");
+            if (h) TLLog(@"framework-deferred-load %@ -> %p (triggered by %@)", dylibPath, h, imagePath);
+            else   TLLog(@"framework-deferred-load failed for %@: %s", dylibPath, dlerror() ?: "unknown");
         }
     });
 }
@@ -178,13 +176,11 @@ static void TLScheduleFrameworkTweak(NSString *dylibPath, NSArray *frameworks) {
         const char *p = _dyld_get_image_name(i);
         for (NSString *fw in frameworks) {
             if (TLPathMatchesFramework(p, fw)) {
-                TLLog(@"queueing %@ for async load (framework %@ already loaded as %s)",
-                      dylibPath, fw, p);
+                TLLog(@"queueing %@ for async load (framework %@ already loaded as %s)", dylibPath, fw, p);
                 dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
                     void *h = dlopen(dylibPath.fileSystemRepresentation, RTLD_NOW | RTLD_GLOBAL);
                     if (h) TLLog(@"framework-load %@ -> %p", dylibPath, h);
-                    else   TLLog(@"framework-load failed for %@: %s",
-                                 dylibPath, dlerror() ?: "unknown");
+                    else   TLLog(@"framework-load failed for %@: %s", dylibPath, dlerror() ?: "unknown");
                 });
                 return;
             }

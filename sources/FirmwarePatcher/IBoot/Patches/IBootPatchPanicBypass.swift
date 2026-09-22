@@ -34,9 +34,12 @@ extension IBootPatcher {
                     if let ni = disasm.disassembleOne(in: buffer.original, at: step + 4),
                        ni.mnemonic == "cbnz"
                     {
-                        emit(step + 4, ARM64.nop,
-                             id: "\(component).panic_bypass",
-                             description: "panic bypass: NOP cbnz w0")
+                        emit(
+                            step + 4,
+                            ARM64.nop,
+                            id: "\(component).panic_bypass",
+                            description: "panic bypass: NOP cbnz w0"
+                        )
                         return
                     }
                     break // bl found but no cbnz — keep scanning other mov candidates

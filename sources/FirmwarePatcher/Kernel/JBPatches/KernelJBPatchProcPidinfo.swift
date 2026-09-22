@@ -70,14 +70,20 @@ extension KernelJBPatcher {
 
         let guardA = matches[0] + 4 // cbz Xd
         let guardB = matches[0] + 12 // cbz/cbnz wN
-        emit(guardA, ARM64.nop,
-             patchID: "jb.proc_pidinfo.nop_guard_a",
-             virtualAddress: fileOffsetToVA(guardA),
-             description: "NOP [_proc_pidinfo pid-0 guard A]")
-        emit(guardB, ARM64.nop,
-             patchID: "jb.proc_pidinfo.nop_guard_b",
-             virtualAddress: fileOffsetToVA(guardB),
-             description: "NOP [_proc_pidinfo pid-0 guard B]")
+        emit(
+            guardA,
+            ARM64.nop,
+            patchID: "jb.proc_pidinfo.nop_guard_a",
+            virtualAddress: fileOffsetToVA(guardA),
+            description: "NOP [_proc_pidinfo pid-0 guard A]"
+        )
+        emit(
+            guardB,
+            ARM64.nop,
+            patchID: "jb.proc_pidinfo.nop_guard_b",
+            virtualAddress: fileOffsetToVA(guardB),
+            description: "NOP [_proc_pidinfo pid-0 guard B]"
+        )
         return true
     }
 }

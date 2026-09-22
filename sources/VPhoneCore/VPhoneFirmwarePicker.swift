@@ -67,7 +67,9 @@ public enum VPhoneFirmwarePicker {
     // MARK: - Prompts
 
     static func pickPairing(
-        maxRetries: Int, read: () -> String?, write: (String) -> Void
+        maxRetries: Int,
+        read: () -> String?,
+        write: (String) -> Void
     ) throws -> VPhoneFirmwarePairing {
         let pairings = VPhoneFirmwareCatalog.pairings
         let w = pairings.map(\.iosName.count).max() ?? 0
@@ -75,33 +77,43 @@ public enum VPhoneFirmwarePicker {
             "Select a firmware pairing to download:",
             pairings.map { $0.iosName.padding(toLength: w, withPad: " ", startingAt: 0)
                 + "  (→ \($0.cloudosName))" },
-            maxRetries: maxRetries, read: read, write: write)
+            maxRetries: maxRetries,
+            read: read,
+            write: write)
         let p = pairings[idx]
         write("→ \(p.iosName) + \(p.cloudosName)")
         return p
     }
 
     static func pickIPhone(
-        maxRetries: Int, read: () -> String?, write: (String) -> Void
+        maxRetries: Int,
+        read: () -> String?,
+        write: (String) -> Void
     ) throws -> VPhoneFirmwarePairing {
         let pairings = VPhoneFirmwareCatalog.pairings
         let idx = try choose(
             "Select an iPhone firmware to download:",
             pairings.map(\.iosName),
-            maxRetries: maxRetries, read: read, write: write)
+            maxRetries: maxRetries,
+            read: read,
+            write: write)
         let p = pairings[idx]
         write("→ \(p.iosName)")
         return p
     }
 
     static func pickCloudOS(
-        maxRetries: Int, read: () -> String?, write: (String) -> Void
+        maxRetries: Int,
+        read: () -> String?,
+        write: (String) -> Void
     ) throws -> VPhoneCloudOSOption {
         let options = VPhoneFirmwareCatalog.cloudOSOptions
         let idx = try choose(
             "Select a cloudOS firmware to download:",
             options.map(\.name),
-            maxRetries: maxRetries, read: read, write: write)
+            maxRetries: maxRetries,
+            read: read,
+            write: write)
         let c = options[idx]
         write("→ \(c.name)")
         return c
@@ -109,8 +121,11 @@ public enum VPhoneFirmwarePicker {
 
     /// Show a numbered menu and read a 1-based index (mirrors VPhoneVMPicker).
     static func choose(
-        _ prompt: String, _ labels: [String],
-        maxRetries: Int, read: () -> String?, write: (String) -> Void
+        _ prompt: String,
+        _ labels: [String],
+        maxRetries: Int,
+        read: () -> String?,
+        write: (String) -> Void
     ) throws -> Int {
         write(prompt)
         let iw = String(labels.count).count   // right-align indices so labels start in one column

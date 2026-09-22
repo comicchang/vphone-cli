@@ -361,8 +361,9 @@ static int vcc_patch_two_nops(uintptr_t pc) {
 // icache flush dance as vcc_patch_two_nops. Verifies the original word
 // matches `expected_word` before writing so an iOS version skew doesn't
 // silently corrupt the wrong code. Returns 1 on success.
-static int vcc_patch_word(uintptr_t pc, uint32_t expected_word,
-                           uint32_t new_word) {
+static int vcc_patch_word(uintptr_t pc,
+                          uint32_t expected_word,
+                          uint32_t new_word) {
   uint32_t cur = ((const uint32_t *)pc)[0];
   if (cur != expected_word) {
     vcc_log(@"  patch_word @ 0x%lx: expected 0x%08x, found 0x%08x — skip",
@@ -402,8 +403,9 @@ static int vcc_patch_word(uintptr_t pc, uint32_t expected_word,
 // instruction encoding is a stable fingerprint (e.g. `mov w20, #-12783`
 // MOVN encodings used for error-prep). Returns the count patched.
 static unsigned vcc_scan_and_patch(const vcc_image_t *img,
-                                    uint32_t needle, uint32_t replacement,
-                                    const char *what) {
+                                   uint32_t needle,
+                                   uint32_t replacement,
+                                   const char *what) {
   if (!img->text || !img->text_words) return 0;
   unsigned hits = 0;
   for (size_t i = 0; i < img->text_words; i++) {
@@ -604,8 +606,11 @@ static BOOL vcc_slot_value_is_cfarray(uintptr_t slot_addr) {
 // statics emits one such pair per global it initializes; the first
 // one is `_sSourceList`.
 static unsigned vcc_collect_call_then_store_globals(
-    uintptr_t func, unsigned maxInsns, unsigned lookahead,
-    uintptr_t *out_addrs, unsigned cap) {
+    uintptr_t func,
+    unsigned maxInsns,
+    unsigned lookahead,
+    uintptr_t *out_addrs,
+    unsigned cap) {
   if (!func || !out_addrs || !cap) return 0;
   func = (uintptr_t)ptrauth_strip((void *)func, ptrauth_key_function_pointer);
   uint32_t *ip = (uint32_t *)func;
@@ -1295,25 +1300,27 @@ static void vcc_install_synthetic(void) {
 
 static IMP vcc_add_endpoint_orig_imp = NULL;
 
-typedef BOOL (*VccAddEndpointFn)(id, SEL,
-                                  id /*endpoint*/,
-                                  id /*endpointUniqueID*/,
-                                  int /*endpointType*/,
-                                  int /*endpointPID*/,
-                                  int /*endpointProxyPID*/,
-                                  audit_token_t * /*auditToken*/,
-                                  audit_token_t * /*proxyAuditToken*/,
-                                  id /*endpointCameraUniqueID*/);
+typedef BOOL (*VccAddEndpointFn)(id,
+                                 SEL,
+                                 id /*endpoint*/,
+                                 id /*endpointUniqueID*/,
+                                 int /*endpointType*/,
+                                 int /*endpointPID*/,
+                                 int /*endpointProxyPID*/,
+                                 audit_token_t * /*auditToken*/,
+                                 audit_token_t * /*proxyAuditToken*/,
+                                 id /*endpointCameraUniqueID*/);
 
-static BOOL vcc_add_endpoint_hook(id self, SEL _cmd,
-                                   id endpoint,
-                                   id endpointUniqueID,
-                                   int endpointType,
-                                   int endpointPID,
-                                   int endpointProxyPID,
-                                   audit_token_t *auditToken,
-                                   audit_token_t *proxyAuditToken,
-                                   id endpointCameraUniqueID) {
+static BOOL vcc_add_endpoint_hook(id self,
+                                  SEL _cmd,
+                                  id endpoint,
+                                  id endpointUniqueID,
+                                  int endpointType,
+                                  int endpointPID,
+                                  int endpointProxyPID,
+                                  audit_token_t *auditToken,
+                                  audit_token_t *proxyAuditToken,
+                                  id endpointCameraUniqueID) {
   vcc_log(@"  +addEndpoint cameraID=%@ pid=%d type=%d endpointUniqueID=%@",
           endpointCameraUniqueID, endpointPID, endpointType, endpointUniqueID);
   if (!vcc_add_endpoint_orig_imp) return NO;
@@ -1437,22 +1444,34 @@ static IMP vcc_iqsn_render_orig = NULL;
 static IMP vcc_rqsn_render_orig = NULL;
 
 typedef id (*VccIqsnInitFn)(
-    id self, SEL _cmd,
-    BOOL hfrSupport, BOOL ispJitterCompensationEnabled,
-    audit_token_t auditToken, id sinkID);
+    id self,
+    SEL _cmd,
+    BOOL hfrSupport,
+    BOOL ispJitterCompensationEnabled,
+    audit_token_t auditToken,
+    id sinkID);
 
 typedef id (*VccRqsnInitFn)(
-    id self, SEL _cmd,
-    uint32_t mediaType, audit_token_t auditToken, id sinkID,
+    id self,
+    SEL _cmd,
+    uint32_t mediaType,
+    audit_token_t auditToken,
+    id sinkID,
     id cameraInfoByPortType);
 
 typedef void (*VccRenderFn)(
-    id self, SEL _cmd, CMSampleBufferRef cmsb, id input);
+    id self,
+    SEL _cmd,
+    CMSampleBufferRef cmsb,
+    id input);
 
 static id vcc_iqsn_init_hook(
-    id self, SEL _cmd,
-    BOOL hfrSupport, BOOL ispJitterCompensationEnabled,
-    audit_token_t auditToken, id sinkID) {
+    id self,
+    SEL _cmd,
+    BOOL hfrSupport,
+    BOOL ispJitterCompensationEnabled,
+    audit_token_t auditToken,
+    id sinkID) {
   VccIqsnInitFn orig = (VccIqsnInitFn)vcc_iqsn_init_orig;
   id ret = orig(self, _cmd, hfrSupport, ispJitterCompensationEnabled,
                 auditToken, sinkID);
@@ -1463,8 +1482,11 @@ static id vcc_iqsn_init_hook(
 }
 
 static id vcc_rqsn_init_hook(
-    id self, SEL _cmd,
-    uint32_t mediaType, audit_token_t auditToken, id sinkID,
+    id self,
+    SEL _cmd,
+    uint32_t mediaType,
+    audit_token_t auditToken,
+    id sinkID,
     id cameraInfoByPortType) {
   VccRqsnInitFn orig = (VccRqsnInitFn)vcc_rqsn_init_orig;
   id ret = orig(self, _cmd, mediaType, auditToken, sinkID,
@@ -1476,7 +1498,10 @@ static id vcc_rqsn_init_hook(
 }
 
 static void vcc_iqsn_render_hook(
-    id self, SEL _cmd, CMSampleBufferRef cmsb, id input) {
+    id self,
+    SEL _cmd,
+    CMSampleBufferRef cmsb,
+    id input) {
   vcc_render_call_count++;
   if (vcc_render_call_count <= 5 || (vcc_render_call_count & 63) == 1) {
     vcc_log(@"  [IQSN render] self=%p cmsb=%p input=%p inputCls=%@ #%lu",
@@ -1488,7 +1513,10 @@ static void vcc_iqsn_render_hook(
 }
 
 static void vcc_rqsn_render_hook(
-    id self, SEL _cmd, CMSampleBufferRef cmsb, id input) {
+    id self,
+    SEL _cmd,
+    CMSampleBufferRef cmsb,
+    id input) {
   vcc_render_call_count++;
   if (vcc_render_call_count <= 5 || (vcc_render_call_count & 63) == 1) {
     vcc_log(@"  [RQSN render] self=%p cmsb=%p input=%p inputCls=%@ #%lu",
@@ -1526,8 +1554,12 @@ static IMP vcc_copy_device_orig = NULL;
 // emit objc_retain on an integer register and crash inside the hook
 // prologue.
 
-typedef id (*VccCopyDeviceFn)(id self, SEL _cmd, NSString *deviceID,
-                              int clientPID, BOOL informClient, int *err);
+typedef id (*VccCopyDeviceFn)(id self,
+                              SEL _cmd,
+                              NSString *deviceID,
+                              int clientPID,
+                              BOOL informClient,
+                              int *err);
 
 static Class vcc_synth_device_class = Nil;
 
@@ -1536,8 +1568,12 @@ static void vcc_init_synth_device_class(void);
 __attribute__((ns_returns_retained))
 static id   vcc_make_synth_device(NSString *deviceID);
 
-static id vcc_copy_device_hook(id self, SEL _cmd, NSString *deviceID,
-                               int clientPID, BOOL informClient, int *err) {
+static id vcc_copy_device_hook(id self,
+                               SEL _cmd,
+                               NSString *deviceID,
+                               int clientPID,
+                               BOOL informClient,
+                               int *err) {
   vcc_log(@"  [copyDeviceWithID] deviceID=%@ clientPID=%d inform=%d",
           deviceID, clientPID, informClient);
 
@@ -1582,8 +1618,9 @@ static ptrdiff_t kBWFigCaptureDevice_deviceID_Offset = -1;
 // candidate in `names` (NULL-terminated) until one matches. Returns -1
 // if none match. Logs the outcome so a future iOS rename surfaces in
 // the install log instead of silently writing to a wrong slot.
-static ptrdiff_t vcc_resolve_ivar(Class cls, const char *what,
-                                   const char *const *names) {
+static ptrdiff_t vcc_resolve_ivar(Class cls,
+                                  const char *what,
+                                  const char *const *names) {
   if (!cls) {
     vcc_log(@"  ivar %s: class missing", what ? what : "?");
     return -1;
@@ -1644,8 +1681,10 @@ static id vcc_synth_copy_property(id self, SEL _cmd, id property, int *err) {
 }
 
 __attribute__((ns_returns_retained))
-static id vcc_synth_copy_property_if_supported(id self, SEL _cmd,
-                                                id property, int *err) {
+static id vcc_synth_copy_property_if_supported(id self,
+                                               SEL _cmd,
+                                               id property,
+                                               int *err) {
   NSString *propStr = [property description];
   if (err) *err = 0;
   vcc_log(@"  [SynthDev copyPropertyIfSupported:%@] -> nil", propStr);
@@ -1761,8 +1800,10 @@ static ptrdiff_t kBWFigCaptureStream_streaming_Offset = -1;
 static CFStringRef vcc_cf_kSupportedFormatsArray = NULL;
 
 __attribute__((ns_returns_retained))
-static id vcc_synth_stream_copy_property(id self, SEL _cmd, id property,
-                                          int *err) {
+static id vcc_synth_stream_copy_property(id self,
+                                         SEL _cmd,
+                                         id property,
+                                         int *err) {
   if (!vcc_cf_kSupportedFormatsArray) {
     vcc_cf_kSupportedFormatsArray =
         vcc_cfconst("kFigCaptureStreamProperty_SupportedFormatsArray");
@@ -1786,16 +1827,20 @@ static id vcc_synth_stream_copy_property(id self, SEL _cmd, id property,
 }
 
 __attribute__((ns_returns_retained))
-static id vcc_synth_stream_copy_property_if_supported(id self, SEL _cmd,
-                                                       id property, int *err) {
+static id vcc_synth_stream_copy_property_if_supported(id self,
+                                                      SEL _cmd,
+                                                      id property,
+                                                      int *err) {
   if (err) *err = 0;
   vcc_log(@"  [SynthStream copyPropertyIfSupported:%@] -> nil",
           [property description]);
   return nil;
 }
 
-static int vcc_synth_stream_get_property(id self, SEL _cmd, id property,
-                                          int *err) {
+static int vcc_synth_stream_get_property(id self,
+                                         SEL _cmd,
+                                         id property,
+                                         int *err) {
   NSString *propStr = [property description];
   // The daemon's session-start path queries PixelSize on the stream and
   // treats err=-12787 as fatal — propagates up to AVCaptureSessionRuntimeError
@@ -1807,8 +1852,10 @@ static int vcc_synth_stream_get_property(id self, SEL _cmd, id property,
   return 0;
 }
 
-static int vcc_synth_stream_get_property_if_supported(id self, SEL _cmd,
-                                                      id property, int *err) {
+static int vcc_synth_stream_get_property_if_supported(id self,
+                                                      SEL _cmd,
+                                                      id property,
+                                                      int *err) {
   if (err) *err = 0;
   vcc_log(@"  [SynthStream getPropertyIfSupported:%@] -> 0 err=0",
           [property description]);
@@ -1818,10 +1865,11 @@ static int vcc_synth_stream_get_property_if_supported(id self, SEL _cmd,
 // Catches the private _copyProperty:requireSupported:error: path. Same
 // effective result as -copyProperty:error: (canned values for known
 // keys, -12787 otherwise) — just a 3rd BOOL arg.
-static id vcc_synth_stream_underscore_copy_property(id self, SEL _cmd,
-                                                     id property,
-                                                     BOOL requireSupported,
-                                                     int *err) {
+static id vcc_synth_stream_underscore_copy_property(id self,
+                                                    SEL _cmd,
+                                                    id property,
+                                                    BOOL requireSupported,
+                                                    int *err) {
   return vcc_synth_stream_copy_property(self, @selector(copyProperty:error:),
                                          property, err);
 }
@@ -1830,8 +1878,10 @@ static id vcc_synth_stream_supported_properties(id self, SEL _cmd) {
   return [NSDictionary dictionary];
 }
 
-static int vcc_synth_stream_set_property(id self, SEL _cmd, id property,
-                                          id value) {
+static int vcc_synth_stream_set_property(id self,
+                                         SEL _cmd,
+                                         id property,
+                                         id value) {
   vcc_log(@"  [SynthStream setProperty:%@] (ignored)", [property description]);
   return 0;
 }
@@ -1911,8 +1961,9 @@ static void vcc_init_synth_stream_class(void) {
 static NSMutableArray *vcc_synth_streams_strong_refs = nil;
 
 __attribute__((ns_returns_retained))
-static id vcc_make_synth_stream(NSString *uniqueID, NSString *deviceID,
-                                  NSString *portType) {
+static id vcc_make_synth_stream(NSString *uniqueID,
+                                NSString *deviceID,
+                                NSString *portType) {
   if (!vcc_synth_stream_class) vcc_init_synth_stream_class();
   if (!vcc_synth_stream_class) return nil;
   // Use +alloc via runtime — ARC-safe (class_createInstance is
@@ -1960,11 +2011,19 @@ static id vcc_make_synth_stream(NSString *uniqueID, NSString *deviceID,
 // the input attributes count.
 
 static IMP vcc_copy_streams_orig = NULL;
-typedef id (*VccCopyStreamsFn)(id self, SEL _cmd, NSArray *uniqueIDs,
-                                id forDevice, int priority, int *err);
+typedef id (*VccCopyStreamsFn)(id self,
+                               SEL _cmd,
+                               NSArray *uniqueIDs,
+                               id forDevice,
+                               int priority,
+                               int *err);
 
-static id vcc_copy_streams_hook(id self, SEL _cmd, NSArray *uniqueIDs,
-                                 id forDevice, int priority, int *err) {
+static id vcc_copy_streams_hook(id self,
+                                SEL _cmd,
+                                NSArray *uniqueIDs,
+                                id forDevice,
+                                int priority,
+                                int *err) {
   if (forDevice && object_getClass(forDevice) == vcc_synth_device_class) {
     vcc_log(@"  [copyStreamsWithUniqueIDs forDevice:synth] ids=%@", uniqueIDs);
     NSMutableArray *out = [NSMutableArray array];
@@ -1992,13 +2051,23 @@ static void vcc_install_copy_streams_hook(void) {
 }
 
 static IMP vcc_copy_streams_from_orig = NULL;
-typedef id (*VccCopyStreamsFromFn)(id self, SEL _cmd, id fromDevice,
-                                    NSArray *positions, NSArray *deviceTypes,
-                                    int prio, BOOL allowsLoss, int *err);
+typedef id (*VccCopyStreamsFromFn)(id self,
+                                   SEL _cmd,
+                                   id fromDevice,
+                                   NSArray *positions,
+                                   NSArray *deviceTypes,
+                                   int prio,
+                                   BOOL allowsLoss,
+                                   int *err);
 
-static id vcc_copy_streams_from_hook(id self, SEL _cmd, id fromDevice,
-                                      NSArray *positions, NSArray *deviceTypes,
-                                      int prio, BOOL allowsLoss, int *err) {
+static id vcc_copy_streams_from_hook(id self,
+                                     SEL _cmd,
+                                     id fromDevice,
+                                     NSArray *positions,
+                                     NSArray *deviceTypes,
+                                     int prio,
+                                     BOOL allowsLoss,
+                                     int *err) {
   if (fromDevice && object_getClass(fromDevice) == vcc_synth_device_class) {
     vcc_log(@"  [copyStreamsFromDevice:synth positions=%@ deviceTypes=%@]",
             positions, deviceTypes);
@@ -2329,8 +2398,10 @@ static void vcc_still_set_handler_hook(id self, SEL _cmd, id handler) {
   orig(self, _cmd, handler);
 }
 
-static void vcc_still_render_hook(id self, SEL _cmd, CMSampleBufferRef sb,
-                                   id input) {
+static void vcc_still_render_hook(id self,
+                                  SEL _cmd,
+                                  CMSampleBufferRef sb,
+                                  id input) {
   vcc_log(@"  [StillSink renderSampleBuffer:forInput:] self=%p sb=%p input=%@",
           self, sb, input);
   VccStillRenderFn orig = (VccStillRenderFn)vcc_still_render_orig;
@@ -2370,8 +2441,10 @@ typedef void (*VccSessDidFinishStartingFn)(id self, SEL _cmd, id graph, int erro
 typedef void (*VccSessDidStartSourceFn)(id self, SEL _cmd, id graph, id node, int error);
 typedef void (*VccSessDidPrepareFn)(id self, SEL _cmd, id graph);
 
-static void vcc_sess_didFinishStarting_hook(id self, SEL _cmd, id graph,
-                                              int error) {
+static void vcc_sess_didFinishStarting_hook(id self,
+                                            SEL _cmd,
+                                            id graph,
+                                            int error) {
   vcc_log(@"  [Sess graph:didFinishStartingWithError:] self=%p graph=%p err=%d",
           self, graph, error);
   VccSessDidFinishStartingFn orig =
@@ -2379,8 +2452,11 @@ static void vcc_sess_didFinishStarting_hook(id self, SEL _cmd, id graph,
   orig(self, _cmd, graph, error);
 }
 
-static void vcc_sess_didStartSourceNode_hook(id self, SEL _cmd, id graph,
-                                              id node, int error) {
+static void vcc_sess_didStartSourceNode_hook(id self,
+                                             SEL _cmd,
+                                             id graph,
+                                             id node,
+                                             int error) {
   vcc_log(@"  [Sess graph:didStartSourceNode:error:] self=%p graph=%p node=%@ err=%d",
           self, graph, node, error);
   VccSessDidStartSourceFn orig =
@@ -2482,8 +2558,10 @@ typedef void (*VccSessSettingsFn)(id self, SEL _cmd, id coord, id settings);
 typedef void (*VccSessWillPrepareFn)(id self, SEL _cmd, id coord, id settings, BOOL clientInitiated);
 typedef void (*VccSessWillCaptureFn)(id self, SEL _cmd, id coord, id settings, int err);
 
-static void vcc_sess_willBeginPhoto_hook(id self, SEL _cmd, id coord,
-                                          long settingsID) {
+static void vcc_sess_willBeginPhoto_hook(id self,
+                                         SEL _cmd,
+                                         id coord,
+                                         long settingsID) {
   vcc_log(@"  [Sess stillImageCoordinator:willBeginCaptureBeforeResolvingSettingsForID:] coord=%p id=%ld",
           coord, settingsID);
   VccSessWillBeginPhotoFn orig =
@@ -2491,8 +2569,10 @@ static void vcc_sess_willBeginPhoto_hook(id self, SEL _cmd, id coord,
   orig(self, _cmd, coord, settingsID);
 }
 
-static void vcc_sess_willBeginPhotoForSettings_hook(id self, SEL _cmd, id coord,
-                                                     id settings) {
+static void vcc_sess_willBeginPhotoForSettings_hook(id self,
+                                                    SEL _cmd,
+                                                    id coord,
+                                                    id settings) {
   vcc_log(@"  [Sess stillImageCoordinator:willBeginCaptureForSettings:] coord=%p settings=%@",
           coord, settings);
   VccSessSettingsFn orig =
@@ -2500,8 +2580,11 @@ static void vcc_sess_willBeginPhotoForSettings_hook(id self, SEL _cmd, id coord,
   orig(self, _cmd, coord, settings);
 }
 
-static void vcc_sess_willPreparePhoto_hook(id self, SEL _cmd, id coord,
-                                            id settings, BOOL clientInitiated) {
+static void vcc_sess_willPreparePhoto_hook(id self,
+                                           SEL _cmd,
+                                           id coord,
+                                           id settings,
+                                           BOOL clientInitiated) {
   vcc_log(@"  [Sess stillImageCoordinator:willPrepareStillImageCaptureWithSettings:clientInitiated:] coord=%p settings=%@ ci=%d",
           coord, settings, clientInitiated);
   VccSessWillPrepareFn orig =
@@ -2509,8 +2592,11 @@ static void vcc_sess_willPreparePhoto_hook(id self, SEL _cmd, id coord,
   orig(self, _cmd, coord, settings, clientInitiated);
 }
 
-static void vcc_sess_willCapturePhoto_hook(id self, SEL _cmd, id coord,
-                                            id settings, int err) {
+static void vcc_sess_willCapturePhoto_hook(id self,
+                                           SEL _cmd,
+                                           id coord,
+                                           id settings,
+                                           int err) {
   vcc_log(@"  [Sess stillImageCoordinator:willCapturePhotoForSettings:error:] coord=%p settings=%@ err=%d",
           coord, settings, err);
   VccSessWillCaptureFn orig =
@@ -2518,8 +2604,10 @@ static void vcc_sess_willCapturePhoto_hook(id self, SEL _cmd, id coord,
   orig(self, _cmd, coord, settings, err);
 }
 
-static void vcc_sess_didCapturePhoto_hook(id self, SEL _cmd, id coord,
-                                            id settings) {
+static void vcc_sess_didCapturePhoto_hook(id self,
+                                          SEL _cmd,
+                                          id coord,
+                                          id settings) {
   vcc_log(@"  [Sess stillImageCoordinator:didCapturePhotoForSettings:] coord=%p settings=%@",
           coord, settings);
   VccSessSettingsFn orig =
@@ -2565,8 +2653,10 @@ static void vcc_install_still_coordinator_observation(void) {
 static IMP vcc_still_coord_enqueue_orig = NULL;
 typedef void (*VccStillCoordEnqueueFn)(id self, SEL _cmd, id settings, BOOL serviceIfNecessary);
 
-static void vcc_still_coord_enqueue_hook(id self, SEL _cmd, id settings,
-                                          BOOL serviceIfNecessary) {
+static void vcc_still_coord_enqueue_hook(id self,
+                                         SEL _cmd,
+                                         id settings,
+                                         BOOL serviceIfNecessary) {
   vcc_log(@"  [StillCoord enqueueRequest] self=%p settings=%@ service=%d",
           self, settings, serviceIfNecessary);
   VccStillCoordEnqueueFn orig =
@@ -2599,15 +2689,26 @@ static void vcc_install_still_coord_node_observation(void) {
 // arguments to figure out which is missing.
 
 static IMP vcc_still_pipe_init_orig = NULL;
-typedef id (*VccStillPipeInitFn)(id self, SEL _cmd, id config, id device,
-                                   id outputsByPortType, id captureStatusDelegate,
-                                   id inferenceScheduler, id graph, id name);
+typedef id (*VccStillPipeInitFn)(id self,
+                                 SEL _cmd,
+                                 id config,
+                                 id device,
+                                 id outputsByPortType,
+                                 id captureStatusDelegate,
+                                 id inferenceScheduler,
+                                 id graph,
+                                 id name);
 
 __attribute__((ns_returns_retained))
-static id vcc_still_pipe_init_hook(id self, SEL _cmd, id config, id device,
-                                     id outputsByPortType,
-                                     id captureStatusDelegate,
-                                     id inferenceScheduler, id graph, id name) {
+static id vcc_still_pipe_init_hook(id self,
+                                   SEL _cmd,
+                                   id config,
+                                   id device,
+                                   id outputsByPortType,
+                                   id captureStatusDelegate,
+                                   id inferenceScheduler,
+                                   id graph,
+                                   id name) {
   vcc_log(@"  [StillPipe init] self=%p config=%@ device=%@ outputs.count=%lu name=%@",
           self, config, device,
           (unsigned long)([outputsByPortType respondsToSelector:@selector(count)]
@@ -2916,13 +3017,18 @@ static void vcc_drive_still_sink_once(void) {
 // pipeline will be built.
 
 static IMP vcc_parsed_cfg_init_orig = NULL;
-typedef id (*VccParsedCfgInitFn)(id self, SEL _cmd, id sessionCfg,
-                                   BOOL clientSetsUserInitiated, id restrictions);
+typedef id (*VccParsedCfgInitFn)(id self,
+                                 SEL _cmd,
+                                 id sessionCfg,
+                                 BOOL clientSetsUserInitiated,
+                                 id restrictions);
 
 __attribute__((ns_returns_retained))
-static id vcc_parsed_cfg_init_hook(id self, SEL _cmd, id sessionCfg,
-                                     BOOL clientSetsUserInitiated,
-                                     id restrictions) {
+static id vcc_parsed_cfg_init_hook(id self,
+                                   SEL _cmd,
+                                   id sessionCfg,
+                                   BOOL clientSetsUserInitiated,
+                                   id restrictions) {
   VccParsedCfgInitFn orig = (VccParsedCfgInitFn)vcc_parsed_cfg_init_orig;
   id ret = orig(self, _cmd, sessionCfg, clientSetsUserInitiated, restrictions);
   if (ret) {
@@ -2957,7 +3063,9 @@ static id vcc_parsed_cfg_init_hook(id self, SEL _cmd, id sessionCfg,
       // Dump the still cfg's properties — what does it tell the graph builder?
       id connConfigs = nil, primaryConnConfig = nil, movieCfg = nil, pointCfg = nil;
       @try { connConfigs = [stillCfg valueForKey:@"stillImageConnectionConfigurations"]; } @catch (NSException *e) {}
-      @try { primaryConnConfig = [stillCfg valueForKey:@"primaryStillImageConnectionConfiguration"]; } @catch (NSException *e) {}
+      @try {
+        primaryConnConfig = [stillCfg valueForKey:@"primaryStillImageConnectionConfiguration"];
+      } @catch (NSException *e) {}
       @try { movieCfg = [stillCfg valueForKey:@"movieFileVideoConnectionConfiguration"]; } @catch (NSException *e) {}
       @try { pointCfg = [stillCfg valueForKey:@"pointCloudDataConnectionConfiguration"]; } @catch (NSException *e) {}
       vcc_log(@"  [ParsedCfg] stillCfgs[0].connCfgs=%@",

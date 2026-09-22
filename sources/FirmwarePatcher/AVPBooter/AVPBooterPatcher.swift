@@ -147,8 +147,12 @@ public final class AVPBooterPatcher: Patcher {
         patches.append(record)
 
         if verbose {
-            print(String(format: "  0x%06X: %@ → %@  [avpbooter.dgst_bypass]",
-                         fileOff, beforeStr, afterStr))
+            print(String(
+                format: "  0x%06X: %@ → %@  [avpbooter.dgst_bypass]",
+                fileOff,
+                beforeStr,
+                afterStr
+            ))
         }
     }
 }

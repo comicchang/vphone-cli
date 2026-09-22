@@ -104,9 +104,13 @@ static ssize_t read_full(int fd, void *buf, size_t n) {
   return (ssize_t)got;
 }
 
-static void publish_frame(uint32_t w, uint32_t h, uint32_t bpr,
-                          uint32_t fmt, uint64_t ts_ns,
-                          const uint8_t *pixels, size_t pixel_len) {
+static void publish_frame(uint32_t w,
+                          uint32_t h,
+                          uint32_t bpr,
+                          uint32_t fmt,
+                          uint64_t ts_ns,
+                          const uint8_t *pixels,
+                          size_t pixel_len) {
   if (!s_shm_base) return;
   if (pixel_len > VPHONED_VCAM_SHM_MAX_PIXELS) {
     vvc_logf("vphoned_vcam: frame too large: %zu", pixel_len);
@@ -184,8 +188,11 @@ static void handle_client(int fd) {
     if (!hdict || jerr || w == 0 || h == 0 || bpr == 0 ||
         pixel_len < (size_t)bpr * h) {
       vvc_logf("vphoned_vcam: invalid frame w=%u h=%u bpr=%u pixel_len=%zu jerr=%s",
-            w, h, bpr, pixel_len,
-            jerr ? jerr.localizedDescription.UTF8String : "(none)");
+               w,
+               h,
+               bpr,
+               pixel_len,
+               jerr ? jerr.localizedDescription.UTF8String : "(none)");
       free(pixel_buf);
       break;
     }

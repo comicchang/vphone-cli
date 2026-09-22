@@ -47,10 +47,13 @@ extension KernelJBPatcher {
 
             log("  [+] variable at foff 0x\(String(format: "%X", low32)) (value=\(targetVal), found via sysctl_oid at str+0x\(String(format: "%X", delta)))")
             let va = fileOffsetToVA(low32)
-            emit(low32, Data([0, 0, 0, 0]),
-                 patchID: "kernelcache_jb.thid_should_crash",
-                 virtualAddress: va,
-                 description: "zero [_thid_should_crash]")
+            emit(
+                low32,
+                Data([0, 0, 0, 0]),
+                patchID: "kernelcache_jb.thid_should_crash",
+                virtualAddress: va,
+                description: "zero [_thid_should_crash]"
+            )
             return true
         }
 

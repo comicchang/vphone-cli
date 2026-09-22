@@ -105,10 +105,13 @@ extension KernelJBPatcher {
             withUnsafeBytes(of: newEntry.littleEndian) { src in
                 newBytes.replaceSubrange(0 ..< 8, with: src)
             }
-            emit(entryOff, newBytes,
-                 patchID: "sandbox_ext_\(idx)",
-                 virtualAddress: nil,
-                 description: "ops[\(idx)] -> allow stub [_hook_\(hookName)]")
+            emit(
+                entryOff,
+                newBytes,
+                patchID: "sandbox_ext_\(idx)",
+                virtualAddress: nil,
+                description: "ops[\(idx)] -> allow stub [_hook_\(hookName)]"
+            )
             patched += 1
         }
 

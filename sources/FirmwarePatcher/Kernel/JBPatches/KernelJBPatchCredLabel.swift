@@ -101,10 +101,14 @@ extension KernelJBPatcher {
 
             // Write deny cave
             for i in stride(from: 0, to: denyShellcode.count, by: 4) {
-                let chunk = denyShellcode[denyShellcode.index(denyShellcode.startIndex, offsetBy: i) ..< denyShellcode.index(denyShellcode.startIndex, offsetBy: i + 4)]
-                emit(dCaveOff + i, Data(chunk),
-                     patchID: "jb.cred_label_update_execve.deny_cave",
-                     description: "deny_trampoline+\(i) [_cred_label_update_execve C21-v3]")
+                let chunk = denyShellcode[denyShellcode.index(denyShellcode.startIndex, offsetBy: i)
+                    ..< denyShellcode.index(denyShellcode.startIndex, offsetBy: i + 4)]
+                emit(
+                    dCaveOff + i,
+                    Data(chunk),
+                    patchID: "jb.cred_label_update_execve.deny_cave",
+                    description: "deny_trampoline+\(i) [_cred_label_update_execve C21-v3]"
+                )
             }
 
             // Redirect deny site → deny cave
@@ -112,9 +116,12 @@ extension KernelJBPatcher {
                 log("  [-] branch from deny site 0x\(String(format: "%X", dOff)) to cave out of range")
                 return
             }
-            emit(dOff, branchToCave,
-                 patchID: "jb.cred_label_update_execve.deny_redirect",
-                 description: "b deny cave [_cred_label_update_execve C21-v3 exit @ 0x\(String(format: "%X", dOff))]")
+            emit(
+                dOff,
+                branchToCave,
+                patchID: "jb.cred_label_update_execve.deny_redirect",
+                description: "b deny cave [_cred_label_update_execve C21-v3 exit @ 0x\(String(format: "%X", dOff))]"
+            )
         }
 
         // 8. Build success shellcode (8 instrs = 32 bytes):
@@ -147,10 +154,14 @@ extension KernelJBPatcher {
         }
 
         for i in stride(from: 0, to: successShellcode.count, by: 4) {
-            let chunk = successShellcode[successShellcode.index(successShellcode.startIndex, offsetBy: i) ..< successShellcode.index(successShellcode.startIndex, offsetBy: i + 4)]
-            emit(successCaveOff + i, Data(chunk),
-                 patchID: "jb.cred_label_update_execve.success_cave",
-                 description: "success_trampoline+\(i) [_cred_label_update_execve C21-v3]")
+            let chunk = successShellcode[successShellcode.index(successShellcode.startIndex, offsetBy: i)
+                ..< successShellcode.index(successShellcode.startIndex, offsetBy: i + 4)]
+            emit(
+                successCaveOff + i,
+                Data(chunk),
+                patchID: "jb.cred_label_update_execve.success_cave",
+                description: "success_trampoline+\(i) [_cred_label_update_execve C21-v3]"
+            )
         }
 
         // 9. Redirect success exits → success cave.
@@ -159,9 +170,12 @@ extension KernelJBPatcher {
                 log("  [-] branch from success exit 0x\(String(format: "%X", exitOff)) to cave out of range")
                 return
             }
-            emit(exitOff, branchToCave,
-                 patchID: "jb.cred_label_update_execve.success_redirect",
-                 description: "b success cave [_cred_label_update_execve C21-v3 exit @ 0x\(String(format: "%X", exitOff))]")
+            emit(
+                exitOff,
+                branchToCave,
+                patchID: "jb.cred_label_update_execve.success_redirect",
+                description: "b success cave [_cred_label_update_execve C21-v3 exit @ 0x\(String(format: "%X", exitOff))]"
+            )
         }
     }
 

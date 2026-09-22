@@ -7,14 +7,17 @@ import VPhoneCore
 struct VPhoneRestoreCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "restore",
-        abstract: "DFU-restore firmware into a VM bundle (requires a running DFU boot)")
+        abstract: "DFU-restore firmware into a VM bundle (requires a running DFU boot)"
+    )
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "VM name") var name: String?
     @Flag(name: .shortAndLong, help: "Only fetch the SHSH blob, do not restore") var getShsh = false
-    @Flag(name: .shortAndLong, help: "Offline restore (decrypt AEA images in place, use the cached .shsh)") var offline = false
+    @Flag(name: .shortAndLong, help: "Offline restore (decrypt AEA images in place, use the cached .shsh)")
+    var offline = false
     @Option(name: .shortAndLong, help: "Device UDID (optional)") var udid: String?
-    @Option(name: .shortAndLong, help: "Device ECID (default: read from the bundle's udid-prediction.txt)") var ecid: String?
+    @Option(name: .shortAndLong, help: "Device ECID (default: read from the bundle's udid-prediction.txt)")
+    var ecid: String?
     @Option(name: .shortAndLong, help: "Resource base override (default: inferred from the running binary path)")
     var projectRoot: String?
     @Flag(name: .customShort("v"), help: "Increase verbosity: -v tool detail, -vv guest serial, -vvv internal trace")
@@ -73,7 +76,9 @@ struct VPhoneRestoreCommand: ParsableCommand {
     /// restore already succeeded, so a metadata miss is only a warning.
     private func recordRestoreVersions(bundle: VPhoneBundle) {
         guard let info = VPhoneRestoreInfo.derive(fromBundle: bundle) else {
-            FileHandle.standardError.write(Data("warning: could not record restore versions (metadata not found)\n".utf8))
+            FileHandle.standardError.write(
+                Data("warning: could not record restore versions (metadata not found)\n".utf8)
+            )
             return
         }
         do {
@@ -97,15 +102,30 @@ struct VPhoneCFWCommand: ParsableCommand {
 
 struct VPhoneCFWInstallCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "install", abstract: "Install CFW into a VM bundle via host mount")
+        commandName: "install",
+        abstract: "Install CFW into a VM bundle via host mount"
+    )
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "VM name") var name: String?
     @Option(name: [.customShort("V"), .long], help: "variant: regular | dev | jb | exp") var variant: String = "exp"
-    @Option(name: [.customShort("b"), .long], help: "(exp only) rewrite ProductBuildVersion to this build id") var spoofBuild: String?
-    @Flag(name: .customLong("force-dsc-maxslide"), help: "Zero the dyld cache maxSlide on non-27 bases (opt-in DSC-map fit)") var forceDSCMaxSlide = false
-    @Flag(name: .customLong("root-popup"), help: "Elevate via macOS's native authentication dialog (osascript) instead of the sudo re-exec") var rootPopup = false
-    @Flag(name: .customLong("keep-artifacts"), help: "Keep the extracted CFW input dirs (cfw_input/, cfw_jb_input/) after install (default: removed to save space)") var keepArtifacts = false
+    @Option(name: [.customShort("b"), .long], help: "(exp only) rewrite ProductBuildVersion to this build id")
+    var spoofBuild: String?
+    @Flag(
+        name: .customLong("force-dsc-maxslide"),
+        help: "Zero the dyld cache maxSlide on non-27 bases (opt-in DSC-map fit)"
+    )
+    var forceDSCMaxSlide = false
+    @Flag(
+        name: .customLong("root-popup"),
+        help: "Elevate via macOS's native authentication dialog (osascript) instead of the sudo re-exec"
+    )
+    var rootPopup = false
+    @Flag(
+        name: .customLong("keep-artifacts"),
+        help: "Keep the extracted CFW input dirs (cfw_input/, cfw_jb_input/) after install (default: removed to save space)"
+    )
+    var keepArtifacts = false
     @Option(name: .shortAndLong, help: "Resource base override (default: inferred from the running binary path)")
     var projectRoot: String?
     @Flag(name: .customShort("v"), help: "Increase verbosity: -v tool detail, -vv guest serial, -vvv internal trace")
@@ -141,7 +161,11 @@ struct VPhoneCFWInstallCommand: ParsableCommand {
             // Forward SUDO_USER (sudo would set it) so the script's chown-back runs.
             scriptEnv["SUDO_USER"] = NSUserName()
             code = try VPhoneProcessRunner.runWithAdminPrivileges(
-                URL(fileURLWithPath: "/bin/zsh"), args, env: scriptEnv, echo: v.showsToolDetail)
+                URL(fileURLWithPath: "/bin/zsh"),
+                args,
+                env: scriptEnv,
+                echo: v.showsToolDetail
+            )
         } else {
             var env = ProcessInfo.processInfo.environment
             for (key, value) in scriptEnv { env[key] = value }
@@ -149,7 +173,11 @@ struct VPhoneCFWInstallCommand: ParsableCommand {
                 print("[trace] spawning: /bin/zsh \(args.joined(separator: " ")) (env keys: VPHONE_PYTHON, IPSW_DIR, VPHONE_SEAL_DIR)")
             }
             code = try VPhoneProcessRunner.runStreaming(
-                URL(fileURLWithPath: "/bin/zsh"), args, env: env, echo: v.showsToolDetail)
+                URL(fileURLWithPath: "/bin/zsh"),
+                args,
+                env: env,
+                echo: v.showsToolDetail
+            )
         }
         if code == 0 {
             if let info = try? VPhoneRestoreInfo.recordVariant(variant, toBundle: bundle), info.variant != nil {

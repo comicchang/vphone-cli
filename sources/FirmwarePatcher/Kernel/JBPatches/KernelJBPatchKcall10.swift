@@ -79,21 +79,38 @@ extension KernelJBPatcher {
         log("  [+] cave at 0x\(String(format: "%X", caveOff)) (0x\(String(format: "%X", caveBytes.count)) bytes)")
 
         // 6. Emit patches.
-        emit(caveOff, caveBytes,
-             patchID: "jb.kcall10.cave",
-             description: "kcall10 ABI-correct cave (target + 7 args -> uint64 x0)")
+        emit(
+            caveOff,
+            caveBytes,
+            patchID: "jb.kcall10.cave",
+            description: "kcall10 ABI-correct cave (target + 7 args -> uint64 x0)"
+        )
 
-        emit(entry439,
-             encodeChainedAuthPtr(targetFoff: caveOff, nextVal: callNext,
-                                  diversity: Self.sysent_pac_diversity, key: 0, addrDiv: 0),
-             patchID: "jb.kcall10.sy_call",
-             description: "sysent[439].sy_call = cave 0x\(String(format: "%X", caveOff)) (auth rebase, div=0xBCAD, next=\(callNext)) [kcall10]")
+        emit(
+            entry439,
+            encodeChainedAuthPtr(
+                targetFoff: caveOff,
+                nextVal: callNext,
+                diversity: Self.sysent_pac_diversity,
+                key: 0,
+                addrDiv: 0
+            ),
+            patchID: "jb.kcall10.sy_call",
+            description: "sysent[439].sy_call = cave 0x\(String(format: "%X", caveOff)) (auth rebase, div=0xBCAD, next=\(callNext)) [kcall10]"
+        )
 
-        emit(entry439 + 8,
-             encodeChainedAuthPtr(targetFoff: mungerTarget, nextVal: mungeNext,
-                                  diversity: mungeDiv, key: mungeKey, addrDiv: mungeAddrDiv),
-             patchID: "jb.kcall10.sy_munge",
-             description: "sysent[439].sy_arg_munge32 = 8-arg helper 0x\(String(format: "%X", mungerTarget)) [kcall10]")
+        emit(
+            entry439 + 8,
+            encodeChainedAuthPtr(
+                targetFoff: mungerTarget,
+                nextVal: mungeNext,
+                diversity: mungeDiv,
+                key: mungeKey,
+                addrDiv: mungeAddrDiv
+            ),
+            patchID: "jb.kcall10.sy_munge",
+            description: "sysent[439].sy_arg_munge32 = 8-arg helper 0x\(String(format: "%X", mungerTarget)) [kcall10]"
+        )
 
         // sy_return_type (u32) + sy_narg (u16) + sy_arg_bytes (u16)
         var metadata = Data(count: 8)
@@ -102,9 +119,12 @@ extension KernelJBPatcher {
             ptr.storeBytes(of: Self.kcall10_narg.littleEndian, toByteOffset: 4, as: UInt16.self)
             ptr.storeBytes(of: Self.kcall10_arg_bytes.littleEndian, toByteOffset: 6, as: UInt16.self)
         }
-        emit(entry439 + 16, metadata,
-             patchID: "jb.kcall10.sysent_meta",
-             description: "sysent[439].sy_return_type=7,sy_narg=8,sy_arg_bytes=0x20 [kcall10]")
+        emit(
+            entry439 + 16,
+            metadata,
+            patchID: "jb.kcall10.sysent_meta",
+            description: "sysent[439].sy_return_type=7,sy_narg=8,sy_arg_bytes=0x20 [kcall10]"
+        )
 
         return true
     }

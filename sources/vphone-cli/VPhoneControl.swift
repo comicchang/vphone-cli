@@ -72,7 +72,8 @@ class VPhoneControl {
     private nonisolated(unsafe) var pendingRequests: [String: PendingRequest] = [:]
 
     private nonisolated func addPending(
-        id: String, handler: @escaping (Result<([String: Any], Data?), any Error>) -> Void
+        id: String,
+        handler: @escaping (Result<([String: Any], Data?), any Error>) -> Void
     ) {
         pendingLock.lock()
         pendingRequests[id] = PendingRequest(handler: handler)
@@ -509,7 +510,11 @@ class VPhoneControl {
         let hasImage = resp["has_image"] as? Bool ?? false
         let changeCount = resp["change_count"] as? Int ?? 0
         return ClipboardContent(
-            text: text, types: types, hasImage: hasImage, changeCount: changeCount, imageData: data
+            text: text,
+            types: types,
+            hasImage: hasImage,
+            changeCount: changeCount,
+            imageData: data
         )
     }
 
@@ -562,9 +567,13 @@ class VPhoneControl {
     // MARK: - Location
 
     func sendLocation(
-        latitude: Double, longitude: Double, altitude: Double,
-        horizontalAccuracy: Double, verticalAccuracy: Double,
-        speed: Double, course: Double
+        latitude: Double,
+        longitude: Double,
+        altitude: Double,
+        horizontalAccuracy: Double,
+        verticalAccuracy: Double,
+        speed: Double,
+        course: Double
     ) {
         nextRequestId += 1
         let msg: [String: Any] = [

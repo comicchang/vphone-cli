@@ -142,10 +142,16 @@ extension KernelJBPatcher {
 
         // All three located — apply together.
         var ok = applyDI2AllocPortsSize(at: allocSite)
-        ok = applyFieldLoadMov800(at: f1, patchID: "di2_notif_boundcheck_d8",
-                 desc: "mov wD,#0x800 [DI2 RegisterNotificationPort bound-check field1 @+0xd8]") && ok
-        ok = applyFieldLoadMov800(at: f2, patchID: "di2_notif_boundcheck_e8",
-                 desc: "mov wD,#0x800 [DI2 RegisterNotificationPort bound-check field2 @+0xe8]") && ok
+        ok = applyFieldLoadMov800(
+            at: f1,
+            patchID: "di2_notif_boundcheck_d8",
+            desc: "mov wD,#0x800 [DI2 RegisterNotificationPort bound-check field1 @+0xd8]"
+        ) && ok
+        ok = applyFieldLoadMov800(
+            at: f2,
+            patchID: "di2_notif_boundcheck_e8",
+            desc: "mov wD,#0x800 [DI2 RegisterNotificationPort bound-check field2 @+0xe8]"
+        ) && ok
         return ok
     }
 
@@ -185,7 +191,13 @@ extension KernelJBPatcher {
     }
 
     /// Locate a unique `<mnemonic> wD,[xB,#disp]` field load in [funcStart,funcEnd).
-    private func findUniqueFieldLoad(funcStart: Int, funcEnd: Int, mnemonic: String, disp: Int64, requireWDest: Bool) -> Int? {
+    private func findUniqueFieldLoad(
+        funcStart: Int,
+        funcEnd: Int,
+        mnemonic: String,
+        disp: Int64,
+        requireWDest: Bool
+    ) -> Int? {
         var hits: [Int] = []
         var off = funcStart
         while off + 4 <= funcEnd {
@@ -207,10 +219,13 @@ extension KernelJBPatcher {
               let dst = xRegIndex(name),
               let bytes = ARM64Encoder.encodeMovzX(rd: dst, imm16: 0x4000, shift: 0)
         else { log("  [-] could not encode mov x1,#0x4000"); return false }
-        emit(lslOff, bytes,
-             patchID: "di2_allocports_size",
-             virtualAddress: fileOffsetToVA(lslOff),
-             description: "mov x1,#0x4000 [DI2 AllocPortsArray widen notif-ports alloc to 0x800 entries]")
+        emit(
+            lslOff,
+            bytes,
+            patchID: "di2_allocports_size",
+            virtualAddress: fileOffsetToVA(lslOff),
+            description: "mov x1,#0x4000 [DI2 AllocPortsArray widen notif-ports alloc to 0x800 entries]"
+        )
         return true
     }
 

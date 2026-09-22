@@ -15,7 +15,8 @@
                                           registrationError:(NSError **)error;
 @end
 static BOOL register_app(LSApplicationWorkspace *ws, NSString *path) {
-    NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:[path stringByAppendingPathComponent:@"Info.plist"]];
+    NSDictionary *info =
+        [NSDictionary dictionaryWithContentsOfFile:[path stringByAppendingPathComponent:@"Info.plist"]];
     NSString *bundleID = info[@"CFBundleIdentifier"];
     if (bundleID.length == 0) return NO;
     NSDictionary *dictToRegister = @{
@@ -34,8 +35,11 @@ static BOOL register_app(LSApplicationWorkspace *ws, NSString *path) {
     // The containerized API returns NO even when registration succeeds, so a nil
     // registrationError is the success signal (same rule as vphoned_install.m's
     // containerized path).
-    [ws registerContainerizedApplicationWithInfoDictionaries:@[dictToRegister] operationUUID:[NSUUID UUID]
-         requestContext:nil saveObserver:nil registrationError:&err];
+    [ws registerContainerizedApplicationWithInfoDictionaries:@[dictToRegister]
+                                               operationUUID:[NSUUID UUID]
+                                              requestContext:nil
+                                                saveObserver:nil
+                                           registrationError:&err];
     if (err) fprintf(stderr, "  Unable to register: %s\n", err.description.UTF8String);
     return err == nil;
 }

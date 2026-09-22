@@ -356,7 +356,8 @@ static int vp_sign_app(NSString *appPath, NSString *certPath, NSString *ldidPath
             continue;
         }
 
-        NSMutableDictionary *entitlementsToUse = [vp_dump_entitlements_from_binary_at_path(bundleMainExecutablePath) mutableCopy];
+        NSMutableDictionary *entitlementsToUse =
+            [vp_dump_entitlements_from_binary_at_path(bundleMainExecutablePath) mutableCopy];
         if (!entitlementsToUse && [bundleMainExecutablePath isEqualToString:mainExecutablePath]) {
             entitlementsToUse = [@{
                 @"application-identifier": @"TROLLTROLL.*",
@@ -376,10 +377,12 @@ static int vp_sign_app(NSString *appPath, NSString *certPath, NSString *ldidPath
         } else if ([containerRequired isKindOfClass:[NSNumber class]]) {
             shouldWriteContainerRequired = [(NSNumber *)containerRequired boolValue];
         }
-        BOOL noContainer = [entitlementsToUse[@"com.apple.private.security.no-container"] respondsToSelector:@selector(boolValue)]
+        BOOL noContainer =
+            [entitlementsToUse[@"com.apple.private.security.no-container"] respondsToSelector:@selector(boolValue)]
             ? [entitlementsToUse[@"com.apple.private.security.no-container"] boolValue]
             : NO;
-        BOOL noSandbox = [entitlementsToUse[@"com.apple.private.security.no-sandbox"] respondsToSelector:@selector(boolValue)]
+        BOOL noSandbox =
+            [entitlementsToUse[@"com.apple.private.security.no-sandbox"] respondsToSelector:@selector(boolValue)]
             ? [entitlementsToUse[@"com.apple.private.security.no-sandbox"] boolValue]
             : NO;
         if (shouldWriteContainerRequired && !noContainer && !noSandbox) {
@@ -418,7 +421,11 @@ static NSDictionary *vp_construct_groups_containers_for_entitlements(NSDictionar
 
     NSMutableDictionary *groupContainers = [NSMutableDictionary dictionary];
     for (NSString *groupID in groupIDs) {
-        MCMContainer *container = [mcmClass containerWithIdentifier:groupID createIfNecessary:YES existed:nil error:nil];
+        MCMContainer *container = [mcmClass
+            containerWithIdentifier:groupID
+            createIfNecessary:YES
+            existed:nil
+            error:nil];
         if (container.url.path.length > 0) {
             groupContainers[groupID] = container.url.path;
         }
@@ -447,7 +454,10 @@ static NSString *vp_construct_team_identifier_for_entitlements(NSDictionary *ent
     return [teamIdentifier isKindOfClass:[NSString class]] ? teamIdentifier : nil;
 }
 
-static NSDictionary *vp_construct_environment_variables_for_container_path(NSString *containerPath, BOOL isContainerized) {
+static NSDictionary *vp_construct_environment_variables_for_container_path(
+    NSString *containerPath,
+    BOOL isContainerized
+) {
     NSString *homeDir = isContainerized ? containerPath : @"/var/mobile";
     NSString *tmpDir = isContainerized ? [containerPath stringByAppendingPathComponent:@"tmp"] : @"/var/tmp";
     return @{
@@ -540,7 +550,8 @@ static BOOL vp_register_path(NSString *path, BOOL unregister, BOOL forceSystem) 
     }
 
     path = path.stringByResolvingSymlinksInPath.stringByStandardizingPath;
-    NSDictionary *appInfoPlist = [NSDictionary dictionaryWithContentsOfFile:[path stringByAppendingPathComponent:@"Info.plist"]];
+    NSDictionary *appInfoPlist =
+        [NSDictionary dictionaryWithContentsOfFile:[path stringByAppendingPathComponent:@"Info.plist"]];
     NSString *appBundleID = appInfoPlist[@"CFBundleIdentifier"];
     if (appBundleID.length == 0) return NO;
     if ([vp_immutable_app_bundle_identifiers() containsObject:appBundleID.lowercaseString]) return NO;
@@ -548,7 +559,9 @@ static BOOL vp_register_path(NSString *path, BOOL unregister, BOOL forceSystem) 
     if (!unregister) {
         NSString *appExecutablePath = [path stringByAppendingPathComponent:appInfoPlist[@"CFBundleExecutable"]];
         NSMutableDictionary *dictToRegister = vp_registration_dictionary(
-            appBundleID, appExecutablePath, NSClassFromString(@"MCMAppDataContainer"));
+            appBundleID,
+            appExecutablePath,
+            NSClassFromString(@"MCMAppDataContainer"));
 
         BOOL isRemovableSystemApp = [[NSFileManager defaultManager]
             fileExistsAtPath:[@"/System/Library/AppSignatures" stringByAppendingPathComponent:appBundleID]];
@@ -579,7 +592,9 @@ static BOOL vp_register_path(NSString *path, BOOL unregister, BOOL forceSystem) 
             NSString *pluginExecutablePath = [pluginPath stringByAppendingPathComponent:pluginExecutable];
 
             NSMutableDictionary *pluginDict = vp_registration_dictionary(
-                pluginBundleID, pluginExecutablePath, NSClassFromString(@"MCMPluginKitPluginDataContainer"));
+                pluginBundleID,
+                pluginExecutablePath,
+                NSClassFromString(@"MCMPluginKitPluginDataContainer"));
             pluginDict[@"ApplicationType"] = @"PluginKitPlugin";
             pluginDict[@"Path"] = pluginPath;
             pluginDict[@"PluginOwnerBundleID"] = appBundleID;
@@ -671,7 +686,11 @@ static int vp_install_app_from_package(
         return 170;
     }
 
-    MCMContainer *appContainer = [appContainerClass containerWithIdentifier:appId createIfNecessary:NO existed:nil error:nil];
+    MCMContainer *appContainer = [appContainerClass
+        containerWithIdentifier:appId
+        createIfNecessary:NO
+        existed:nil
+        error:nil];
     if (appContainer) {
         NSURL *bundleContainerURL = appContainer.url;
         NSURL *appBundleURL = vp_find_app_url_in_bundle_url(bundleContainerURL);
@@ -684,16 +703,23 @@ static int vp_install_app_from_package(
         }
     } else {
         NSError *mcmError = nil;
-        appContainer = [appContainerClass containerWithIdentifier:appId createIfNecessary:YES existed:nil error:&mcmError];
+        appContainer = [appContainerClass
+            containerWithIdentifier:appId
+            createIfNecessary:YES
+            existed:nil
+            error:&mcmError];
         if (!appContainer || mcmError) {
             if (detailOutput) *detailOutput = mcmError.localizedDescription ?: @"Unable to prepare storage for the app.";
             return 170;
         }
     }
 
-    NSString *newAppBundlePath = [appContainer.url.path stringByAppendingPathComponent:appBundleToInstallPath.lastPathComponent];
+    NSString *newAppBundlePath =
+        [appContainer.url.path stringByAppendingPathComponent:appBundleToInstallPath.lastPathComponent];
     NSError *copyError = nil;
-    if (![[NSFileManager defaultManager] copyItemAtPath:appBundleToInstallPath toPath:newAppBundlePath error:&copyError]) {
+    if (![[NSFileManager defaultManager] copyItemAtPath:appBundleToInstallPath
+                                                 toPath:newAppBundlePath
+                                                  error:&copyError]) {
         if (detailOutput) *detailOutput = copyError.localizedDescription ?: @"Unable to copy the app onto the guest.";
         return 178;
     }
@@ -779,8 +805,12 @@ NSDictionary *vp_handle_custom_install(NSDictionary *msg) {
         certPath = nil;
     }
 
-    NSString *tmpPackagePath = [[NSTemporaryDirectory() stringByResolvingSymlinksInPath] stringByAppendingPathComponent:[NSUUID UUID].UUIDString];
-    if (![[NSFileManager defaultManager] createDirectoryAtPath:tmpPackagePath withIntermediateDirectories:NO attributes:nil error:nil]) {
+    NSString *tmpPackagePath = [[NSTemporaryDirectory() stringByResolvingSymlinksInPath]
+        stringByAppendingPathComponent:[NSUUID UUID].UUIDString];
+    if (![[NSFileManager defaultManager] createDirectoryAtPath:tmpPackagePath
+                                   withIntermediateDirectories:NO
+                                                    attributes:nil
+                                                         error:nil]) {
         NSMutableDictionary *response = vp_make_response(@"err", reqId);
         response[@"msg"] = @"Unable to prepare the guest for installation. Try again.";
         return response;

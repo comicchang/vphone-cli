@@ -10,10 +10,13 @@ enum VPhoneVMSelection {
         if let provided, !provided.isEmpty { return provided }   // supplied name → no library scan
         let names = try library.bundles().map(\.name).sorted()   // no-name path: propagate real scan errors
         return try VPhoneVMPicker.resolve(
-            provided: nil, names: names, libraryRoot: library.root.path,
+            provided: nil,
+            names: names,
+            libraryRoot: library.root.path,
             isInteractive: isTTY,
             read: { readLine(strippingNewline: true) },
-            write: { err($0) })
+            write: { err($0) }
+        )
     }
 
     /// Resolve a NEW name (rename/clone destination): return it if given, else prompt for text.

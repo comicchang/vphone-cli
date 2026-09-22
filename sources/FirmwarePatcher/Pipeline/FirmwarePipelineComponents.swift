@@ -222,7 +222,13 @@ extension FirmwarePipeline {
                 return switch variant {
                 case .less:
                     [{ data, verbose in
-                        CryptexFilesystemPatcher(buildManiest: data, restoreDir: restoreDir, verbose: verbose, noBinpack: self.noBinpack, noVphoned: self.noVphoned)
+                        CryptexFilesystemPatcher(
+                            buildManiest: data,
+                            restoreDir: restoreDir,
+                            verbose: verbose,
+                            noBinpack: self.noBinpack,
+                            noVphoned: self.noVphoned
+                        )
                     }]
                 case .regular, .dev, .jb, .exp:
                     []

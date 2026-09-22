@@ -68,10 +68,13 @@ extension KernelPatcher {
             }
             if let blTarget = decodeBL(at: scan), blTarget == vrhFunc {
                 let va = fileOffsetToVA(scan)
-                emit(scan, ARM64.movW0_0,
-                     patchID: "apfs_graft",
-                     virtualAddress: va,
-                     description: "mov w0,#0 [_apfs_graft]")
+                emit(
+                    scan,
+                    ARM64.movW0_0,
+                    patchID: "apfs_graft",
+                    virtualAddress: va,
+                    description: "mov w0,#0 [_apfs_graft]"
+                )
                 return true
             }
             scan += 4

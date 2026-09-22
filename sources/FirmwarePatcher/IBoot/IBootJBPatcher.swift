@@ -125,8 +125,12 @@ public final class IBootJBPatcher: IBootPatcher {
                 patches.append(record)
 
                 if verbose {
-                    print(String(format: "  0x%06X: %@ → %@  [ibss_jb.skip_generate_nonce]",
-                                 scan, beforeStr, afterStr))
+                    print(String(
+                        format: "  0x%06X: %@ → %@  [ibss_jb.skip_generate_nonce]",
+                        scan,
+                        beforeStr,
+                        afterStr
+                    ))
                 }
                 return true
             }

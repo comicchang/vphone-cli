@@ -264,7 +264,10 @@ public enum VPhoneProcessRunner {
     /// under a bare env, so `env` is passed inline as `KEY=value` — nothing else
     /// reaches the command. Returns the command's exit status.
     public static func runWithAdminPrivileges(
-        _ executable: URL, _ args: [String], env: [String: String] = [:], echo: Bool = true
+        _ executable: URL,
+        _ args: [String],
+        env: [String: String] = [:],
+        echo: Bool = true
     ) throws -> Int32 {
         func shQuote(_ s: String) -> String { "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'" }
         var tokens = env.sorted { $0.key < $1.key }.map { "\($0.key)=\(shQuote($0.value))" }

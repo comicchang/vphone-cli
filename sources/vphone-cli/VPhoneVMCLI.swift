@@ -117,9 +117,13 @@ struct VPhoneVMNewCommand: ParsableCommand {
 
     func run() throws {
         let spec = VPhoneBundleOps.NewBundleSpec(
-            name: name, cpuCount: cpu, memoryMB: memory, diskSizeGB: diskSize,
+            name: name,
+            cpuCount: cpu,
+            memoryMB: memory,
+            diskSizeGB: diskSize,
             romSource: rom.map { URL(fileURLWithPath: $0) } ?? VPhoneBundleOps.defaultROMSource(),
-            sepromSource: seprom.map { URL(fileURLWithPath: $0) } ?? VPhoneBundleOps.defaultSEPROMSource())
+            sepromSource: seprom.map { URL(fileURLWithPath: $0) } ?? VPhoneBundleOps.defaultSEPROMSource()
+        )
         let bundle = try VPhoneBundleOps.create(spec, in: lib.library)
         print("created \(bundle.url.path)")
     }
@@ -129,7 +133,9 @@ struct VPhoneVMNewCommand: ParsableCommand {
 
 struct VPhoneVMConfigCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "config", abstract: "Edit VM manifest fields (cpu/memory/network)")
+        commandName: "config",
+        abstract: "Edit VM manifest fields (cpu/memory/network)"
+    )
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "VM name") var name: String?
@@ -143,8 +149,13 @@ struct VPhoneVMConfigCommand: ParsableCommand {
         let mode = try network.map(Self.parseMode)
         let name = try VPhoneVMSelection.resolveExisting(name, in: lib.library)
         let updated = try VPhoneBundleOps.updateConfig(
-            bundleNamed: name, in: lib.library, cpuCount: cpu, memoryMB: memory,
-            networkMode: mode, bridgeInterface: bridgeInterface)
+            bundleNamed: name,
+            in: lib.library,
+            cpuCount: cpu,
+            memoryMB: memory,
+            networkMode: mode,
+            bridgeInterface: bridgeInterface
+        )
         let m = updated.manifest
         print("updated \(updated.name): \(m.cpuCount) CPU, \(m.memorySize / (1024*1024)) MB, "
             + "net=\(describeNetwork(m.networkConfig))")

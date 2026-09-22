@@ -15,7 +15,8 @@ struct VPhoneFWCommand: ParsableCommand {
 struct VPhoneFWCatalogCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "catalog",
-        abstract: "Show the known iOS ↔ cloudOS firmware pairings (recommended per iOS build)")
+        abstract: "Show the known iOS ↔ cloudOS firmware pairings (recommended per iOS build)"
+    )
 
     @Flag(name: .shortAndLong, help: "Emit JSON") var json = false
 
@@ -40,7 +41,9 @@ struct VPhoneFWCatalogCommand: ParsableCommand {
 
 struct VPhoneFWPrepareCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "prepare", abstract: "Download + merge IPSWs into a VM bundle")
+        commandName: "prepare",
+        abstract: "Download + merge IPSWs into a VM bundle"
+    )
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "VM name") var name: String?
@@ -79,8 +82,12 @@ struct VPhoneFWPrepareCommand: ParsableCommand {
             print("[trace] spawning: /bin/bash \(resources.fwPrepareScript.path) (env keys: VPHONE_PYTHON, IPSW_DIR, VPHONE_SEAL_DIR)")
         }
         let code = try VPhoneProcessRunner.runStreaming(
-            URL(fileURLWithPath: "/bin/bash"), [resources.fwPrepareScript.path], cwd: bundle.url, env: env,
-            echo: v.showsToolDetail)
+            URL(fileURLWithPath: "/bin/bash"),
+            [resources.fwPrepareScript.path],
+            cwd: bundle.url,
+            env: env,
+            echo: v.showsToolDetail
+        )
         throw ExitCode(code)
     }
 }
@@ -89,13 +96,17 @@ struct VPhoneFWPrepareCommand: ParsableCommand {
 
 struct VPhoneFWPatchCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "patch", abstract: "Patch the boot chain (native Swift FirmwarePipeline)")
+        commandName: "patch",
+        abstract: "Patch the boot chain (native Swift FirmwarePipeline)"
+    )
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "VM name") var name: String?
-    @Option(name: [.customShort("V"), .long], help: "variant: regular | dev | jb | exp | less") var variant: PatchFirmwareCLI.VariantOption = .regular
+    @Option(name: [.customShort("V"), .long], help: "variant: regular | dev | jb | exp | less")
+    var variant: PatchFirmwareCLI.VariantOption = .regular
     @Flag(name: .customLong("force-exc-guard"), help: "Force the EXC_GUARD disable patch") var forceExcGuard = false
-    @Flag(name: .customLong("frida"), help: "Opt in to Frida Stalker kernel relaxations (jb/exp only)") var frida = false
+    @Flag(name: .customLong("frida"), help: "Opt in to Frida Stalker kernel relaxations (jb/exp only)")
+    var frida = false
     @Flag(name: .shortAndLong, help: "Suppress per-component progress") var quiet = false
 
     func run() throws {
@@ -116,7 +127,8 @@ struct VPhoneFWPatchCommand: ParsableCommand {
             noBinpack: false,
             noVphoned: false,
             forceExcGuard: forceExcGuard,
-            enableFrida: frida)
+            enableFrida: frida
+        )
         let records = try pipeline.patchAll()
         print("[fw patch] applied \(records.count) patches for \(variant.rawValue)")
     }

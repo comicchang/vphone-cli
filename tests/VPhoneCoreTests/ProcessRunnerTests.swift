@@ -4,8 +4,7 @@ import Testing
 
 struct ProcessRunnerTests {
     @Test func capturesStdoutAndZeroExit() throws {
-        let r = try VPhoneProcessRunner.runCapturing(
-            URL(fileURLWithPath: "/bin/echo"), ["hello", "world"])
+        let r = try VPhoneProcessRunner.runCapturing(URL(fileURLWithPath: "/bin/echo"), ["hello", "world"])
         #expect(r.exitCode == 0)
         #expect(r.succeeded)
         #expect(r.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "hello world")
@@ -13,15 +12,17 @@ struct ProcessRunnerTests {
 
     @Test func capturesNonzeroExit() throws {
         // `/usr/bin/false` exits 1 with no output.
-        let r = try VPhoneProcessRunner.runCapturing(
-            URL(fileURLWithPath: "/usr/bin/false"), [])
+        let r = try VPhoneProcessRunner.runCapturing(URL(fileURLWithPath: "/usr/bin/false"), [])
         #expect(r.exitCode == 1)
         #expect(!r.succeeded)
     }
 
     @Test func passesCwd() throws {
         let r = try VPhoneProcessRunner.runCapturing(
-            URL(fileURLWithPath: "/bin/pwd"), [], cwd: URL(fileURLWithPath: "/tmp"))
+            URL(fileURLWithPath: "/bin/pwd"),
+            [],
+            cwd: URL(fileURLWithPath: "/tmp")
+        )
         // /tmp is a symlink to /private/tmp on macOS; accept either.
         let out = r.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         #expect(out == "/tmp" || out == "/private/tmp")

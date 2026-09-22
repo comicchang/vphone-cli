@@ -93,9 +93,12 @@ extension KernelJBPatcher {
                 continue
             }
 
-            emit(targetOff, ARM64.movW0_0,
-                 patchID: "jb.amfi_execve.kill_return",
-                 description: "mov w0,#0 [AMFI kill return → allow]")
+            emit(
+                targetOff,
+                ARM64.movW0_0,
+                patchID: "jb.amfi_execve.kill_return",
+                description: "mov w0,#0 [AMFI kill return → allow]"
+            )
 
             log("  [+] Patched kill return at 0x\(String(format: "%X", targetOff)) (func 0x\(String(format: "%X", funcStart)))")
             patched = true

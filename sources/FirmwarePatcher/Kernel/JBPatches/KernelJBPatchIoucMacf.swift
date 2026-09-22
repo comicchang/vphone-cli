@@ -75,10 +75,13 @@ extension KernelJBPatcher {
 
                 let delta = allowTarget - (off + 4)
                 let va = fileOffsetToVA(off + 4)
-                emit(off + 4, patchBytes,
-                     patchID: "iouc_macf_gate",
-                     virtualAddress: va,
-                     description: "b #0x\(String(format: "%X", delta)) [IOUC MACF deny → allow]")
+                emit(
+                    off + 4,
+                    patchBytes,
+                    patchID: "iouc_macf_gate",
+                    virtualAddress: va,
+                    description: "b #0x\(String(format: "%X", delta)) [IOUC MACF deny → allow]"
+                )
                 return true
             }
         }

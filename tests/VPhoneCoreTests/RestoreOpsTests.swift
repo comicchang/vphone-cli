@@ -6,7 +6,10 @@ struct RestoreOpsTests {
     private func bundle(in root: URL) throws -> VPhoneBundle {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let manifest = VPhoneVirtualMachineManifest(
-            cpuCount: 2, memorySize: 1024 * 1024, romImages: .init(avpBooter: "a", avpSEPBooter: "b"))
+            cpuCount: 2,
+            memorySize: 1024 * 1024,
+            romImages: .init(avpBooter: "a", avpSEPBooter: "b")
+        )
         return VPhoneBundle(url: root, manifest: manifest)
     }
 

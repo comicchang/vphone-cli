@@ -22,15 +22,19 @@ struct LaunchLayoutTests {
     @Test func stageVphonedCopiesWhenSourceExists() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(
-            at: root.appendingPathComponent(".build"), withIntermediateDirectories: true)
+            at: root.appendingPathComponent(".build"),
+            withIntermediateDirectories: true
+        )
         defer { try? FileManager.default.removeItem(at: root) }
         try Data([1, 2, 3]).write(to: root.appendingPathComponent(".build/vphoned.signed"))
 
         let bundleDir = root.appendingPathComponent("bundle")
         try FileManager.default.createDirectory(at: bundleDir, withIntermediateDirectories: true)
         let manifest = VPhoneVirtualMachineManifest(
-            cpuCount: 2, memorySize: 1024 * 1024,
-            romImages: .init(avpBooter: "a", avpSEPBooter: "b"))
+            cpuCount: 2,
+            memorySize: 1024 * 1024,
+            romImages: .init(avpBooter: "a", avpSEPBooter: "b")
+        )
         let bundle = VPhoneBundle(url: bundleDir, manifest: manifest)
 
         let layout = VPhoneLaunchLayout(projectRoot: root)
@@ -48,7 +52,10 @@ struct LaunchLayoutTests {
         let bundleDir = root.appendingPathComponent("bundle")
         try FileManager.default.createDirectory(at: bundleDir, withIntermediateDirectories: true)
         let manifest = VPhoneVirtualMachineManifest(
-            cpuCount: 2, memorySize: 1024 * 1024, romImages: .init(avpBooter: "a", avpSEPBooter: "b"))
+            cpuCount: 2,
+            memorySize: 1024 * 1024,
+            romImages: .init(avpBooter: "a", avpSEPBooter: "b")
+        )
         let bundle = VPhoneBundle(url: bundleDir, manifest: manifest)
 
         #expect(try VPhoneLaunchLayout(projectRoot: root).stageVphoned(into: bundle) == false)
@@ -59,7 +66,9 @@ struct LaunchLayoutTests {
     @Test func stageVphonedOverwritesStaleDestination() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(
-            at: root.appendingPathComponent(".build"), withIntermediateDirectories: true)
+            at: root.appendingPathComponent(".build"),
+            withIntermediateDirectories: true
+        )
         defer { try? FileManager.default.removeItem(at: root) }
         try Data([9, 9, 9, 9]).write(to: root.appendingPathComponent(".build/vphoned.signed"))
 
@@ -68,7 +77,10 @@ struct LaunchLayoutTests {
         // Pre-populate dst with DIFFERENT bytes.
         try Data([1, 1]).write(to: bundleDir.appendingPathComponent(".vphoned.signed"))
         let manifest = VPhoneVirtualMachineManifest(
-            cpuCount: 2, memorySize: 1024 * 1024, romImages: .init(avpBooter: "a", avpSEPBooter: "b"))
+            cpuCount: 2,
+            memorySize: 1024 * 1024,
+            romImages: .init(avpBooter: "a", avpSEPBooter: "b")
+        )
         let bundle = VPhoneBundle(url: bundleDir, manifest: manifest)
 
         #expect(try VPhoneLaunchLayout(projectRoot: root).stageVphoned(into: bundle) == true)

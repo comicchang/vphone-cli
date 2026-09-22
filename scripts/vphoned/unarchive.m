@@ -54,7 +54,8 @@ int vp_extract_archive(NSString *archivePath, NSString *extractionPath, NSString
         if (r < ARCHIVE_OK)
             NSLog(@"vphoned: archive_read_next_header: %s", archive_error_string(a));
         if (r < ARCHIVE_WARN) {
-            if (errorOutput) *errorOutput = [NSString stringWithFormat:@"Unable to read the app package (%s).", archive_error_string(a)];
+            if (errorOutput) *errorOutput = [NSString stringWithFormat:@"Unable to read the app package (%s).",
+                                                                       archive_error_string(a)];
             ret = 1; goto cleanup;
         }
 
@@ -69,7 +70,9 @@ int vp_extract_archive(NSString *archivePath, NSString *extractionPath, NSString
         if (r < ARCHIVE_OK)
             NSLog(@"vphoned: archive_write_header(%@): %s (r=%d)", currentFile, archive_error_string(ext), r);
         if (r < ARCHIVE_WARN) {
-            if (errorOutput) *errorOutput = [NSString stringWithFormat:@"Unable to extract %@ (%s).", currentFile, archive_error_string(ext)];
+            if (errorOutput) *errorOutput = [NSString stringWithFormat:@"Unable to extract %@ (%s).",
+                                                                       currentFile,
+                                                                       archive_error_string(ext)];
             ret = 1; goto cleanup;
         }
         if (archive_entry_size(entry) > 0) {
@@ -77,7 +80,9 @@ int vp_extract_archive(NSString *archivePath, NSString *extractionPath, NSString
             if (r < ARCHIVE_OK)
                 NSLog(@"vphoned: copy_data(%@): %s (r=%d)", currentFile, archive_error_string(ext), r);
             if (r < ARCHIVE_WARN) {
-                if (errorOutput) *errorOutput = [NSString stringWithFormat:@"Unable to extract %@ (%s).", currentFile, archive_error_string(ext)];
+                if (errorOutput) *errorOutput = [NSString stringWithFormat:@"Unable to extract %@ (%s).",
+                                                                           currentFile,
+                                                                           archive_error_string(ext)];
                 ret = 1; goto cleanup;
             }
         }
@@ -86,7 +91,9 @@ int vp_extract_archive(NSString *archivePath, NSString *extractionPath, NSString
         if (r < ARCHIVE_OK)
             NSLog(@"vphoned: archive_write_finish_entry(%@): %s (r=%d)", currentFile, archive_error_string(ext), r);
         if (r < ARCHIVE_WARN) {
-            if (errorOutput) *errorOutput = [NSString stringWithFormat:@"Unable to extract %@ (%s).", currentFile, archive_error_string(ext)];
+            if (errorOutput) *errorOutput = [NSString stringWithFormat:@"Unable to extract %@ (%s).",
+                                                                       currentFile,
+                                                                       archive_error_string(ext)];
             ret = 1; goto cleanup;
         }
     }

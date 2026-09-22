@@ -79,10 +79,13 @@ extension KernelJBPatcher {
                 let delta = allowTarget - denyEntry
                 let va = fileOffsetToVA(denyEntry)
                 log("  [+] IOUC sandbox gate fn=0x\(String(format: "%X", funcStart)), cbnz=0x\(String(format: "%X", off)), deny=0x\(String(format: "%X", denyEntry)) → allow=0x\(String(format: "%X", allowTarget))")
-                emit(denyEntry, patchBytes,
-                     patchID: "iouc_sandbox_gate",
-                     virtualAddress: va,
-                     description: "b #\(delta >= 0 ? "" : "-")0x\(String(format: "%X", abs(delta))) [IOUC sandbox deny → allow]")
+                emit(
+                    denyEntry,
+                    patchBytes,
+                    patchID: "iouc_sandbox_gate",
+                    virtualAddress: va,
+                    description: "b #\(delta >= 0 ? "" : "-")0x\(String(format: "%X", abs(delta))) [IOUC sandbox deny → allow]"
+                )
                 return true
             }
         }

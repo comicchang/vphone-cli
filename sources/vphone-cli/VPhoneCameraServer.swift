@@ -43,9 +43,13 @@ final class VPhoneCameraServer {
     private var connectionAttemptToken: UInt64 = 0
 
     private let sendQueue = DispatchQueue(
-        label: "com.vphone.camera.send", qos: .userInteractive)
+        label: "com.vphone.camera.send",
+        qos: .userInteractive
+    )
     private let producerQueue = DispatchQueue(
-        label: "com.vphone.camera.producer", qos: .userInteractive)
+        label: "com.vphone.camera.producer",
+        qos: .userInteractive
+    )
 
     var onConnectionStateChange: ((Bool) -> Void)?
 
@@ -82,7 +86,8 @@ final class VPhoneCameraServer {
         case .testPattern:
             producer = VPhoneTestPatternProducer(
                 width: Self.defaultWidth,
-                height: Self.defaultHeight)
+                height: Self.defaultHeight
+            )
         case .videoFile:
             guard let url = videoURL else {
                 print("[camera] videoFile source requires a URL")
@@ -94,7 +99,8 @@ final class VPhoneCameraServer {
                 producer = try VPhoneVideoFileProducer(
                     url: url,
                     width: Self.defaultWidth,
-                    height: Self.defaultHeight)
+                    height: Self.defaultHeight
+                )
                 print("[camera] video file source = \(url.lastPathComponent)")
             } catch {
                 print("[camera] failed to open \(url.lastPathComponent): \(error)")

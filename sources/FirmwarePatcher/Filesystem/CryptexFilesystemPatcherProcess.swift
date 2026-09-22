@@ -12,7 +12,12 @@ enum ProcessError: Error {
 }
 
 extension CryptexFilesystemPatcher {
-    func runProcess(_ launchPath: String, _ arguments: [String], sudo: Bool = false, output: URL? = nil) throws -> String {
+    func runProcess(
+        _ launchPath: String,
+        _ arguments: [String],
+        sudo: Bool = false,
+        output: URL? = nil
+    ) throws -> String {
         let process = Process()
         if sudo {
             let whoami = try runProcess("/usr/bin/whoami", [])
@@ -37,7 +42,9 @@ extension CryptexFilesystemPatcher {
         try process.run()
         process.waitUntilExit()
 
-        let output = output == nil ? String(data: outPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) : nil
+        let output = output == nil
+            ? String(data: outPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)
+            : nil
         guard process.terminationStatus == 0 else {
             throw ProcessError.failed(process.terminationStatus, output ?? "")
         }

@@ -51,10 +51,13 @@ extension KernelJBPatcher {
             log("  [-] could not encode mov \(destReg), #0")
             return false
         }
-        emit(off, patchBytes,
-             patchID: "jb.io_secure_bsd_root.zero_return",
-             virtualAddress: fileOffsetToVA(off),
-             description: "mov \(destReg), #0 [_IOSecureBSDRoot SecureRootName allow]")
+        emit(
+            off,
+            patchBytes,
+            patchID: "jb.io_secure_bsd_root.zero_return",
+            virtualAddress: fileOffsetToVA(off),
+            description: "mov \(destReg), #0 [_IOSecureBSDRoot SecureRootName allow]"
+        )
         return true
     }
 

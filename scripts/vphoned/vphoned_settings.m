@@ -121,7 +121,9 @@ NSDictionary *vp_handle_settings_command(NSDictionary *msg) {
       NSMutableDictionary *r = vp_make_response(@"settings_get", reqId);
       if (keys) {
         CFDictionaryRef allValues = CFPreferencesCopyMultiple(
-            keys, (__bridge CFStringRef)domain, kCFPreferencesCurrentUser,
+            keys,
+            (__bridge CFStringRef)domain,
+            kCFPreferencesCurrentUser,
             kCFPreferencesAnyHost);
         if (allValues) {
           // Convert to serializable dict

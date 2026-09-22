@@ -35,7 +35,13 @@ public final class CryptexFilesystemPatcher: Patcher {
 
     // MARK: - Init
 
-    public init(buildManiest: Data, restoreDir: URL, verbose: Bool = true, noBinpack: Bool = false, noVphoned: Bool = false) {
+    public init(
+        buildManiest: Data,
+        restoreDir: URL,
+        verbose: Bool = true,
+        noBinpack: Bool = false,
+        noVphoned: Bool = false
+    ) {
         self.buildManiest = buildManiest
         self.restoreDir = restoreDir
         self.verbose = verbose
@@ -76,12 +82,21 @@ public final class CryptexFilesystemPatcher: Patcher {
         let mtreePath = try createMtree(filesystem: unencryptedImage)
 
         print("Creating digest database and root hash…")
-        let (digestDbPath, rootHashPath) = try createDigestAndHash(filesystem: unencryptedImage, mtree: mtreePath, remap: didEdit)
+        let (digestDbPath, rootHashPath) = try createDigestAndHash(
+            filesystem: unencryptedImage,
+            mtree: mtreePath,
+            remap: didEdit
+        )
         let metadataPath = try compressCanonicalMetadata(mtree: mtreePath, digestDb: digestDbPath)
         let rootHashContainer = try wrapRootHash(rootHashPath)
 
         // update trustcache, metadata, root_hash path
-        let updatedManifest = try setUpdatedComponentsInManifest(filesystem: aeaImage, trustcache: trustcachePath, metadata: metadataPath, rootHash: rootHashContainer)
+        let updatedManifest = try setUpdatedComponentsInManifest(
+            filesystem: aeaImage,
+            trustcache: trustcachePath,
+            metadata: metadataPath,
+            rootHash: rootHashContainer
+        )
         rebuiltData = try serializePayload(updatedManifest)
 
         return 1
@@ -137,7 +152,12 @@ public final class CryptexFilesystemPatcher: Patcher {
                 try addExtraServices(targetMount: targetMount, cfwInput: cfwInputPath)
             }
             if !noVphoned || !noBinpack {
-                try injectLaunchDaemons(targetMount: targetMount, cfwInput: cfwInputPath, vphoned: !noVphoned, cfw: !noBinpack)
+                try injectLaunchDaemons(
+                    targetMount: targetMount,
+                    cfwInput: cfwInputPath,
+                    vphoned: !noVphoned,
+                    cfw: !noBinpack
+                )
                 try patchLaunchdCacheLoader(targetMount: targetMount, cfwInput: cfwInputPath)
             }
         }
@@ -170,7 +190,8 @@ public final class CryptexFilesystemPatcher: Patcher {
         let (osDevice, osMount) = try attachImage(path: osPath, readonly: true)
         defer { try? detachImage(deviceNode: osDevice) }
 
-        let destination = URL.init(filePath: targetMount).appending(path: appOS ? "/System/Cryptexes/App" : "/System/Cryptexes/OS")
+        let destination = URL.init(filePath: targetMount)
+            .appending(path: appOS ? "/System/Cryptexes/App" : "/System/Cryptexes/OS")
         try FileManager.default.removeItem(at: destination)
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: false)
         try copyImageContents(source: URL.init(filePath: osMount), destination: destination)

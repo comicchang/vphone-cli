@@ -102,13 +102,17 @@ struct VPhoneBootCLI: ParsableCommand {
 
         return VPhoneVirtualMachine.Options(
             configURL: config,
-            romURL: manifest.romImages != nil ? manifest.resolve(path: manifest.romImages!.avpBooter, in: vmDir) : nil,
+            romURL: manifest.romImages != nil
+                ? manifest.resolve(path: manifest.romImages!.avpBooter, in: vmDir)
+                : nil,
             nvramURL: manifest.resolve(path: manifest.nvramStorage, in: vmDir),
             diskURL: manifest.resolve(path: manifest.diskImage, in: vmDir),
             cpuCount: Int(manifest.cpuCount),
             memorySize: manifest.memorySize,
             sepStorageURL: manifest.resolve(path: manifest.sepStorage, in: vmDir),
-            sepRomURL: manifest.romImages != nil ? manifest.resolve(path: manifest.romImages!.avpSEPBooter, in: vmDir) : nil,
+            sepRomURL: manifest.romImages != nil
+                ? manifest.resolve(path: manifest.romImages!.avpSEPBooter, in: vmDir)
+                : nil,
             screenWidth: manifest.screenConfig.width,
             screenHeight: manifest.screenConfig.height,
             screenPPI: manifest.screenConfig.pixelsPerInch,
@@ -175,7 +179,10 @@ struct PatchFirmwareCLI: ParsableCommand {
     @Flag(name: [.customShort("q"), .customLong("quiet")], help: "Suppress per-component progress output.")
     var quiet: Bool = false
     
-    @Flag(name: .customLong("no-binpack"), help: "Exclude the SSH, VNC, ... binaries from being installed (patchless-only).")
+    @Flag(
+        name: .customLong("no-binpack"),
+        help: "Exclude the SSH, VNC, ... binaries from being installed (patchless-only)."
+    )
     var noBinpack: Bool = false
 
     @Flag(name: .customLong("no-vphoned"), help: "Exclude vphoned from being installed (patchless-only).")

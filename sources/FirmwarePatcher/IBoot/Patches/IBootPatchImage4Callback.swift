@@ -63,6 +63,11 @@ extension IBootPatcher {
         }
 
         emit(off, ARM64.nop, id: "\(component).image4_callback_bne", description: "image4 callback: b.ne → nop")
-        emit(off + 4, ARM64.movX0_0, id: "\(component).image4_callback_mov", description: "image4 callback: mov x0,x22 → mov x0,#0")
+        emit(
+            off + 4,
+            ARM64.movX0_0,
+            id: "\(component).image4_callback_mov",
+            description: "image4 callback: mov x0,x22 → mov x0,#0"
+        )
     }
 }

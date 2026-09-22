@@ -151,9 +151,13 @@ public struct VPhoneCreateOrchestrator {
 
         print("\n=== vm new ===")
         let spec = VPhoneBundleOps.NewBundleSpec(
-            name: options.name, cpuCount: options.cpuCount, memoryMB: options.memoryMB,
+            name: options.name,
+            cpuCount: options.cpuCount,
+            memoryMB: options.memoryMB,
             diskSizeGB: options.diskSizeGB,
-            romSource: VPhoneBundleOps.defaultROMSource(), sepromSource: VPhoneBundleOps.defaultSEPROMSource())
+            romSource: VPhoneBundleOps.defaultROMSource(),
+            sepromSource: VPhoneBundleOps.defaultSEPROMSource()
+        )
         let bundle = try VPhoneBundleOps.create(spec, in: library)
         print("created \(bundle.url.path)")
 
@@ -162,8 +166,12 @@ public struct VPhoneCreateOrchestrator {
 
         print("\n=== fw patch ===")
         try runFWPatch(
-            variant: variantOption, isLess: isLess, enableFrida: options.enableFrida,
-            bundleURL: bundleURL, verbosity: v)
+            variant: variantOption,
+            isLess: isLess,
+            enableFrida: options.enableFrida,
+            bundleURL: bundleURL,
+            verbosity: v
+        )
 
         print("\n=== Restore phase ===")
         try runRestorePhase(bundleURL: bundleURL, verbosity: v)
@@ -226,7 +234,9 @@ public struct VPhoneCreateOrchestrator {
     /// where Virtualization.framework PV=3 guest boot is unavailable.
     static func isNestedVMHost() throws -> Bool {
         let r = try VPhoneProcessRunner.runCapturing(
-            URL(fileURLWithPath: "/usr/sbin/sysctl"), ["-n", "kern.hv_vmm_present"])
+            URL(fileURLWithPath: "/usr/sbin/sysctl"),
+            ["-n", "kern.hv_vmm_present"]
+        )
         return VPhoneBootPatterns.parseHVVmmPresent(r.stdout)
     }
 
@@ -250,7 +260,10 @@ public struct VPhoneCreateOrchestrator {
         for (key, value) in extras { env[key] = value }
         trace("spawn /usr/bin/sudo -A -v (env keys added: \(extras.keys.sorted().joined(separator: ", ")))", v)
         let result = try? VPhoneProcessRunner.runCapturing(
-            URL(fileURLWithPath: "/usr/bin/sudo"), ["-A", "-v"], env: env)
+            URL(fileURLWithPath: "/usr/bin/sudo"),
+            ["-A", "-v"],
+            env: env
+        )
         return result?.succeeded == true
     }
 
@@ -270,18 +283,28 @@ public struct VPhoneCreateOrchestrator {
         if isLess { env["VARIANT"] = "less" }
         if options.keepArtifacts { env["VPHONE_KEEP_ARTIFACTS"] = "1" }
 
-        trace("spawn /bin/bash \(resources.fwPrepareScript.path) (env keys: VPHONE_PYTHON, IPSW_DIR, VPHONE_SEAL_DIR)", v)
+        trace(
+            "spawn /bin/bash \(resources.fwPrepareScript.path) (env keys: VPHONE_PYTHON, IPSW_DIR, VPHONE_SEAL_DIR)",
+            v
+        )
         // Always streamed — silence during a multi-GB download reads as a hang.
         let code = try VPhoneProcessRunner.runStreaming(
-            URL(fileURLWithPath: "/bin/bash"), [resources.fwPrepareScript.path], cwd: bundleURL, env: env,
-            echo: true)
+            URL(fileURLWithPath: "/bin/bash"),
+            [resources.fwPrepareScript.path],
+            cwd: bundleURL,
+            env: env,
+            echo: true
+        )
         guard code == 0 else { throw VPhoneCreateError.fwPrepareFailed(code) }
         print("[+] Firmware prepared (iPhone + cloudOS merged into bundle).")
     }
 
     private func runFWPatch(
-        variant: PatchFirmwareCLI.VariantOption, isLess: Bool, enableFrida: Bool,
-        bundleURL: URL, verbosity v: VPhoneVerbosity
+        variant: PatchFirmwareCLI.VariantOption,
+        isLess: Bool,
+        enableFrida: Bool,
+        bundleURL: URL,
+        verbosity v: VPhoneVerbosity
     ) throws {
         // Mirrors the Makefile's `ifeq ($(UID),0)` gate on `fw_patch_less` —
         // only the `less` variant requires root.
@@ -297,9 +320,14 @@ public struct VPhoneCreateOrchestrator {
 
         trace("in-process FirmwarePipeline.patchAll variant=\(variant.rawValue)", v)
         let pipeline = FirmwarePipeline(
-            vmDirectory: bundleURL, variant: variant.pipelineVariant, verbose: v.showsToolDetail,
-            noBinpack: false, noVphoned: false, forceExcGuard: false,
-            enableFrida: enableFrida)
+            vmDirectory: bundleURL,
+            variant: variant.pipelineVariant,
+            verbose: v.showsToolDetail,
+            noBinpack: false,
+            noVphoned: false,
+            forceExcGuard: false,
+            enableFrida: enableFrida
+        )
         let records = try pipeline.patchAll()
         print("[fw patch] applied \(records.count) patches for \(variant.rawValue)")
     }
@@ -313,7 +341,11 @@ public struct VPhoneCreateOrchestrator {
         // managed process still reads it internally for panic/prompt matching.
         trace("spawn \(selfExecutable.path) --config \(configURL.path) --dfu (guest serial: off)", v)
         let dfu = VPhoneManagedProcess(
-            selfExecutable, ["--config", configURL.path, "--dfu"], cwd: bundleURL, echo: false)
+            selfExecutable,
+            ["--config", configURL.path, "--dfu"],
+            cwd: bundleURL,
+            echo: false
+        )
         try dfu.start()
         defer { dfu.terminate() }
 
@@ -338,7 +370,11 @@ public struct VPhoneCreateOrchestrator {
             + verbosityArgs
         trace("spawn \(python.path) \(restoreArgs.joined(separator: " "))", v)
         let restoreCode = try VPhoneProcessRunner.runStreaming(
-            python, restoreArgs, cwd: bundleURL, echo: v.showsToolDetail)
+            python,
+            restoreArgs,
+            cwd: bundleURL,
+            echo: v.showsToolDetail
+        )
         guard restoreCode == 0 else { throw VPhoneCreateError.restoreUpdateFailed(restoreCode) }
 
         recordRestoreVersions(bundleURL: bundleURL)
@@ -420,7 +456,9 @@ public struct VPhoneCreateOrchestrator {
         let python = try resources.pythonExecutable()
         for _ in 1...90 {
             let result = try? VPhoneProcessRunner.runCapturing(
-                python, [resources.pmd3Bridge.path, "recovery-probe", "--ecid", "0x\(ecid)", "--timeout", "2"])
+                python,
+                [resources.pmd3Bridge.path, "recovery-probe", "--ecid", "0x\(ecid)", "--timeout", "2"]
+            )
             if result?.succeeded == true {
                 print("[+] Device endpoint is reachable")
                 return
@@ -458,23 +496,36 @@ public struct VPhoneCreateOrchestrator {
             scriptEnv["SUDO_USER"] = NSUserName()
             trace("osascript admin-privileges /bin/zsh \(args.joined(separator: " "))", v)
             code = try VPhoneProcessRunner.runWithAdminPrivileges(
-                URL(fileURLWithPath: "/bin/zsh"), args, env: scriptEnv, echo: v.showsToolDetail)
+                URL(fileURLWithPath: "/bin/zsh"),
+                args,
+                env: scriptEnv,
+                echo: v.showsToolDetail
+            )
         } else {
             var env = ProcessInfo.processInfo.environment
             for (key, value) in scriptEnv { env[key] = value }
             for (key, value) in sudoEnvExtras { env[key] = value }
-            let envKeys = (["VPHONE_PYTHON", "IPSW_DIR", "VPHONE_SEAL_DIR"] + sudoEnvExtras.keys.sorted()).joined(separator: ", ")
+            let envKeys = (["VPHONE_PYTHON", "IPSW_DIR", "VPHONE_SEAL_DIR"] + sudoEnvExtras.keys.sorted())
+                .joined(separator: ", ")
             trace("spawn /bin/zsh \(args.joined(separator: " ")) (env keys: \(envKeys))", v)
             // With an askpass credential sudo is non-interactive → honor verbosity.
             // Without one, sudo must prompt on the terminal → run as a foreground
             // job so its process group owns the tty (see runForeground).
             if sudoEnvExtras["SUDO_ASKPASS"] != nil {
                 code = try VPhoneProcessRunner.runStreaming(
-                    URL(fileURLWithPath: "/bin/zsh"), args, env: env, echo: v.showsToolDetail)
+                    URL(fileURLWithPath: "/bin/zsh"),
+                    args,
+                    env: env,
+                    echo: v.showsToolDetail
+                )
             } else {
                 print("[*] CFW install needs root — sudo will prompt for your macOS password.")
                 code = try VPhoneProcessRunner.runForeground(
-                    URL(fileURLWithPath: "/bin/zsh"), args, env: env, echo: v.showsToolDetail)
+                    URL(fileURLWithPath: "/bin/zsh"),
+                    args,
+                    env: env,
+                    echo: v.showsToolDetail
+                )
             }
         }
         guard code == 0 else { throw VPhoneCreateError.cfwInstallFailed(code) }
@@ -542,7 +593,11 @@ public struct VPhoneCreateOrchestrator {
         let configURL = bundleURL.appendingPathComponent("config.plist")
         trace("spawn \(selfExecutable.path) --config \(configURL.path) --headless (guest serial: off)", v)
         let vm = VPhoneManagedProcess(
-            selfExecutable, ["--config", configURL.path, "--headless"], cwd: bundleURL, echo: false)
+            selfExecutable,
+            ["--config", configURL.path, "--headless"],
+            cwd: bundleURL,
+            echo: false
+        )
         try vm.start()
         defer { vm.terminate() }
 
@@ -573,7 +628,11 @@ public struct VPhoneCreateOrchestrator {
         let args = ["--config", configURL.path, "--variant", "less"]
         trace("spawn \(selfExecutable.path) \(args.joined(separator: " ")) (echo=\(v.showsToolDetail))", v)
         let code = try VPhoneProcessRunner.runStreaming(
-            selfExecutable, args, cwd: bundleURL, echo: v.showsToolDetail)
+            selfExecutable,
+            args,
+            cwd: bundleURL,
+            echo: v.showsToolDetail
+        )
         guard code == 0 else { throw VPhoneCreateError.lessBootFailed(code) }
     }
 }

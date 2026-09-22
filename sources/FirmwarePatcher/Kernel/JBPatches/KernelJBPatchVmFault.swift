@@ -47,10 +47,13 @@ extension KernelJBPatcher {
         if candidateSites.count == 1 {
             let patchOff = candidateSites.first!
             let va = fileOffsetToVA(patchOff)
-            emit(patchOff, ARM64.nop,
-                 patchID: "kernelcache_jb.vm_fault_enter_prepare",
-                 virtualAddress: va,
-                 description: "NOP [_vm_fault_enter_prepare]")
+            emit(
+                patchOff,
+                ARM64.nop,
+                patchID: "kernelcache_jb.vm_fault_enter_prepare",
+                virtualAddress: va,
+                description: "NOP [_vm_fault_enter_prepare]"
+            )
             return true
         } else if candidateSites.count > 1 {
             let list = candidateSites.sorted().map { String(format: "0x%X", $0) }.joined(separator: ", ")

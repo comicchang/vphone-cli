@@ -108,7 +108,8 @@ public enum VPhoneNetworking {
             }
             guard let iface = VZBridgedNetworkInterface.networkInterfaces.first(where: { $0.identifier == id }) else {
                 throw VPhoneNetworkingError.bridgeInterfaceNotFound(
-                    requested: id, available: availableBridgeInterfaces())
+                    requested: id,
+                    available: availableBridgeInterfaces())
             }
             let net = VZVirtioNetworkDeviceConfiguration()
             net.attachment = VZBridgedNetworkDeviceAttachment(interface: iface)

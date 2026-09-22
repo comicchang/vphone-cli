@@ -220,7 +220,8 @@ public struct VPhoneResources: Sendable {
             log("    → Trying \(host.path)…")
             try? FileManager.default.removeItem(at: managedVenvDir)
             try FileManager.default.createDirectory(
-                at: Self.userDataRoot(), withIntermediateDirectories: true)
+                at: Self.userDataRoot(),
+                withIntermediateDirectories: true)
             guard (try? VPhoneProcessRunner.runStreaming(host, ["-m", "venv", managedVenvDir.path])) == 0 else {
                 lastError = "Could not create a Python environment with \(host.path)"; continue
             }
