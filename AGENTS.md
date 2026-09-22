@@ -51,43 +51,71 @@ sources/
 └── vphone-cli/                       # Swift 6.0 executable (pure Swift, no ObjC)
     ├── main.swift                    # Entry point — NSApplication + AppDelegate
     ├── VPhoneAppDelegate.swift       # App lifecycle, SIGINT, VM start/stop
-    ├── VPhoneCLI.swift               # ArgumentParser options (no execution logic)
     ├── VPhoneBuildInfo.swift         # Auto-generated build-time commit hash
+    ├── VPhoneHostControl.swift       # Unix-socket automation server (one JSON line in/out)
     │
-    │   # VM core
-    ├── VPhoneVirtualMachine.swift    # @MainActor VM configuration and lifecycle
-    ├── VPhoneHardwareModel.swift     # PV=3 hardware model via Dynamic
-    ├── VPhoneVirtualMachineView.swift # Touch-enabled VZVirtualMachineView + helpers
-    ├── VPhoneError.swift             # Error types
+    ├── CLI/                          # ArgumentParser command tree + interactive pickers
+    │   ├── VPhoneCLI.swift           # Root command and global options
+    │   ├── VPhoneFWCLI.swift         # Firmware subcommands
+    │   ├── VPhoneSetupCLI.swift      # Setup subcommands
+    │   ├── VPhoneRestoreCLI.swift    # Restore subcommands
+    │   ├── VPhoneVMCLI.swift         # VM subcommand group
+    │   ├── VPhoneVMCreateCLI.swift   # VM create
+    │   ├── VPhoneVMLaunchCLI.swift   # VM launch
+    │   ├── VPhoneVMTransferCLI.swift # VM transfer
+    │   ├── VPhoneCreateOptions.swift # Create-flow option set
+    │   ├── VPhoneCreateOrchestrator.swift # Native `vm create` pipeline driver
+    │   ├── VPhoneFirmwareSelection.swift  # Interactive firmware picker
+    │   ├── VPhoneVMSelection.swift   # Interactive VM picker
+    │   └── VPhoneProgressBar.swift   # Terminal progress rendering
     │
-    │   # Guest daemon client (vsock)
-    ├── VPhoneControl.swift           # Host-side vsock client for vphoned (length-prefixed JSON)
+    ├── VM/                           # VM core
+    │   ├── VPhoneVirtualMachine.swift # @MainActor VM configuration and lifecycle
+    │   ├── VPhoneVirtualMachineView.swift # Touch-enabled VZVirtualMachineView + helpers
+    │   ├── VPhoneHardwareModel.swift # PV=3 hardware model via Dynamic
+    │   └── VPhoneError.swift         # Error types
     │
-    │   # Window & UI
-    ├── VPhoneWindowController.swift  # @MainActor VM window management + toolbar
-    ├── VPhoneKeyHelper.swift         # Keyboard/hardware key event dispatch to VM
-    ├── VPhoneLocationProvider.swift  # CoreLocation → guest forwarding over vsock
-    ├── VPhoneScreenRecorder.swift    # VM screen recording to file
+    ├── Guest/                        # Guest daemon client (vsock)
+    │   ├── VPhoneControl.swift       # Host-side vsock client for vphoned (length-prefixed JSON)
+    │   ├── VPhoneControlApps.swift   # Installed apps — list and launch
+    │   ├── VPhoneControlKeychain.swift # Keychain dump
+    │   ├── VPhoneControlSystem.swift # Device, battery, location, devmode
+    │   └── VPhoneInstallPackage.swift # Package installation over vsock
     │
-    │   # Menu bar (extensions on VPhoneMenuController)
-    ├── VPhoneMenuController.swift    # Menu bar controller
-    ├── VPhoneMenuKeys.swift          # Keys menu — home, power, volume, spotlight
-    ├── VPhoneMenuType.swift          # Type menu — paste ASCII text to guest
-    ├── VPhoneMenuLocation.swift      # Location menu — host location sync toggle
-    ├── VPhoneMenuConnect.swift       # Connect menu — devmode, ping, version, file browser
-    ├── VPhoneMenuInstall.swift       # Install menu — IPA installation to guest
-    ├── VPhoneMenuRecord.swift        # Record menu — screen recording controls
-    ├── VPhoneMenuBattery.swift       # Battery menu — battery status display
+    ├── Interface/                    # Window & UI
+    │   ├── VPhoneWindowController.swift # @MainActor VM window management + toolbar
+    │   ├── VPhoneKeyHelper.swift     # Keyboard/hardware key event dispatch to VM
+    │   │
+    │   ├── Menu/                     # Menu bar (extensions on VPhoneMenuController)
+    │   │   ├── VPhoneMenuController.swift # Menu bar controller
+    │   │   ├── VPhoneMenuApps.swift  # Apps menu — installed app browser
+    │   │   ├── VPhoneMenuBattery.swift # Battery menu — battery status display
+    │   │   ├── VPhoneMenuCamera.swift # Camera menu — virtual camera source
+    │   │   ├── VPhoneMenuConnect.swift # Connect menu — devmode, ping, version, file browser
+    │   │   ├── VPhoneMenuKeys.swift  # Keys menu — home, power, volume, spotlight
+    │   │   ├── VPhoneMenuLocation.swift # Location menu — host location sync toggle
+    │   │   └── VPhoneMenuRecord.swift # Record menu — screen recording controls
+    │   │
+    │   └── Browsers/                 # SwiftUI browsers in NSHostingController windows
+    │       ├── VPhoneFileBrowserModel.swift # @Observable file browser state + transfers
+    │       ├── VPhoneFileBrowserView.swift # SwiftUI file browser with search + drag-drop
+    │       ├── VPhoneFileWindowController.swift # File browser window
+    │       ├── VPhoneRemoteFile.swift # Remote file data model
+    │       ├── VPhoneAppBrowserModel.swift # App browser state
+    │       ├── VPhoneAppBrowserView.swift # SwiftUI app browser
+    │       ├── VPhoneAppWindowController.swift # App browser window
+    │       ├── VPhoneKeychainBrowserModel.swift # Keychain browser state
+    │       ├── VPhoneKeychainBrowserView.swift # SwiftUI keychain browser
+    │       ├── VPhoneKeychainWindowController.swift # Keychain browser window
+    │       ├── VPhoneKeychainItem.swift # Keychain item data model
+    │       └── VPhoneQuickLookController.swift # Quick Look preview panel
     │
-    │   # IPA installation
-    ├── VPhoneIPAInstaller.swift      # IPA extraction, signing, and installation
-    ├── VPhoneSigner.swift            # Mach-O binary signing utilities
-    │
-    │   # File browser (SwiftUI)
-    ├── VPhoneFileWindowController.swift # File browser window (NSHostingController)
-    ├── VPhoneFileBrowserView.swift   # SwiftUI file browser with search + drag-drop
-    ├── VPhoneFileBrowserModel.swift  # @Observable file browser state + transfers
-    └── VPhoneRemoteFile.swift        # Remote file data model
+    └── Devices/                      # Host capability bridges into the running VM
+        ├── VPhoneCameraServer.swift  # Virtual-camera server (vsock port 1338)
+        ├── VPhoneFrameProducer.swift # BGRA frame sources for the camera server
+        ├── VPhoneLocationProvider.swift # CoreLocation → guest forwarding over vsock
+        ├── VPhoneTouchIDMonitor.swift # BiometricKit delegate sink
+        └── VPhoneScreenRecorder.swift # VM screen recording to file
 
 scripts/
 ├── vphoned/                      # Guest daemon (ObjC, runs inside iOS VM over vsock)
