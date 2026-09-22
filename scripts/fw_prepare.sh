@@ -408,7 +408,14 @@ extract() {
     fi
     rm -rf "$out"
     echo "==> Cloning ${cache##*/} → ${out##*/} ..."
-    cp -R "$cache" "$out"
+    # -c makes this an APFS clone, which is what the line above already claims
+    # it is. Without it a full second copy of the extracted IPSW is written —
+    # ~11.5 GB for an iPhone restore — on top of the .ipsw and the cache, and
+    # the patchers then rewrite only a handful of files out of it. Cloning is
+    # copy-on-write, so the bytes are shared until something changes them.
+    # Falls back to copyfile(2) where the target cannot be cloned, so this is
+    # safe off APFS too.
+    cp -Rc "$cache" "$out"
 }
 
 download_apfs_sealvolume() {

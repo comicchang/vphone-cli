@@ -150,7 +150,7 @@ help:
 # Setup
 # ═══════════════════════════════════════════════════════════════════
 
-.PHONY: setup_machine setup_tools
+.PHONY: setup_machine setup_tools setup_venv
 
 setup_machine:
 	@if count=0; \
@@ -176,6 +176,12 @@ setup_machine:
 
 setup_tools:
 	VARIANT=$(VARIANT) zsh $(SCRIPTS)/setup_tools.sh
+
+# The venv alone, without the brew packages and the toolchain builds that
+# setup_tools also does. Documented in AGENTS.md and in setup_venv.sh's own
+# header, both of which named a target that did not exist.
+setup_venv:
+	zsh $(SCRIPTS)/setup_venv.sh
 
 # ═══════════════════════════════════════════════════════════════════
 # Clean — remove generated build/tooling files by default.
@@ -366,7 +372,7 @@ ifeq ($(UID),0)
 fw_patch_less: patcher_build
 	"$(CURDIR)/$(PATCHER_BINARY)" patch-firmware --vm-directory "$(VM_DIR_ABS)" \
 	--variant less \
-	$(if $(call truthy,$(NO_BINPACK)),--no-binpack,)
+	$(if $(call truthy,$(NO_BINPACK)),--no-binpack,) \
 	$(if $(call truthy,$(NO_VPHONED)),--no-vphoned,)
 else
 fw_patch_less:

@@ -29,6 +29,7 @@ extension KernelJBPatcher {
         // Collect unique caller function starts.
         var seenFuncs = Set<Int>()
         var hits: [Int] = []
+        var alreadyPatched: [Int] = []
 
         for (adrpOff, _) in refs {
             guard let callerStart = findFunctionStart(adrpOff),
@@ -61,7 +62,16 @@ extension KernelJBPatcher {
                     let op0 = detail0.operands[0]
                     let op1 = detail0.operands[1]
                     guard op0.type == AARCH64_OP_REG, op0.reg == AARCH64_REG_W0 else { continue }
-                    guard op1.type == AARCH64_OP_IMM else { continue }
+
+                    let isImmediate = op1.type == AARCH64_OP_IMM
+                    // `cmp w0, w0` in this slot is this patch's own result. The
+                    // base layer's postValidation patch reveals the same site
+                    // the same way — same string anchor, same `cmp w0,#imm ;
+                    // b.ne` shape, a narrower BL window — and rewrites it
+                    // before this runs, so the immediate is already gone by
+                    // then and searching only for one finds nothing at all.
+                    let isAlreadyPatched = op1.type == AARCH64_OP_REG && op1.reg == AARCH64_REG_W0
+                    guard isImmediate || isAlreadyPatched else { continue }
 
                     // Must be preceded by a BL within 3 instructions.
                     var hasBlBefore = false
@@ -72,14 +82,28 @@ extension KernelJBPatcher {
                         }
                     }
                     guard hasBlBefore else { continue }
-                    hits.append(off)
+                    if isAlreadyPatched {
+                        alreadyPatched.append(off)
+                    } else {
+                        hits.append(off)
+                    }
                 }
             }
         }
 
         let uniqueHits = Array(Set(hits)).sorted()
+        let uniqueAlready = Array(Set(alreadyPatched)).sorted()
+
+        if uniqueHits.isEmpty, uniqueAlready.count == 1 {
+            let off = uniqueAlready[0]
+            log("  [=] already cmp w0,w0 at \(String(format: "0x%X", off)) (base postValidation "
+                + "patch owns this site); nothing to patch")
+            return true
+        }
+
         guard uniqueHits.count == 1 else {
-            log("  [-] expected 1 postValidation compare site, found \(uniqueHits.count)")
+            log("  [-] expected 1 postValidation compare site, found \(uniqueHits.count)"
+                + " (already-patched sites: \(uniqueAlready.count))")
             return false
         }
 
