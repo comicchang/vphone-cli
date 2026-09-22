@@ -13,6 +13,20 @@
 //       tbnz wEntryFlags, #22, skip
 //       ... and wProt, wProt, #~bit   ; the downgrade we want to skip
 //
+//   Shape C (26.4): the same decision, emitted with the two conditions fused. The
+//   compiler drops the flag-setting `bics` and the separate `tbnz` in favour of a
+//   conditional compare, leaving one branch to rewrite instead of two —
+//       and  wFlags, wFlags, #(1 << 22)   ; isolate the same entry bit the tbnz tested
+//       mov  wMask, #6
+//       bic  wMask, wMask, wProt          ; plain bic; the compare is separate
+//       cmp  wMask, #0                    ; (~prot & 6) == 0 ?
+//       ccmp wFlags, #0, #0, eq           ; ... and the entry flag clear ?
+//       b.ne skip                         ; <- rewrite to unconditional `b skip`
+//       ... and wProt, wProt, #~VM_PROT_EXECUTE
+//   Rewriting that single `b.ne` bypasses both conditions at once, which is exactly
+//   what Shape A's rewrite achieves (there the `tbnz` becomes dead code). Same bit,
+//   same downgrade, same patch.
+//
 //   Shape B (26.5): the per-entry apply path narrows the protection with a runtime
 //   W^X mask register before pmap_protect_options —
 //       lsr  wT, wEntryFlags, #7      ; extract the 3-bit protection field
@@ -45,19 +59,22 @@ extension KernelJBPatcher {
 
         // Shape A: explicit skip branch (26.1 / 26.3). Rewrite `b.ne skip` -> `b skip`.
         if let (brOff, target) = findWriteDowngradeGate(start: funcStart, end: funcEnd) {
-            guard let bBytes = ARM64Encoder.encodeB(from: brOff, to: target) else {
-                log("  [-] branch rewrite out of range")
-                return false
-            }
-            let delta = target - brOff
-            emit(
-                brOff,
-                bBytes,
-                patchID: "kernelcache_jb.vm_map_protect",
-                virtualAddress: fileOffsetToVA(brOff),
-                description: "b #0x\(String(format: "%X", delta)) [_vm_map_protect skip W^X downgrade]"
-            )
-            return true
+            return emitSkipBranch(brOff: brOff, target: target, shape: "A")
+        }
+
+        // Shape C: the same gate with the two conditions fused into a ccmp (26.4).
+        // Tried only after Shape A, so a kernel that still emits the explicit
+        // `bics`/`tbnz` pair keeps taking exactly the path it always took.
+        //
+        // Deliberately NOT scoped to [funcStart, funcEnd]: on 26.4 the panic string
+        // sits in a cold block that ends at its own `pacibsp` 0x6B8 bytes before the
+        // gate, so the window findFuncEnd derives from the string stops short of it.
+        // Widening that window by a byte count would be an offset-shaped anchor.
+        // Instead the signature carries its own anchor — on this kernel even the
+        // `mov wMask,#6 ; bic wMask,wMask,wProt` prefix occurs exactly once in 8.4 MB
+        // of kernel text — and uniqueness across the whole code range is required.
+        if let (brOff, target) = findFusedWriteDowngradeGate() {
+            return emitSkipBranch(brOff: brOff, target: target, shape: "C")
         }
 
         // Shape B (26.5 mask-widen) disabled: findWxMaskMov hit vm_map.c:6202
@@ -70,6 +87,131 @@ extension KernelJBPatcher {
 
         log("  [-] vm_map_protect write-downgrade gate not found")
         return false
+    }
+
+    /// Rewrite the gate's conditional branch to an unconditional one to its own target.
+    private func emitSkipBranch(brOff: Int, target: Int, shape: String) -> Bool {
+        guard let bBytes = ARM64Encoder.encodeB(from: brOff, to: target) else {
+            log("  [-] branch rewrite out of range")
+            return false
+        }
+        let delta = target - brOff
+        emit(
+            brOff,
+            bBytes,
+            patchID: "kernelcache_jb.vm_map_protect",
+            virtualAddress: fileOffsetToVA(brOff),
+            description: "b #0x\(String(format: "%X", delta)) "
+                + "[_vm_map_protect skip W^X downgrade, shape \(shape)]"
+        )
+        return true
+    }
+
+    // MARK: - Shape C (26.4): conditions fused into a conditional compare
+
+    /// Find the single `b.ne` that skips the downgrade when the compiler folded the
+    /// entry-flag test into a `ccmp`, and its target. Scans every known code range
+    /// and returns a result only when the signature occurs exactly once.
+    private func findFusedWriteDowngradeGate() -> (brOff: Int, target: Int)? {
+        // The entry bit the explicit shape tested with `tbnz wFlags, #22`.
+        let entryFlagBit: Int64 = 1 << 22
+
+        var hits: [(Int, Int)] = []
+        for range in codeRanges {
+            scanRange(range.start, range.end, entryFlagBit, &hits)
+        }
+        return hits.count == 1 ? hits[0] : nil
+    }
+
+    private func scanRange(
+        _ start: Int, _ end: Int, _ entryFlagBit: Int64, _ hits: inout [(Int, Int)]
+    ) {
+        var off = start
+        while off + 0x18 < end {
+            defer { off += 4 }
+            let insns = disasm.disassemble(in: buffer.data, at: off, count: 5)
+            guard insns.count >= 5 else { continue }
+            let movMask = insns[0], bicInsn = insns[1]
+            let cmpInsn = insns[2], ccmpInsn = insns[3], bneInsn = insns[4]
+
+            // mov wMask, #6
+            guard movMask.mnemonic == "mov",
+                  let movOps = movMask.aarch64?.operands, movOps.count == 2,
+                  movOps[0].type == AARCH64_OP_REG,
+                  movOps[1].type == AARCH64_OP_IMM, movOps[1].imm == 6
+            else { continue }
+            let maskReg = movOps[0].reg
+
+            // bic wMask, wMask, wProt — the non-flag-setting form.
+            guard bicInsn.mnemonic == "bic",
+                  let bicOps = bicInsn.aarch64?.operands, bicOps.count == 3,
+                  bicOps[0].type == AARCH64_OP_REG, bicOps[0].reg == maskReg,
+                  bicOps[1].type == AARCH64_OP_REG, bicOps[1].reg == maskReg,
+                  bicOps[2].type == AARCH64_OP_REG
+            else { continue }
+            let protReg = bicOps[2].reg
+
+            // cmp wMask, #0
+            guard cmpInsn.mnemonic == "cmp",
+                  let cmpOps = cmpInsn.aarch64?.operands, cmpOps.count == 2,
+                  cmpOps[0].type == AARCH64_OP_REG, cmpOps[0].reg == maskReg,
+                  cmpOps[1].type == AARCH64_OP_IMM, cmpOps[1].imm == 0
+            else { continue }
+
+            // ccmp wFlags, #0, #nzcv, eq — the `eq` is what makes this the second
+            // half of the same decision rather than an unrelated fused compare.
+            guard ccmpInsn.mnemonic == "ccmp",
+                  let ccmpDetail = ccmpInsn.aarch64,
+                  ccmpDetail.conditionCode == AArch64CC_EQ,
+                  ccmpDetail.operands.count >= 2,
+                  ccmpDetail.operands[0].type == AARCH64_OP_REG,
+                  ccmpDetail.operands[1].type == AARCH64_OP_IMM,
+                  ccmpDetail.operands[1].imm == 0
+            else { continue }
+            let flagsReg = ccmpDetail.operands[0].reg
+
+            // b.ne <skip>, forward.
+            guard bneInsn.mnemonic == "b.ne",
+                  let bneOps = bneInsn.aarch64?.operands, bneOps.count == 1,
+                  bneOps[0].type == AARCH64_OP_IMM
+            else { continue }
+            let skipTarget = Int(bneOps[0].imm)
+            guard skipTarget > Int(bneInsn.address) else { continue }
+
+            // The flags register must have been masked down to the same entry bit the
+            // explicit shape tested, so this stays anchored on that flag and cannot
+            // drift onto an unrelated fused compare.
+            guard findEntryFlagMask(
+                before: off, limit: start, reg: flagsReg, bit: entryFlagBit
+            ) != nil else { continue }
+
+            // And the block it guards must be the downgrade.
+            let searchStart = Int(bneInsn.address) + 4
+            let searchEnd = min(skipTarget, end)
+            guard findWriteClearBetween(start: searchStart, end: searchEnd, protReg: protReg) != nil
+            else { continue }
+
+            hits.append((Int(bneInsn.address), skipTarget))
+        }
+    }
+
+    /// Scan backwards for `and wFlags, wFlags, #bit` that isolates the entry flag.
+    private func findEntryFlagMask(before: Int, limit: Int, reg: aarch64_reg, bit: Int64) -> Int? {
+        var off = before - 4
+        let floor = max(limit, before - 0x20)
+        while off >= floor {
+            let insns = disasm.disassemble(in: buffer.data, at: off, count: 1)
+            if let insn = insns.first, insn.mnemonic == "and",
+               let ops = insn.aarch64?.operands, ops.count == 3,
+               ops[0].type == AARCH64_OP_REG, ops[0].reg == reg,
+               ops[1].type == AARCH64_OP_REG, ops[1].reg == reg,
+               ops[2].type == AARCH64_OP_IMM, ops[2].imm == bit
+            {
+                return off
+            }
+            off -= 4
+        }
+        return nil
     }
 
     // MARK: - Shape A (26.1 / 26.3): explicit skip-branch gate
