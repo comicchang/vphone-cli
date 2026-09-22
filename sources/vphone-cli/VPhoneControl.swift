@@ -492,37 +492,6 @@ class VPhoneControl {
         return "Installed \(localURL.lastPathComponent) through the built-in IPA installer."
     }
 
-    // MARK: - Keychain Operations
-
-    struct KeychainResult {
-        let items: [[String: Any]]
-        let diagnostics: [String]
-    }
-
-    func listKeychainItems() async throws -> KeychainResult {
-        let req: [String: Any] = ["t": "keychain_list"]
-        let (resp, _) = try await sendRequest(req)
-        guard let items = resp["items"] as? [[String: Any]] else {
-            throw ControlError.protocolError("missing items in keychain response")
-        }
-        let diag = resp["diag"] as? [String] ?? []
-        return KeychainResult(items: items, diagnostics: diag)
-    }
-
-    func addKeychainItem(
-        account: String = "vphone-test", service: String = "vphone", password: String = "testpass123"
-    ) async throws {
-        let req: [String: Any] = [
-            "t": "keychain_add", "account": account, "service": service, "password": password,
-        ]
-        let (resp, _) = try await sendRequest(req)
-        let ok = resp["ok"] as? Bool ?? false
-        if !ok {
-            let msg = resp["msg"] as? String ?? "unknown error"
-            throw ControlError.protocolError("keychain_add: \(msg)")
-        }
-    }
-
     // MARK: - Clipboard
 
     struct ClipboardContent {
@@ -588,100 +557,6 @@ class VPhoneControl {
                 return
             }
         }
-    }
-
-    // MARK: - App Management
-
-    struct AppInfo {
-        let bundleId: String
-        let name: String
-        let version: String
-        let type: String
-        let state: String
-        let pid: Int
-        let path: String
-    }
-
-    func appList(filter: String = "all") async throws -> [AppInfo] {
-        let (resp, _) = try await sendRequest(["t": "app_list", "filter": filter])
-        guard let apps = resp["apps"] as? [[String: Any]] else {
-            throw ControlError.protocolError("missing apps in response")
-        }
-        return apps.map { app in
-            AppInfo(
-                bundleId: app["bundle_id"] as? String ?? "",
-                name: app["name"] as? String ?? "",
-                version: app["version"] as? String ?? "",
-                type: app["type"] as? String ?? "",
-                state: app["state"] as? String ?? "",
-                pid: app["pid"] as? Int ?? 0,
-                path: app["path"] as? String ?? ""
-            )
-        }
-    }
-
-    func appLaunch(bundleId: String, url: String? = nil) async throws -> Int {
-        var req: [String: Any] = ["t": "app_launch", "bundle_id": bundleId]
-        if let url { req["url"] = url }
-        let (resp, _) = try await sendRequest(req)
-        return resp["pid"] as? Int ?? 0
-    }
-
-    func appTerminate(bundleId: String) async throws {
-        _ = try await sendRequest(["t": "app_terminate", "bundle_id": bundleId])
-    }
-
-    func appForeground() async throws -> (bundleId: String, name: String, pid: Int) {
-        let (resp, _) = try await sendRequest(["t": "app_foreground"])
-        return (
-            bundleId: resp["bundle_id"] as? String ?? "",
-            name: resp["name"] as? String ?? "",
-            pid: resp["pid"] as? Int ?? 0
-        )
-    }
-
-    // MARK: - URL
-
-    func openURL(_ url: String) async throws {
-        let (resp, _) = try await sendRequest(["t": "open_url", "url": url])
-        let ok = resp["ok"] as? Bool ?? false
-        if !ok {
-            let msg = resp["msg"] as? String ?? "failed to open URL"
-            throw ControlError.guestError(msg)
-        }
-    }
-
-    // MARK: - Settings
-
-    func settingsGet(domain: String, key: String? = nil) async throws -> Any? {
-        var req: [String: Any] = ["t": "settings_get", "domain": domain]
-        if let key { req["key"] = key }
-        let (resp, _) = try await sendRequest(req)
-        return resp["value"]
-    }
-
-    func settingsSet(domain: String, key: String, value: Any, type: String? = nil) async throws {
-        var req: [String: Any] = ["t": "settings_set", "domain": domain, "key": key, "value": value]
-        if let type { req["type"] = type }
-        _ = try await sendRequest(req)
-    }
-
-    func lowPowerMode(enabled: Bool) async throws {
-        let (resp, _) = try await sendRequest(["t": "low_power_mode", "enabled": enabled])
-        let ok = resp["ok"] as? Bool ?? false
-        if !ok {
-            throw ControlError.guestError("low_power_mode: failed to set state on guest")
-        }
-    }
-
-    // MARK: - Accessibility
-
-    func accessibilityTree(depth: Int = -1) async throws -> [String: Any] {
-        guard guestCaps.contains("accessibility_tree") else {
-            throw ControlError.unsupportedCapability("accessibility_tree")
-        }
-        let (resp, _) = try await sendRequest(["t": "accessibility_tree", "depth": depth])
-        return resp
     }
 
     // MARK: - Location
