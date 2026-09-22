@@ -8,16 +8,16 @@ set -euo pipefail
 # `:A` resolves a Homebrew symlink back into the bundle).
 app="${0:A:h:h:h}"
 [[ "${app:e}" == app && -x "$app/Contents/MacOS/vphone-cli" ]] \
-  || { print -u2 "error: run vphone-amfidont from inside vphone-cli.app"; exit 1 }
+  || { print -u2 "Error: run vphone-amfidont from inside vphone-cli.app."; exit 1 }
 
 # Ensure amfidont is installed.
 if ! command -v amfidont >/dev/null; then
   printf "amfidont is not installed. Install it via pip now? [y/N] "
   read -r ans || ans=n
-  [[ "$ans" == [yY]* ]] || { print "Aborted."; exit 1 }
+  [[ "$ans" == [yY]* ]] || { print "Cancelled."; exit 1 }
   xcrun python3 -m pip install -U amfidont
   command -v amfidont >/dev/null \
-    || { print -u2 "amfidont installed but not on PATH — open a new shell and retry."; exit 1 }
+    || { print -u2 "Error: amfidont is installed but not available in this shell. Open a new shell and retry."; exit 1 }
 fi
 # Absolute path: sudo's secure_path won't find a pip-user install by name.
 bin="$(command -v amfidont)"
@@ -33,10 +33,10 @@ if [[ -n "${raw//[[:space:]]/}" ]]; then
   info+=$'\n'"$(cat ~/.amfidont/paths 2>/dev/null || true)"
   # Covered if this .app's path is allowed, or if it's running with --allow-all.
   if print -r -- "$info" | grep -Fq -- "$app" || print -r -- "$info" | grep -Fq -- "--allow-all"; then
-    print "amfidont is already running and allows this .app — nothing to do."
+    print "amfidont is already running and allows this app — nothing to do."
     exit 0
   fi
-  print -u2 "amfidont is already running but does NOT allow this .app. Stop it, then re-run vphone-amfidont."
+  print -u2 "amfidont is already running but does not allow this app. Stop amfidont, then run vphone-amfidont again."
   exit 1
 fi
 

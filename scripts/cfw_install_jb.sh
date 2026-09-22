@@ -285,12 +285,12 @@ echo "  [+] debugserver entitlements patched"
 # Grant Campo the backboard/frontboard mach-lookups the 26.4 temporary-sandbox denies (see 0_binary_patch_comparison.md #14).
 # 27-gated on the mounted rootfs SystemVersion.plist (same source as vpregister/DSC gates): 26.x userlands don't need it and Campo.app exists there too.
 CAMPO_BIN="$MNT1/Applications/Campo.app/Campo"
-CAMPO_BASE_IOS=$(/usr/bin/plutil -extract ProductVersion raw -o - "$MNT1/System/Library/CoreServices/SystemVersion.plist" 2>/dev/null || true)
-case "$CAMPO_BASE_IOS" in
+BASE_IOS=$(/usr/bin/plutil -extract ProductVersion raw -o - "$MNT1/System/Library/CoreServices/SystemVersion.plist" 2>/dev/null || true)
+case "$BASE_IOS" in
 27.*)
     if [[ -f "$CAMPO_BIN" ]]; then
         echo ""
-        echo "[JB-3b] Granting Campo backboard/frontboard mach-lookup exceptions (iOS $CAMPO_BASE_IOS)..."
+        echo "[JB-3b] Granting Campo backboard/frontboard mach-lookup exceptions (iOS $BASE_IOS)..."
         cp "$CAMPO_BIN" "$TEMP_DIR/Campo"
         ldid -e "$TEMP_DIR/Campo" > "$TEMP_DIR/Campo.entitlements" 2>/dev/null || true
         if [[ -s "$TEMP_DIR/Campo.entitlements" ]]; then
@@ -307,7 +307,7 @@ case "$CAMPO_BASE_IOS" in
     fi
     ;;
 *)
-    echo "[JB-3b] skip Campo sandbox fix (base iOS ${CAMPO_BASE_IOS:-unknown} — 27-only)"
+    echo "[JB-3b] skip Campo sandbox fix (base iOS ${BASE_IOS:-unknown} — 27-only)"
     ;;
 esac
 
@@ -437,18 +437,17 @@ fi
 # script must NOT version-check on guest sw_vers — the hybrid guest does not reliably
 # report the 27 userland version at first boot). Version read from the mounted rootfs
 # SystemVersion.plist, the same source cfw_install.sh gates its 27 patches on.
-JB_BASE_IOS=$(/usr/bin/plutil -extract ProductVersion raw -o - "$MNT1/System/Library/CoreServices/SystemVersion.plist" 2>/dev/null || true)
-case "$JB_BASE_IOS" in
+case "$BASE_IOS" in
     27.*)
         VPREGISTER="$(build_vpregister)"
         if [[ -f "$VPREGISTER" ]]; then
             cp -R "$VPREGISTER" "$MNT1/cores/vpregister"
             /bin/chmod 0755 $MNT1/cores/vpregister
-            echo "  [+] vpregister -> /cores/ (iOS $JB_BASE_IOS)"
+            echo "  [+] vpregister -> /cores/ (iOS $BASE_IOS)"
         fi
         ;;
     *)
-        echo "  [skip] vpregister (base iOS ${JB_BASE_IOS:-unknown} — 27-only; uicache registers apps on older bases)"
+        echo "  [skip] vpregister (base iOS ${BASE_IOS:-unknown} — 27-only; uicache registers apps on older bases)"
         ;;
 esac
 if [[ -f "$SETUP_PLIST" ]]; then

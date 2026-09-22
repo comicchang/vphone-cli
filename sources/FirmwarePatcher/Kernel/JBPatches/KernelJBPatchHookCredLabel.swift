@@ -259,11 +259,7 @@ extension KernelJBPatcher {
                 var scanOff = refOff - 4
                 let scanLimit = max(0, refOff - 80)
                 while scanOff >= scanLimit {
-                    let insn = buffer.readU32(at: scanOff)
-                    if insn >> 26 == 0b100101 { // BL
-                        let imm26 = insn & 0x03FF_FFFF
-                        let signedImm = Int32(bitPattern: imm26 << 6) >> 6
-                        let target = scanOff + Int(signedImm) * 4
+                    if let target = decodeBL(at: scanOff) {
                         let inCode = codeRanges.contains { target >= $0.start && target < $0.end }
                         if inCode {
                             log("  [+] vnode_getattr at 0x\(String(format: "%X", target)) (via BL at 0x\(String(format: "%X", scanOff)))")
@@ -342,103 +338,103 @@ extension KernelJBPatcher {
         // 0: nop
         code.append(ARM64.nop)
         // 1: cbz x3, #0xa8  (skip entire body = 42 instructions forward)
-        code.append(encodeU32(ARM64.c23_cbzX3_0xA8))
+        code.append(ARM64.encodeU32(ARM64.c23_cbzX3_0xA8))
         // 2: sub sp, sp, #0x400
-        code.append(encodeU32(ARM64.c23_subSP_0x400))
+        code.append(ARM64.encodeU32(ARM64.c23_subSP_0x400))
         // 3: stp x29, x30, [sp]
-        code.append(encodeU32(ARM64.c23_stpFP_LR))
+        code.append(ARM64.encodeU32(ARM64.c23_stpFP_LR))
         // 4: stp x0, x1, [sp, #0x10]
-        code.append(encodeU32(ARM64.c23_stpX0X1_0x10))
+        code.append(ARM64.encodeU32(ARM64.c23_stpX0X1_0x10))
         // 5: stp x2, x3, [sp, #0x20]
-        code.append(encodeU32(ARM64.c23_stpX2X3_0x20))
+        code.append(ARM64.encodeU32(ARM64.c23_stpX2X3_0x20))
         // 6: stp x4, x5, [sp, #0x30]
-        code.append(encodeU32(ARM64.c23_stpX4X5_0x30))
+        code.append(ARM64.encodeU32(ARM64.c23_stpX4X5_0x30))
         // 7: stp x6, x7, [sp, #0x40]
-        code.append(encodeU32(ARM64.c23_stpX6X7_0x40))
+        code.append(ARM64.encodeU32(ARM64.c23_stpX6X7_0x40))
         // 8: nop
         code.append(ARM64.nop)
 
         // 9: bl vfs_context_current
         let blVfsOff = caveOff + code.count * 4
-        guard let blVfs = encodeBL(from: blVfsOff, to: vfsContextCurrentOff) else { return nil }
+        guard let blVfs = ARM64Encoder.encodeBL(from: blVfsOff, to: vfsContextCurrentOff) else { return nil }
         code.append(blVfs)
 
         // 10: mov x2, x0
-        code.append(encodeU32(ARM64.c23_movX2_X0))
+        code.append(ARM64.encodeU32(ARM64.c23_movX2_X0))
         // 11: ldr x0, [sp, #0x28]   (saved x3 = vp)
-        code.append(encodeU32(ARM64.c23_ldrX0_sp_0x28))
+        code.append(ARM64.encodeU32(ARM64.c23_ldrX0_sp_0x28))
         // 12: add x1, sp, #0x80
-        code.append(encodeU32(ARM64.c23_addX1_sp_0x80))
+        code.append(ARM64.encodeU32(ARM64.c23_addX1_sp_0x80))
         // 13: mov w8, #0x380
-        code.append(encodeU32(ARM64.c23_movzW8_0x380))
+        code.append(ARM64.encodeU32(ARM64.c23_movzW8_0x380))
         // 14: stp xzr, x8, [x1]
-        code.append(encodeU32(ARM64.c23_stpXZR_X8))
+        code.append(ARM64.encodeU32(ARM64.c23_stpXZR_X8))
         // 15: stp xzr, xzr, [x1, #0x10]
-        code.append(encodeU32(ARM64.c23_stpXZR_XZR_0x10))
+        code.append(ARM64.encodeU32(ARM64.c23_stpXZR_XZR_0x10))
         // 16: nop
         code.append(ARM64.nop)
 
         // 17: bl vnode_getattr
         let blGetAttrOff = caveOff + code.count * 4
-        guard let blGetAttr = encodeBL(from: blGetAttrOff, to: vnodeGetattrOff) else { return nil }
+        guard let blGetAttr = ARM64Encoder.encodeBL(from: blGetAttrOff, to: vnodeGetattrOff) else { return nil }
         code.append(blGetAttr)
 
         // 18: cbnz x0, #0x4c  (skip 19 instructions)
-        code.append(encodeU32(ARM64.c23_cbnzX0_0x4c))
+        code.append(ARM64.encodeU32(ARM64.c23_cbnzX0_0x4c))
         // 19: mov w2, #0
-        code.append(encodeU32(ARM64.c23_movW2_0))
+        code.append(ARM64.encodeU32(ARM64.c23_movW2_0))
         // 20: ldr w8, [sp, #0xcc]
-        code.append(encodeU32(ARM64.c23_ldrW8_sp_0xcc))
+        code.append(ARM64.encodeU32(ARM64.c23_ldrW8_sp_0xcc))
         // 21: tbz w8, #0xb, #0x14  (skip 5 instrs)
-        code.append(encodeU32(ARM64.c23_tbzW8_11_0x14))
+        code.append(ARM64.encodeU32(ARM64.c23_tbzW8_11_0x14))
         // 22: ldr w8, [sp, #0xc4]
-        code.append(encodeU32(ARM64.c23_ldrW8_sp_0xc4))
+        code.append(ARM64.encodeU32(ARM64.c23_ldrW8_sp_0xc4))
         // 23: ldr x0, [sp, #0x18]
-        code.append(encodeU32(ARM64.c23_ldrX0_sp_0x18))
+        code.append(ARM64.encodeU32(ARM64.c23_ldrX0_sp_0x18))
         // 24: str w8, [x0, #0x18]
-        code.append(encodeU32(ARM64.c23_strW8_x0_0x18))
+        code.append(ARM64.encodeU32(ARM64.c23_strW8_x0_0x18))
         // 25: mov w2, #1
-        code.append(encodeU32(ARM64.c23_movW2_1))
+        code.append(ARM64.encodeU32(ARM64.c23_movW2_1))
         // 26: ldr w8, [sp, #0xcc]
-        code.append(encodeU32(ARM64.c23_ldrW8_sp_0xcc))
+        code.append(ARM64.encodeU32(ARM64.c23_ldrW8_sp_0xcc))
         // 27: tbz w8, #0xa, #0x14  (skip 5 instrs)
-        code.append(encodeU32(ARM64.c23_tbzW8_10_0x14))
+        code.append(ARM64.encodeU32(ARM64.c23_tbzW8_10_0x14))
         // 28: mov w2, #1
-        code.append(encodeU32(ARM64.c23_movW2_1))
+        code.append(ARM64.encodeU32(ARM64.c23_movW2_1))
         // 29: ldr w8, [sp, #0xc8]
-        code.append(encodeU32(ARM64.c23_ldrW8_sp_0xc8))
+        code.append(ARM64.encodeU32(ARM64.c23_ldrW8_sp_0xc8))
         // 30: ldr x0, [sp, #0x18]
-        code.append(encodeU32(ARM64.c23_ldrX0_sp_0x18))
+        code.append(ARM64.encodeU32(ARM64.c23_ldrX0_sp_0x18))
         // 31: str w8, [x0, #0x28]
-        code.append(encodeU32(ARM64.c23_strW8_x0_0x28))
+        code.append(ARM64.encodeU32(ARM64.c23_strW8_x0_0x28))
         // 32: cbz w2, #0x14  (skip 5 instrs)
-        code.append(encodeU32(ARM64.c23_cbzW2_0x14))
+        code.append(ARM64.encodeU32(ARM64.c23_cbzW2_0x14))
         // 33: ldr x0, [sp, #0x20]
-        code.append(encodeU32(ARM64.c23_ldrX0_sp_0x20))
+        code.append(ARM64.encodeU32(ARM64.c23_ldrX0_sp_0x20))
         // 34: ldr w8, [x0, #0x454]
-        code.append(encodeU32(ARM64.c23_ldrW8_x0_0x454))
+        code.append(ARM64.encodeU32(ARM64.c23_ldrW8_x0_0x454))
         // 35: orr w8, w8, #0x100
-        code.append(encodeU32(ARM64.c23_orrW8_0x100))
+        code.append(ARM64.encodeU32(ARM64.c23_orrW8_0x100))
         // 36: str w8, [x0, #0x454]
-        code.append(encodeU32(ARM64.c23_strW8_x0_0x454))
+        code.append(ARM64.encodeU32(ARM64.c23_strW8_x0_0x454))
         // 37: ldp x0, x1, [sp, #0x10]
-        code.append(encodeU32(ARM64.c23_ldpX0X1_0x10))
+        code.append(ARM64.encodeU32(ARM64.c23_ldpX0X1_0x10))
         // 38: ldp x2, x3, [sp, #0x20]
-        code.append(encodeU32(ARM64.c23_ldpX2X3_0x20))
+        code.append(ARM64.encodeU32(ARM64.c23_ldpX2X3_0x20))
         // 39: ldp x4, x5, [sp, #0x30]
-        code.append(encodeU32(ARM64.c23_ldpX4X5_0x30))
+        code.append(ARM64.encodeU32(ARM64.c23_ldpX4X5_0x30))
         // 40: ldp x6, x7, [sp, #0x40]
-        code.append(encodeU32(ARM64.c23_ldpX6X7_0x40))
+        code.append(ARM64.encodeU32(ARM64.c23_ldpX6X7_0x40))
         // 41: ldp x29, x30, [sp]
-        code.append(encodeU32(ARM64.c23_ldpFP_LR))
+        code.append(ARM64.encodeU32(ARM64.c23_ldpFP_LR))
         // 42: add sp, sp, #0x400
-        code.append(encodeU32(ARM64.c23_addSP_0x400))
+        code.append(ARM64.encodeU32(ARM64.c23_addSP_0x400))
         // 43: nop
         code.append(ARM64.nop)
 
         // 44: b wrapperOff
         let branchBackOff = caveOff + code.count * 4
-        guard let branchBack = encodeB(from: branchBackOff, to: wrapperOff) else { return nil }
+        guard let branchBack = ARM64Encoder.encodeB(from: branchBackOff, to: wrapperOff) else { return nil }
         code.append(branchBack)
 
         // 45: nop
@@ -459,11 +455,5 @@ extension KernelJBPatcher {
         // Preserve all bits above bit 31, replace the low 32 bits with target foff
         let newVal = (origVal & ~UInt64(0xFFFF_FFFF)) | (UInt64(targetFoff) & 0xFFFF_FFFF)
         return withUnsafeBytes(of: newVal.littleEndian) { Data($0) }
-    }
-
-    // MARK: - Encoding Helper
-
-    private func encodeU32(_ value: UInt32) -> Data {
-        ARM64.encodeU32(value)
     }
 }

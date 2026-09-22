@@ -702,12 +702,11 @@ public final class DeviceTreePatcher: Patcher {
         if patches.isEmpty, rebuiltData == nil {
             let _ = try findAll()
         }
+        // `findAll()` always ends by rebuilding the payload, and node additions are
+        // emitted with `fileOffset: 0`, so the rebuilt payload is the only thing that
+        // can land on disk.
         if let rebuiltData {
             buffer.data = rebuiltData
-        } else {
-            for record in patches {
-                buffer.writeBytes(at: record.fileOffset, bytes: record.patchedBytes)
-            }
         }
         if verbose, !patches.isEmpty {
             print("\n  [\(patches.count) DeviceTree patch(es) applied]")

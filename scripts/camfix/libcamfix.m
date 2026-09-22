@@ -1,31 +1,51 @@
 /*
  * libcamfix — substrate-injected into Camera.app (com.apple.camera).
  *
- * 1. Suppress the -[AVCaptureFigVideoDevice _setActiveFormat:...] crash
+ * Our virtual camera has no daemon-side still or preview pipeline behind it,
+ * so AVFoundation's own paths crash, throw, or render black. The hooks
+ * installed by cfx_install_all_hooks substitute our own:
+ *
+ * 1. -[AVCaptureFigVideoDevice _setActiveFormat:...]: suppress the crash
  *    when the device is our virtual camera and the format argument is nil.
  *    Camera.app's session-preset → format lookup returns nil for our synth
  *    because no preset matches our published formats exactly. Substitute
  *    the device's first supported format instead.
  *
- * 2. Same -[AVCapturePhotoOutput capturePhotoWithSettings:delegate:] swizzle
- *    as libcameratest: when the photo output is bound to our virtual camera,
- *    read /var/jb/var/mobile/Library/vphone-vcam-frame.shm, build a
- *    CMSampleBuffer, and async-fire the deprecated delegate method with the
- *    sample buffer. JPEG-encoded delivery happens client-side via ImageIO.
+ * 2. -[AVCapturePhotoOutput capturePhotoWithSettings:delegate:]: when the
+ *    photo output is bound to our virtual camera, read
+ *    /var/jb/var/mobile/Library/vphone-vcam-frame.shm and fire the modern
+ *    didFinishProcessingPhoto:error: delegate with an AVCapturePhoto built
+ *    from that frame; JPEG encoding happens client-side via ImageIO. The
+ *    deprecated CMSampleBuffer delegate is the fallback, taken only for a
+ *    client that implements nothing else. If this hook fails, the capture
+ *    path falls back to the original AVF code path (which would re-throw /
+ *    error out).
  *
- * Failure mode if either hook fails: capture path falls back to the original
- * AVF code path (which would re-throw / error out). All logging goes to
- * /var/mobile/Library/Logs/CrashReporter/camfix.log via NSLog (Camera.app
- * has Apple's TCC access to that area).
+ * 3. The moment-capture trio (begin / commit / cancelMomentCapture):
+ *    Camera.app's shutter path. For our virtual camera the original is
+ *    deliberately never called — it throws — so AVF's state stays clean and
+ *    subsequent shutter taps don't compound corruption.
+ *
+ * 4. AVCaptureSession's _setRunning: / _setInterrupted: guards and its
+ *    isRunning / isInterrupted getters: keep a vcam-bound session live
+ *    although no sample buffers ever flow through it.
+ *
+ * 5. The AVCaptureVideoPreviewLayer pump and its scan timer: push CGImage
+ *    frames into CALayer.contents, since nothing feeds the layer otherwise.
+ *
+ * 6. AVCapturePhoto's -fileDataRepresentation / -CGImageRepresentation: hand
+ *    back the bytes stamped onto the photos we synthesized.
+ *
+ * 7. CAMStillImageCaptureRequest stubs for the accessors Camera.app's
+ *    capture engine reads off a request.
+ *
+ * All logging goes to /tmp/camfix.log, written by cfxlog.
  */
 
 #import <AVFoundation/AVFoundation.h>
-#import <CoreImage/CoreImage.h>
 #import <Foundation/Foundation.h>
 #import <ImageIO/ImageIO.h>
-#import <MobileCoreServices/MobileCoreServices.h>
 #import <IOSurface/IOSurfaceRef.h>
-#import <Photos/Photos.h>
 #include <stdio.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -93,6 +113,27 @@ static BOOL cfx_shm_open(void) {
   return YES;
 }
 
+// One owner for "map the frame and check it is usable": opens the shm,
+// rejects a zeroed header, and rejects a pixel plane that runs past the
+// mapping. On success returns the header — the pixels start
+// CFX_SHM_HEADER_SIZE bytes after cfx_shm_base — and writes the pixel-plane
+// length to *outLen. Returns NULL when the frame cannot be read.
+static const cfx_shm_header_t *cfx_shm_frame(size_t *outLen) {
+  if (!cfx_shm_open()) return NULL;
+  const cfx_shm_header_t *hdr = (const cfx_shm_header_t *)cfx_shm_base;
+  if (!hdr->width || !hdr->height || !hdr->bytes_per_row) {
+    cfxlog(@"shm header zeros");
+    return NULL;
+  }
+  size_t len = (size_t)hdr->bytes_per_row * hdr->height;
+  if ((size_t)CFX_SHM_HEADER_SIZE + len > cfx_shm_size) {
+    cfxlog(@"shm: pixel range exceeds mapping");
+    return NULL;
+  }
+  *outLen = len;
+  return hdr;
+}
+
 static void cfx_release_bytes(void *refcon, const void *base) {
   (void)refcon;
   free((void *)base);
@@ -104,14 +145,10 @@ static void cfx_cg_release_data(void *info, const void *data, size_t size) {
 }
 
 static CMSampleBufferRef cfx_build_cmsb(void) {
-  if (!cfx_shm_open()) return NULL;
-  const cfx_shm_header_t *hdr = (const cfx_shm_header_t *)cfx_shm_base;
+  size_t len = 0;
+  const cfx_shm_header_t *hdr = cfx_shm_frame(&len);
+  if (!hdr) return NULL;
   uint32_t w = hdr->width, h = hdr->height, bpr = hdr->bytes_per_row;
-  if (!w || !h || !bpr) { cfxlog(@"shm header zeros"); return NULL; }
-  size_t len = (size_t)bpr * h;
-  if ((size_t)CFX_SHM_HEADER_SIZE + len > cfx_shm_size) {
-    cfxlog(@"shm: pixel range exceeds mapping"); return NULL;
-  }
   void *pixels = malloc(len);
   if (!pixels) return NULL;
   memcpy(pixels, cfx_shm_base + CFX_SHM_HEADER_SIZE, len);
@@ -190,11 +227,12 @@ static IMP cfx_orig_capturePhoto = NULL;
 // Forward decls: helpers defined further down — shared with the
 // moment-capture (Camera.app) delivery path.
 static IOSurfaceRef cfx_build_iosurface_from_shm(uint32_t *outW, uint32_t *outH) CF_RETURNS_RETAINED;
-static CGImageRef cfx_build_cgimage_from_shm(uint32_t *outW, uint32_t *outH) CF_RETURNS_RETAINED;
-static NSData *cfx_build_jpeg_from_shm(uint32_t *outW, uint32_t *outH);
+static CGImageRef cfx_build_cgimage_from_shm(void) CF_RETURNS_RETAINED;
+static NSData *cfx_build_jpeg_from_shm(void);
 static id cfx_build_avcapturephoto_with_request(IOSurfaceRef surf,
                                                 uint32_t w, uint32_t h,
                                                 id captureRequest);
+static BOOL cfx_output_is_for_vcam(id self);
 
 // Associated-object keys (used by fileDataRepresentation /
 // CGImageRepresentation hooks to recognize "our" photos). Defined here
@@ -203,7 +241,24 @@ static id cfx_build_avcapturephoto_with_request(IOSurfaceRef surf,
 static const void *CFX_ASSOC_JPEG_KEY = &CFX_ASSOC_JPEG_KEY;
 static const void *CFX_ASSOC_CGIMG_KEY = &CFX_ASSOC_CGIMG_KEY;
 
-static void cfx_deliver_capturePhoto(id output, id delegate, id settings) {
+// Tag a synthesized photo with our JPEG + CGImage so fileDataRepresentation
+// / CGImageRepresentation return our bytes. Returns the JPEG so the caller
+// can log its size.
+static NSData *cfx_stamp_photo(id photo) {
+  NSData *jpeg = cfx_build_jpeg_from_shm();
+  CGImageRef cgImg = cfx_build_cgimage_from_shm();
+  if (jpeg) objc_setAssociatedObject(photo, CFX_ASSOC_JPEG_KEY, jpeg,
+                                     OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+  if (cgImg) {
+    objc_setAssociatedObject(photo, CFX_ASSOC_CGIMG_KEY,
+                             (__bridge id)cgImg,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    CGImageRelease(cgImg);
+  }
+  return jpeg;
+}
+
+static void cfx_deliver_capturePhoto(id output, id delegate) {
   // Modern path used by any AVF client: build a real AVCapturePhoto from
   // the shm frame, tag it with our JPEG + CGImage so fileDataRepresentation
   // / CGImageRepresentation return our bytes, fire the modern delegate
@@ -240,16 +295,7 @@ static void cfx_deliver_capturePhoto(id output, id delegate, id settings) {
   CFRelease(surf);
   if (!photo) { cfxlog(@"[capturePhoto] no AVCapturePhoto"); return; }
 
-  NSData *jpeg = cfx_build_jpeg_from_shm(NULL, NULL);
-  CGImageRef cgImg = cfx_build_cgimage_from_shm(NULL, NULL);
-  if (jpeg) objc_setAssociatedObject(photo, CFX_ASSOC_JPEG_KEY, jpeg,
-                                     OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-  if (cgImg) {
-    objc_setAssociatedObject(photo, CFX_ASSOC_CGIMG_KEY,
-                             (__bridge id)cgImg,
-                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    CGImageRelease(cgImg);
-  }
+  NSData *jpeg = cfx_stamp_photo(photo);
   cfxlog(@"[capturePhoto] firing didFinishProcessingPhoto: with vcam photo (%lu bytes jpeg)",
          (unsigned long)jpeg.length);
   ((void (*)(id, SEL, id, id, id))objc_msgSend)(delegate, S5, output, photo, nil);
@@ -258,22 +304,7 @@ static void cfx_deliver_capturePhoto(id output, id delegate, id settings) {
 static void cfx_capturePhoto_hook(id self, SEL _cmd, id settings, id delegate) {
   cfxlog(@"[capturePhoto] self=%p settings=%@ delegate=%@",
          self, settings, delegate);
-  BOOL forVcam = NO;
-  @try {
-    NSArray *conns = [self valueForKey:@"connections"];
-    for (AVCaptureConnection *conn in conns) {
-      for (AVCaptureInputPort *port in conn.inputPorts) {
-        id input = port.input;
-        if ([input isKindOfClass:[AVCaptureDeviceInput class]]) {
-          AVCaptureDevice *d = ((AVCaptureDeviceInput *)input).device;
-          if ([d.uniqueID isEqualToString:VCAM_UID]) { forVcam = YES; break; }
-        }
-      }
-      if (forVcam) break;
-    }
-  } @catch (NSException *e) {
-    cfxlog(@"connection probe exception: %@", e);
-  }
+  BOOL forVcam = cfx_output_is_for_vcam(self);
   cfxlog(@"forVcam=%d", forVcam);
 
   if (!forVcam) {
@@ -283,10 +314,9 @@ static void cfx_capturePhoto_hook(id self, SEL _cmd, id settings, id delegate) {
   }
   __strong id retainedSelf = self;
   __strong id retainedDelegate = delegate;
-  __strong id retainedSettings = settings;
   dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
     @autoreleasepool {
-      cfx_deliver_capturePhoto(retainedSelf, retainedDelegate, retainedSettings);
+      cfx_deliver_capturePhoto(retainedSelf, retainedDelegate);
     }
   });
 }
@@ -318,34 +348,9 @@ static dispatch_source_t cfx_preview_timer = NULL;
 static IMP cfx_orig_pv_initWithSession = NULL;
 static IMP cfx_orig_pv_initWithSessionMakeConnection = NULL;
 
-static CGImageRef cfx_make_cgimage_from_shm(void) CF_RETURNS_RETAINED;
-static CGImageRef cfx_make_cgimage_from_shm(void) {
-  if (!cfx_shm_open()) return NULL;
-  const cfx_shm_header_t *hdr = (const cfx_shm_header_t *)cfx_shm_base;
-  uint32_t w = hdr->width, h = hdr->height, bpr = hdr->bytes_per_row;
-  if (!w || !h || !bpr) return NULL;
-  size_t len = (size_t)bpr * h;
-  if ((size_t)CFX_SHM_HEADER_SIZE + len > cfx_shm_size) return NULL;
-  CFDataRef data = CFDataCreate(kCFAllocatorDefault,
-                                  cfx_shm_base + CFX_SHM_HEADER_SIZE, len);
-  if (!data) return NULL;
-  CGDataProviderRef prov = CGDataProviderCreateWithCFData(data);
-  CFRelease(data);
-  if (!prov) return NULL;
-  CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
-  // BGRA byte order = kCGImageAlphaPremultipliedFirst + kCGBitmapByteOrder32Little
-  CGImageRef img = CGImageCreate(
-      w, h, 8, 32, bpr, cs,
-      kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little,
-      prov, NULL, false, kCGRenderingIntentDefault);
-  CGColorSpaceRelease(cs);
-  CGDataProviderRelease(prov);
-  return img;
-}
-
 static void cfx_pump_preview_once(void) {
   if (!cfx_preview_layers || cfx_preview_layers.count == 0) return;
-  CGImageRef img = cfx_make_cgimage_from_shm();
+  CGImageRef img = cfx_build_cgimage_from_shm();
   if (!img) return;
   dispatch_async(dispatch_get_main_queue(), ^{
     for (CALayer *layer in cfx_preview_layers) {
@@ -370,6 +375,12 @@ static void cfx_preview_start_timer(void) {
   cfxlog(@"preview pump armed (30 Hz)");
 }
 
+static void cfx_adopt_preview_layer(id layer) {
+  if (!cfx_preview_layers) cfx_preview_layers = [NSHashTable weakObjectsHashTable];
+  [cfx_preview_layers addObject:layer];
+  cfx_preview_start_timer();
+}
+
 static BOOL cfx_session_is_for_vcam(AVCaptureSession *session) {
   @try {
     for (AVCaptureInput *inp in session.inputs) {
@@ -389,11 +400,7 @@ static id cfx_pv_initWithSession_hook(id self, SEL _cmd, AVCaptureSession *sessi
   BOOL forVcam = (session != nil) && cfx_session_is_for_vcam(session);
   cfxlog(@"[PVLayer initWithSession:%p] ret=%p forVcam=%d cls=%@",
          session, ret, forVcam, NSStringFromClass([ret class]));
-  if (ret && forVcam) {
-    if (!cfx_preview_layers) cfx_preview_layers = [NSHashTable weakObjectsHashTable];
-    [cfx_preview_layers addObject:ret];
-    cfx_preview_start_timer();
-  }
+  if (ret && forVcam) cfx_adopt_preview_layer(ret);
   return ret;
 }
 
@@ -407,11 +414,7 @@ static id cfx_pv_initWithSessionMakeConnection_hook(id self, SEL _cmd,
   BOOL forVcam = (session != nil) && cfx_session_is_for_vcam(session);
   cfxlog(@"[PVLayer _initWithSession:%p makeConnection:%d] ret=%p forVcam=%d cls=%@",
          session, makeConnection, ret, forVcam, NSStringFromClass([ret class]));
-  if (ret && forVcam) {
-    if (!cfx_preview_layers) cfx_preview_layers = [NSHashTable weakObjectsHashTable];
-    [cfx_preview_layers addObject:ret];
-    cfx_preview_start_timer();
-  }
+  if (ret && forVcam) cfx_adopt_preview_layer(ret);
   return ret;
 }
 
@@ -422,11 +425,7 @@ static void cfx_pv_setSession_hook(id self, SEL _cmd, AVCaptureSession *session)
   BOOL forVcam = (session != nil) && cfx_session_is_for_vcam(session);
   cfxlog(@"[PVLayer setSession:%p] self=%p forVcam=%d cls=%@",
          session, self, forVcam, NSStringFromClass([self class]));
-  if (session && forVcam) {
-    if (!cfx_preview_layers) cfx_preview_layers = [NSHashTable weakObjectsHashTable];
-    [cfx_preview_layers addObject:self];
-    cfx_preview_start_timer();
-  }
+  if (session && forVcam) cfx_adopt_preview_layer(self);
 }
 
 // Diagnostic: every CALayer subclass that has setSession: should fire here.
@@ -659,37 +658,19 @@ static BOOL cfx_output_is_for_vcam(id self) {
         }
       }
     }
-  } @catch (NSException *e) {}
-  return NO;
-}
-
-static void cfx_deliver_photo_to_delegate(id output, id delegate) {
-  if (!delegate) return;
-  CMSampleBufferRef sbuf = cfx_build_cmsb();
-  if (!sbuf) { cfxlog(@"deliver: no shm sample"); return; }
-  SEL oldSel = NSSelectorFromString(
-      @"captureOutput:didFinishProcessingPhotoSampleBuffer:previewPhotoSampleBuffer:resolvedSettings:bracketSettings:error:");
-  if ([delegate respondsToSelector:oldSel]) {
-    cfxlog(@"deliver: firing deprecated delegate");
-    ((void (*)(id, SEL, id, CMSampleBufferRef, CMSampleBufferRef, id, id, id))objc_msgSend)(
-        delegate, oldSel, output, sbuf, NULL, (id)nil, (id)nil, (id)nil);
-  } else {
-    cfxlog(@"deliver: no deprecated delegate; AVCapturePhoto path needs 27-arg init we don't synthesize");
+  } @catch (NSException *e) {
+    cfxlog(@"connection probe exception: %@", e);
   }
-  CFRelease(sbuf);
+  return NO;
 }
 
 // MARK: - JPEG + IOSurface builders
 
-typedef struct { int32_t width, height; } cfx_video_dims_t;
-
-static NSData *cfx_build_jpeg_from_shm(uint32_t *outW, uint32_t *outH) {
-  if (!cfx_shm_open()) return nil;
-  const cfx_shm_header_t *hdr = (const cfx_shm_header_t *)cfx_shm_base;
+static NSData *cfx_build_jpeg_from_shm(void) {
+  size_t len = 0;
+  const cfx_shm_header_t *hdr = cfx_shm_frame(&len);
+  if (!hdr) return nil;
   uint32_t w = hdr->width, h = hdr->height, bpr = hdr->bytes_per_row;
-  if (!w || !h || !bpr) return nil;
-  size_t len = (size_t)bpr * h;
-  if ((size_t)CFX_SHM_HEADER_SIZE + len > cfx_shm_size) return nil;
 
   void *copy = malloc(len);
   if (!copy) return nil;
@@ -715,18 +696,14 @@ static NSData *cfx_build_jpeg_from_shm(uint32_t *outW, uint32_t *outH) {
   CFRelease(dest);
   CGImageRelease(img);
   if (!ok) return nil;
-  if (outW) *outW = w;
-  if (outH) *outH = h;
   return data;
 }
 
-static CGImageRef cfx_build_cgimage_from_shm(uint32_t *outW, uint32_t *outH) CF_RETURNS_RETAINED {
-  if (!cfx_shm_open()) return NULL;
-  const cfx_shm_header_t *hdr = (const cfx_shm_header_t *)cfx_shm_base;
+static CGImageRef cfx_build_cgimage_from_shm(void) CF_RETURNS_RETAINED {
+  size_t len = 0;
+  const cfx_shm_header_t *hdr = cfx_shm_frame(&len);
+  if (!hdr) return NULL;
   uint32_t w = hdr->width, h = hdr->height, bpr = hdr->bytes_per_row;
-  if (!w || !h || !bpr) return NULL;
-  size_t len = (size_t)bpr * h;
-  if ((size_t)CFX_SHM_HEADER_SIZE + len > cfx_shm_size) return NULL;
   void *copy = malloc(len);
   if (!copy) return NULL;
   memcpy(copy, cfx_shm_base + CFX_SHM_HEADER_SIZE, len);
@@ -739,18 +716,14 @@ static CGImageRef cfx_build_cgimage_from_shm(uint32_t *outW, uint32_t *outH) CF_
       dp, NULL, false, kCGRenderingIntentDefault);
   CGDataProviderRelease(dp);
   CGColorSpaceRelease(cs);
-  if (outW) *outW = w;
-  if (outH) *outH = h;
   return img;
 }
 
 static IOSurfaceRef cfx_build_iosurface_from_shm(uint32_t *outW, uint32_t *outH) CF_RETURNS_RETAINED {
-  if (!cfx_shm_open()) return NULL;
-  const cfx_shm_header_t *hdr = (const cfx_shm_header_t *)cfx_shm_base;
+  size_t len = 0;
+  const cfx_shm_header_t *hdr = cfx_shm_frame(&len);
+  if (!hdr) return NULL;
   uint32_t w = hdr->width, h = hdr->height, bpr = hdr->bytes_per_row;
-  if (!w || !h || !bpr) return NULL;
-  size_t len = (size_t)bpr * h;
-  if ((size_t)CFX_SHM_HEADER_SIZE + len > cfx_shm_size) return NULL;
   NSDictionary *props = @{
     (NSString *)kIOSurfaceWidth: @(w),
     (NSString *)kIOSurfaceHeight: @(h),
@@ -887,34 +860,6 @@ static id cfx_invoke_with_labeled_args(id target, SEL selector,
 
 // MARK: - AVCapturePhoto / Resolved settings synthesis
 
-static id cfx_build_resolved_settings(int64_t uniqueID, int32_t w, int32_t h) {
-  Class cls = NSClassFromString(@"AVCaptureResolvedPhotoSettings");
-  if (!cls) return nil;
-  SEL sel = cfx_find_selector_by_prefix(cls, @"resolvedSettingsWithUniqueID:",
-                                        /*classMethod*/YES);
-  if (!sel) { cfxlog(@"resolved: no factory selector found"); return nil; }
-
-  cfx_video_dims_t photoDim = {w, h};
-  cfx_video_dims_t previewDim = {w / 4, h / 4};
-  id result = cfx_invoke_with_labeled_args(
-      cls, sel,
-      ^(NSString *label, const char *typeEnc, void *out) {
-        if ([label isEqualToString:@"uniqueID"]) {
-          *(int64_t *)out = uniqueID;
-        } else if ([label isEqualToString:@"photoDimensions"]) {
-          *(cfx_video_dims_t *)out = photoDim;
-        } else if ([label isEqualToString:@"previewDimensions"]) {
-          *(cfx_video_dims_t *)out = previewDim;
-        }
-        // All other labels (rawPhotoDimensions, livePhotoMovieEnabled,
-        // photoManifest, etc.) stay zeroed/nil — the factory tolerates
-        // it on builds where this whole path even works at all
-        // (26.5 trips on nil photoManifest, hence the fallback below).
-      });
-  if (result) cfxlog(@"resolved settings built: %p uid=%lld", result, uniqueID);
-  return result;
-}
-
 static id cfx_build_avcapturephoto_with_request(IOSurfaceRef surf,
                                                 uint32_t w, uint32_t h,
                                                 id captureRequest) {
@@ -968,10 +913,6 @@ static id cfx_build_avcapturephoto_with_request(IOSurfaceRef surf,
            result, captureRequest, NSStringFromSelector(initSel));
   }
   return result;
-}
-
-static id cfx_build_avcapturephoto(IOSurfaceRef surf, uint32_t w, uint32_t h) {
-  return cfx_build_avcapturephoto_with_request(surf, w, h, nil);
 }
 
 // MARK: - fileDataRepresentation / CGImageRepresentation hooks
@@ -1067,7 +1008,7 @@ static void cfx_drive_capture(id output, id delegate, id settings) {
   if (!surf || !w || !h) {
     cfxlog(@"[drive] no IOSurface — falling back to error finish");
     NSError *err = [NSError errorWithDomain:AVFoundationErrorDomain code:-11800
-                                  userInfo:@{NSLocalizedDescriptionKey:@"vcam no shm"}];
+                                  userInfo:@{NSLocalizedDescriptionKey:@"Unable to take the photo. Try again."}];
     SEL finishSel = @selector(captureOutput:didFinishCaptureForResolvedSettings:error:);
     if ([delegate respondsToSelector:finishSel]) {
       ((void (*)(id, SEL, id, id, id))objc_msgSend)(delegate, finishSel, output, nil, err);
@@ -1086,16 +1027,7 @@ static void cfx_drive_capture(id output, id delegate, id settings) {
   }
 
   // Stamp it with our JPEG so fileDataRepresentation returns our bytes.
-  NSData *jpeg = cfx_build_jpeg_from_shm(NULL, NULL);
-  CGImageRef cgImg = cfx_build_cgimage_from_shm(NULL, NULL);
-  if (jpeg) objc_setAssociatedObject(photo, CFX_ASSOC_JPEG_KEY, jpeg,
-                                     OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-  if (cgImg) {
-    objc_setAssociatedObject(photo, CFX_ASSOC_CGIMG_KEY,
-                             (__bridge id)cgImg,
-                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    CGImageRelease(cgImg);
-  }
+  NSData *jpeg = cfx_stamp_photo(photo);
   cfxlog(@"[drive] photo stamped jpeg=%lu bytes", (unsigned long)jpeg.length);
 
   // Fire the FULL standard delegate sequence. CAMCaptureEngine tracks
@@ -1268,21 +1200,8 @@ static void cfx_install_moment_capture_hooks(void) {
 static IMP cfx_orig_setRunning = NULL;
 static IMP cfx_orig_setInterrupted = NULL;
 
-static BOOL cfx_session_uses_vcam(id session) {
-  @try {
-    NSArray *inputs = [session valueForKey:@"inputs"];
-    for (id inp in inputs) {
-      if ([inp isKindOfClass:[AVCaptureDeviceInput class]]) {
-        AVCaptureDevice *d = ((AVCaptureDeviceInput *)inp).device;
-        if ([d.uniqueID isEqualToString:VCAM_UID]) return YES;
-      }
-    }
-  } @catch (NSException *e) {}
-  return NO;
-}
-
 static void cfx_session_setRunning_hook(id self, SEL _cmd, BOOL running) {
-  if (!running && cfx_session_uses_vcam(self)) {
+  if (!running && cfx_session_is_for_vcam(self)) {
     cfxlog(@"[session _setRunning:NO] suppressed for vcam session %p", self);
     return;
   }
@@ -1294,7 +1213,7 @@ static void cfx_session_setInterrupted_hook(id self, SEL _cmd,
                                               BOOL interrupted,
                                               long reason,
                                               id interruptor) {
-  if (interrupted && cfx_session_uses_vcam(self)) {
+  if (interrupted && cfx_session_is_for_vcam(self)) {
     cfxlog(@"[session _setInterrupted:YES reason=%ld] suppressed for vcam session %p",
            reason, self);
     return;
@@ -1338,7 +1257,7 @@ static int cfx_isInterrupted_logged = 0;
 static BOOL cfx_session_isRunning_hook(id self, SEL _cmd) {
   typedef BOOL (*Fn)(id, SEL);
   BOOL real = ((Fn)cfx_orig_isRunning)(self, _cmd);
-  if (cfx_session_uses_vcam(self)) {
+  if (cfx_session_is_for_vcam(self)) {
     if (cfx_isRunning_logged < 3) {
       cfxlog(@"[isRunning] real=%d -> forcing YES (session=%p)", real, self);
       cfx_isRunning_logged++;
@@ -1351,7 +1270,7 @@ static BOOL cfx_session_isRunning_hook(id self, SEL _cmd) {
 static BOOL cfx_session_isInterrupted_hook(id self, SEL _cmd) {
   typedef BOOL (*Fn)(id, SEL);
   BOOL real = ((Fn)cfx_orig_isInterrupted)(self, _cmd);
-  if (cfx_session_uses_vcam(self) && real) {
+  if (cfx_session_is_for_vcam(self) && real) {
     if (cfx_isInterrupted_logged < 3) {
       cfxlog(@"[isInterrupted] real=%d -> forcing NO (session=%p)", real, self);
       cfx_isInterrupted_logged++;

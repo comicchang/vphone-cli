@@ -55,7 +55,7 @@ extension KernelJBPatcher {
         var seen = Set<Int>()
 
         for off in stride(from: anchorStart, to: anchorEnd, by: 4) {
-            guard let blTarget = jbDecodeBL(at: off), !seen.contains(blTarget) else { continue }
+            guard let blTarget = decodeBL(at: off), !seen.contains(blTarget) else { continue }
             guard jbIsInCodeRange(blTarget) else { continue }
             seen.insert(blTarget)
             let callee_end = findFuncEnd(blTarget, maxSize: 0x400)

@@ -80,16 +80,9 @@ extension KernelPatcher {
 
             var scan = addOff
             while scan <= fwdLimit {
-                let insn = buffer.readU32(at: scan)
-                // BL: top 6 bits = 0b100101
-                if insn >> 26 == 0b100101 {
-                    let imm26 = insn & 0x03FF_FFFF
-                    let signedImm = Int32(bitPattern: imm26 << 6) >> 6
-                    let target = scan + Int(signedImm) * 4
-                    if target == panicOff {
-                        blPanicOff = scan
-                        break
-                    }
+                if decodeBL(at: scan) == panicOff {
+                    blPanicOff = scan
+                    break
                 }
                 scan += 4
             }

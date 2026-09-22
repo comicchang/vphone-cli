@@ -31,7 +31,7 @@ set -euo pipefail
 
 # ── Restore caller's PATH — Nix /etc/zshenv resets PATH on zsh startup ─
 [[ -n "${_VPHONE_PATH:-}" ]] && export PATH="$_VPHONE_PATH"
-VM_DIR="${1:-.}"
+VM_DIR="$(cd "${1:-.}" && pwd)"
 SCRIPT_DIR="${0:a:h}"
 
 # ── Python resolver — prefer project venv over whatever is in PATH ─
@@ -69,15 +69,14 @@ echo ""
 # is the EXP variant's device-like user-mode patching, kept out of
 # the JB install path so JB remains unaffected.
 # ────────────────────────────────────────────────────────────────────
-VM_DIR_ABS="$(cd "${VM_DIR:-.}" && pwd)"
-JB_TEMP_DIR="$VM_DIR_ABS/.cfw_temp"
+JB_TEMP_DIR="$VM_DIR/.cfw_temp"
 JB_SYSOS_DMG="$JB_TEMP_DIR/CryptexSystemOS.dmg"
 JB_MNT_SYSOS="$JB_TEMP_DIR/mnt_sysos_hv_vmm"
 mkdir -p "$JB_TEMP_DIR"
 
 # Find the restore directory (same logic as cfw_install.sh)
 JB_RESTORE_DIR=""
-for d in "$VM_DIR_ABS"/iPhone*_Restore; do
+for d in "$VM_DIR"/iPhone*_Restore; do
     [[ -d "$d" ]] && { JB_RESTORE_DIR="$d"; break; }
 done
 
@@ -144,9 +143,6 @@ zsh "$SCRIPT_DIR/cfw_install.sh" "$VM_DIR"
 # ════════════════════════════════════════════════════════════════
 # Step 2: JB-specific phases
 # ════════════════════════════════════════════════════════════════
-
-# Resolve absolute paths (same as base script)
-VM_DIR="$(cd "${VM_DIR}" && pwd)"
 
 # ── Configuration ───────────────────────────────────────────────
 CFW_INPUT="cfw_input"
@@ -454,12 +450,12 @@ echo "  [+] debugserver entitlements patched"
 # Grant Campo the backboard/frontboard mach-lookups the 26.4 temporary-sandbox denies (see 0_binary_patch_comparison.md #14).
 # 27-gated on the mounted rootfs SystemVersion.plist: 26.x userlands don't need it and Campo.app exists there too.
 CAMPO_BIN="$MNT1/Applications/Campo.app/Campo"
-CAMPO_BASE_IOS=$(/usr/bin/plutil -extract ProductVersion raw -o - "$MNT1/System/Library/CoreServices/SystemVersion.plist" 2>/dev/null || true)
-case "$CAMPO_BASE_IOS" in
+BASE_IOS=$(/usr/bin/plutil -extract ProductVersion raw -o - "$MNT1/System/Library/CoreServices/SystemVersion.plist" 2>/dev/null || true)
+case "$BASE_IOS" in
 27.*)
     if [[ -f "$CAMPO_BIN" ]]; then
         echo ""
-        echo "[JB-3b] Granting Campo backboard/frontboard mach-lookup exceptions (iOS $CAMPO_BASE_IOS)..."
+        echo "[JB-3b] Granting Campo backboard/frontboard mach-lookup exceptions (iOS $BASE_IOS)..."
         cp "$CAMPO_BIN" "$TEMP_DIR/Campo"
         ldid -e "$TEMP_DIR/Campo" > "$TEMP_DIR/Campo.entitlements" 2>/dev/null || true
         if [[ -s "$TEMP_DIR/Campo.entitlements" ]]; then
@@ -476,7 +472,7 @@ case "$CAMPO_BASE_IOS" in
     fi
     ;;
 *)
-    echo "[JB-3b] skip Campo sandbox fix (base iOS ${CAMPO_BASE_IOS:-unknown} — 27-only)"
+    echo "[JB-3b] skip Campo sandbox fix (base iOS ${BASE_IOS:-unknown} — 27-only)"
     ;;
 esac
 
@@ -683,18 +679,17 @@ fi
 # script must NOT version-check on guest sw_vers — the hybrid guest does not reliably
 # report the 27 userland version at first boot). Version read from the mounted rootfs
 # SystemVersion.plist, the same source cfw_install.sh gates its 27 patches on.
-JB_BASE_IOS=$(/usr/bin/plutil -extract ProductVersion raw -o - "$MNT1/System/Library/CoreServices/SystemVersion.plist" 2>/dev/null || true)
-case "$JB_BASE_IOS" in
+case "$BASE_IOS" in
     27.*)
         VPREGISTER="$(build_vpregister)"
         if [[ -f "$VPREGISTER" ]]; then
             cp -R "$VPREGISTER" "$MNT1/cores/vpregister"
             /bin/chmod 0755 $MNT1/cores/vpregister
-            echo "  [+] vpregister -> /cores/ (iOS $JB_BASE_IOS)"
+            echo "  [+] vpregister -> /cores/ (iOS $BASE_IOS)"
         fi
         ;;
     *)
-        echo "  [skip] vpregister (base iOS ${JB_BASE_IOS:-unknown} — 27-only; uicache registers apps on older bases)"
+        echo "  [skip] vpregister (base iOS ${BASE_IOS:-unknown} — 27-only; uicache registers apps on older bases)"
         ;;
 esac
 if [[ -f "$SETUP_PLIST" ]]; then

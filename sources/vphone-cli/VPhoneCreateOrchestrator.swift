@@ -31,44 +31,45 @@ private enum VPhoneCreateError: Error, CustomStringConvertible {
     var description: String {
         switch self {
         case .nestedVirtualization:
-            "Virtualization.framework guest boot is unavailable inside a VM — run vm create on a non-nested macOS 15+ host"
+            "Guest boot is unavailable inside a VM. Run vm create on a macOS 15 or later host that is not itself a VM."
         case let .unknownVariant(v):
-            "unknown variant '\(v)' (regular|dev|jb|exp|less)"
+            "Unknown variant '\(v)'. Choose regular, dev, jb, exp, or less."
         case .lessRequiresRoot:
-            "fw patch for 'less' must be run as root (matches Makefile's `fw_patch_less must be run via sudo`)"
+            "The 'less' variant requires root. Run vm create with sudo."
         case let .fwPrepareFailed(code):
-            "fw prepare failed (exit \(code))"
+            "Firmware preparation failed (exit code \(code))."
         case let .identityTimedOut(path):
-            "missing \(path.path); rebuild and retry to regenerate it"
+            "Device identity file not found: \(path.path). Run vm create again to regenerate it."
         case let .invalidUDID(v):
-            "invalid UDID in udid-prediction.txt: '\(v)'"
+            "Invalid UDID in the device identity file: '\(v)'. Run vm create again to regenerate it."
         case let .invalidECID(v):
-            "invalid ECID in udid-prediction.txt: '\(v)'"
+            "Invalid ECID in the device identity file: '\(v)'. Run vm create again to regenerate it."
         case let .udidECIDMismatch(udid, ecid):
-            "UDID/ECID mismatch in udid-prediction.txt: \(udid) vs 0x\(ecid)"
+            "The UDID and ECID in the device identity file do not match: \(udid) vs 0x\(ecid). "
+                + "Run vm create again to regenerate it."
         case .recoveryTimeout:
-            "timed out waiting for the recovery/DFU endpoint"
+            "Timed out waiting for the device to enter recovery mode."
         case let .restoreGetSHSHFailed(code):
-            "restore-get-shsh failed (exit \(code))"
+            "Unable to fetch the signing ticket (exit code \(code))."
         case let .restoreUpdateFailed(code):
-            "restore-update failed (exit \(code))"
+            "Device restore failed (exit code \(code))."
         case let .cfwInstallFailed(code):
-            "CFW install failed (exit \(code))"
+            "Custom firmware installation failed (exit code \(code))."
         case .sudoPasswordRequired:
-            "CFW install needs root but no sudo password is available — pass --sudo-password "
-                + "or run vm create in an interactive terminal"
+            "Custom firmware installation requires root, but no sudo password is available. "
+                + "Pass --sudo-password, or run vm create in an interactive terminal."
         case .firstBootPanic:
-            "first boot panicked before command injection"
+            "First boot panicked before the setup commands could run."
         case let .firstBootExitedBeforePrompt(code):
-            "first boot exited before command injection (exit \(code))"
+            "First boot exited before the setup commands could run (exit code \(code))."
         case .bootAnalysisPanic:
-            "boot analysis: panic detected"
+            "Boot analysis failed: the guest panicked."
         case let .bootAnalysisExited(code):
-            "boot analysis: process exited before success marker (exit \(code))"
+            "Boot analysis ended before the guest finished booting (exit code \(code))."
         case .bootAnalysisTimeout:
-            "boot analysis timed out"
+            "Boot analysis timed out."
         case let .lessBootFailed(code):
-            "start VM (less) failed (exit \(code))"
+            "The VM failed to start with the 'less' variant (exit code \(code))."
         }
     }
 }

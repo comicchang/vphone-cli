@@ -15,14 +15,20 @@ DONE_MARKER="/var/mobile/.vphone_jb_setup_done"
 
 export TERM=xterm-256color
 export DEBIAN_FRONTEND=noninteractive
-P=""
-for d in \
-    /var/jb/usr/bin /var/jb/bin /var/jb/sbin /var/jb/usr/sbin \
-    /iosbinpack64/bin /iosbinpack64/usr/bin /iosbinpack64/sbin /iosbinpack64/usr/sbin \
-    /usr/bin /usr/sbin /bin /sbin; do
-    [ -d "$d" ] && P="$P:$d"
-done
-export PATH="${P#:}"
+
+# Defined here, not next to log(), because the first call below runs before
+# log() exists.
+rebuild_jb_path() {
+    P=""
+    for d in \
+        /var/jb/usr/bin /var/jb/bin /var/jb/sbin /var/jb/usr/sbin \
+        /iosbinpack64/bin /iosbinpack64/usr/bin /iosbinpack64/sbin /iosbinpack64/usr/sbin \
+        /usr/bin /usr/sbin /bin /sbin; do
+        [ -d "$d" ] && P="$P:$d"
+    done
+    export PATH="${P#:}"
+}
+rebuild_jb_path
 
 # Redirect all output (stdout+stderr) through tee to the log + console.
 exec > >(tee -a "$LOG") 2>&1
@@ -56,7 +62,7 @@ log "Boot hash: $BOOT_HASH"
 JB_TARGET="/private/preboot/$BOOT_HASH/jb-vphone/procursus"
 [ -d "$JB_TARGET" ] || die "Procursus not found at $JB_TARGET"
 
-# ═══════════ 0/7 REPLACE LAUNCHCTL ═════════════════════════════
+# ═══════════ 0/8 REPLACE LAUNCHCTL ═════════════════════════════
 # Procursus launchctl crashes (missing _launch_active_user_switch symbol).
 # iosbinpack64's launchctl talks to launchd fine and always exits 0,
 # which is enough for dpkg postinst/prerm script compatibility.
@@ -79,7 +85,7 @@ else
     log "  WARNING: iosbinpack64 launchctl not found"
 fi
 
-# ═══════════ 1/7 SYMLINK /var/jb ═════════════════════════════
+# ═══════════ 1/8 SYMLINK /var/jb ═════════════════════════════
 log "[1/8] Creating /private/var/jb symlink..."
 CURRENT_LINK=$(readlink /private/var/jb 2>/dev/null || true)
 if [ "$CURRENT_LINK" = "$JB_TARGET" ]; then
@@ -89,7 +95,7 @@ else
     log "  /var/jb -> $JB_TARGET"
 fi
 
-# ═══════════ 2/7 FIX OWNERSHIP / PERMISSIONS ═════════════════
+# ═══════════ 2/8 FIX OWNERSHIP / PERMISSIONS ═════════════════
 log "[2/8] Fixing mobile Library ownership..."
 mkdir -p /var/jb/var/mobile/Library/Preferences
 mkdir -p /var/jb/Library/MobileSubstrate/DynamicLibraries
@@ -123,7 +129,7 @@ else
     log "  WARNING: dropbearkey not found"
 fi
 
-# ═══════════ 3/7 RUN prep_bootstrap.sh ═══════════════════════
+# ═══════════ 3/8 RUN prep_bootstrap.sh ═══════════════════════
 log "[3/8] Running prep_bootstrap.sh..."
 if [ -f /var/jb/prep_bootstrap.sh ]; then
     NO_PASSWORD_PROMPT=1 /var/jb/prep_bootstrap.sh || log "  prep_bootstrap.sh exited with $?"
@@ -133,17 +139,10 @@ else
 fi
 
 # Re-discover PATH after prep_bootstrap
-P=""
-for d in \
-    /var/jb/usr/bin /var/jb/bin /var/jb/sbin /var/jb/usr/sbin \
-    /iosbinpack64/bin /iosbinpack64/usr/bin /iosbinpack64/sbin /iosbinpack64/usr/sbin \
-    /usr/bin /usr/sbin /bin /sbin; do
-    [ -d "$d" ] && P="$P:$d"
-done
-export PATH="${P#:}"
+rebuild_jb_path
 log "  PATH=$PATH"
 
-# ═══════════ 4/7 CREATE MARKER FILES ═════════════════════════
+# ═══════════ 4/8 CREATE MARKER FILES ═════════════════════════
 log "[4/8] Creating marker files..."
 for marker in .procursus_strapped .installed_dopamine; do
     if [ -f "/var/jb/$marker" ]; then
@@ -156,7 +155,7 @@ for marker in .procursus_strapped .installed_dopamine; do
     fi
 done
 
-# ═══════════ 5/7 INSTALL SILEO ═══════════════════════════════
+# ═══════════ 5/8 INSTALL SILEO ═══════════════════════════════
 log "[5/8] Installing Sileo..."
 SILEO_DEB_PATH="/private/preboot/$BOOT_HASH/org.coolstar.sileo_2.5.1_iphoneos-arm64.deb"
 
@@ -212,7 +211,7 @@ fi
 uicache -a 2>/dev/null || true
 log "  uicache refreshed"
 
-# ═══════════ 6/7 APT SETUP ══════════════════════════════════
+# ═══════════ 6/8 APT SETUP ══════════════════════════════════
 log "[6/8] Running apt setup..."
 
 # Determine apt sources directory
@@ -251,7 +250,7 @@ apt-get -o APT::Get::AllowUnauthenticated=true \
     upgrade -y -qq 2>/dev/null || true
 log "  apt upgrade done"
 
-# ═══════════ 7/7 INSTALL TROLLSTORE LITE ═════════════════════
+# ═══════════ 7/8 INSTALL TROLLSTORE LITE ═════════════════════
 log "[7/8] Installing TrollStore Lite..."
 TROLLSTORE_READY=0
 if dpkg -s com.opa334.trollstorelite >/dev/null 2>&1; then

@@ -122,7 +122,7 @@ extension KernelJBPatcher {
     private func findPanicCallNear(_ addOff: Int) -> Int? {
         let limit = min(addOff + 0x40, buffer.count)
         for scan in stride(from: addOff, to: limit, by: 4) {
-            if let target = jbDecodeBL(at: scan),
+            if let target = decodeBL(at: scan),
                let panicOff = panicOffset,
                target == panicOff
             {
@@ -174,7 +174,7 @@ extension KernelJBPatcher {
     private func hasImagebootCallNear(_ off: Int, imagebootNeeded: Int?) -> Bool {
         let limit = min(off + 0x18, buffer.count)
         for scan in stride(from: off + 4, to: limit, by: 4) {
-            guard let target = jbDecodeBL(at: scan) else { continue }
+            guard let target = decodeBL(at: scan) else { continue }
             // If we know _imageboot_needed, require an exact match;
             // otherwise any BL counts (stripped kernel).
             if let ib = imagebootNeeded {

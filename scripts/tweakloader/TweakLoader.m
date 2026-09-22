@@ -79,9 +79,8 @@ static BOOL TLShouldRunInCurrentProcess(void) {
     return NO;
 }
 
-static BOOL TLArrayContainsString(id obj, NSString *value) {
-    if (![obj isKindOfClass:[NSArray class]] || !value.length) return NO;
-    for (id item in (NSArray *)obj) {
+static BOOL TLArrayContainsString(NSArray *array, NSString *value) {
+    for (id item in array) {
         if ([item isKindOfClass:[NSString class]] &&
             [(NSString *)item isEqualToString:value]) {
             return YES;
@@ -90,8 +89,7 @@ static BOOL TLArrayContainsString(id obj, NSString *value) {
     return NO;
 }
 
-static BOOL TLFilterMatches(NSDictionary *plist, NSString *bundleID, NSString *executableName) {
-    NSDictionary *filter = [plist isKindOfClass:[NSDictionary class]] ? plist[@"Filter"] : nil;
+static BOOL TLFilterMatches(NSDictionary *filter, NSString *bundleID, NSString *executableName) {
     if (![filter isKindOfClass:[NSDictionary class]]) {
         return YES;
     }
@@ -149,7 +147,7 @@ static void TLOnImageAdded(const struct mach_header *mh, intptr_t slide) {
     for (NSDictionary *pending in snapshot) {
         NSArray *frameworks = pending[@"frameworks"];
         for (NSString *fw in frameworks) {
-            if (TLPathMatchesFramework(imagePath.UTF8String, fw)) {
+            if (TLPathMatchesFramework(cpath, fw)) {
                 [toLoad addObject:pending[@"dylib"]];
                 break;
             }
@@ -233,12 +231,11 @@ static void TLLoadTweaks(void) {
     }
     if (!files.count) return;
 
-    NSString *execPath = TLExecutablePath();
     NSString *bundleID = NSBundle.mainBundle.bundleIdentifier ?: @"";
     NSString *executableName = TLExecutableName();
     BOOL processAllowed = TLShouldRunInCurrentProcess();
 
-    if (gTLPendingLock == nil) gTLPendingLock = [[NSLock alloc] init];
+    gTLPendingLock = [[NSLock alloc] init];
 
     for (NSString *filename in files) {
         if (![filename.pathExtension isEqualToString:@"plist"]) continue;
@@ -272,7 +269,7 @@ static void TLLoadTweaks(void) {
 
             // Non-framework-filtered: keep the .app/+allowlist gate.
             if (!processAllowed) continue;
-            if (!TLFilterMatches(plist, bundleID, executableName)) continue;
+            if (!TLFilterMatches(filter, bundleID, executableName)) continue;
 
             void *handle = dlopen(dylibPath.fileSystemRepresentation, RTLD_NOW | RTLD_GLOBAL);
             if (handle) {
@@ -285,7 +282,6 @@ static void TLLoadTweaks(void) {
             TLLog(@"Exception loading %@: %@", dylibPath, e);
         }
     }
-    (void)execPath;
 }
 
 __attribute__((constructor))

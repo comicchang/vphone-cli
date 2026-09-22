@@ -14,23 +14,22 @@ public enum VPhoneRestoreOps {
     /// ECID from `--ecid`, else the `ECID=` line of the bundle's udid-prediction.txt.
     public static func resolveECID(explicit: String?, bundle: VPhoneBundle) -> String? {
         if let explicit, !explicit.isEmpty { return explicit }
-        let pred = bundle.url.appendingPathComponent("udid-prediction.txt")
-        guard let text = try? String(contentsOf: pred, encoding: .utf8) else { return nil }
-        for line in text.split(whereSeparator: \.isNewline) where line.hasPrefix("ECID=") {
-            let value = line.dropFirst("ECID=".count).trimmingCharacters(in: .whitespaces)
-            return value.isEmpty ? nil : value
-        }
-        return nil
+        return predictedValue(forKey: "ECID=", bundle: bundle)
     }
 
     // MARK: - UDID
 
     /// UDID from the `UDID=` line of the bundle's udid-prediction.txt, or nil.
     public static func resolveUDID(bundle: VPhoneBundle) -> String? {
+        predictedValue(forKey: "UDID=", bundle: bundle)
+    }
+
+    /// First `<key>value` line of the bundle's udid-prediction.txt, or nil.
+    private static func predictedValue(forKey key: String, bundle: VPhoneBundle) -> String? {
         let pred = bundle.url.appendingPathComponent("udid-prediction.txt")
         guard let text = try? String(contentsOf: pred, encoding: .utf8) else { return nil }
-        for line in text.split(whereSeparator: \.isNewline) where line.hasPrefix("UDID=") {
-            let value = line.dropFirst("UDID=".count).trimmingCharacters(in: .whitespaces)
+        for line in text.split(whereSeparator: \.isNewline) where line.hasPrefix(key) {
+            let value = line.dropFirst(key.count).trimmingCharacters(in: .whitespaces)
             return value.isEmpty ? nil : value
         }
         return nil

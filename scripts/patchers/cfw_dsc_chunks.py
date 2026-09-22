@@ -48,15 +48,11 @@ Reference: dyld project, dyld_cache_format.h.
 import os
 import struct
 import re
-import glob
 
-
-CHUNK_GLOB_NAMES = (
-    "dyld_shared_cache_arm64e",
-    "dyld_shared_cache_arm64e.[0-9]",
-    "dyld_shared_cache_arm64e.[0-9][0-9]",
-    "dyld_shared_cache_arm64e.symbols",
-)
+try:
+    from .cfw_asm import _cs
+except ImportError:  # direct self-test / standalone execution
+    from cfw_asm import _cs
 
 
 def _enumerate_chunks(chunks_dir):
@@ -121,6 +117,45 @@ def _parse_chunk_mappings(path):
             "max_prot": max_prot, "init_prot": init_prot,
         })
     return out
+
+
+def resolve_local_symbol(chunks_dir, name):
+    """Resolve a symbol (including an ObjC method symbol) to its vmaddr via the
+    DSC's own `.symbols` local-symbol table (in-image; no repo-exported dumps).
+    ipsw `symaddr -a` times out on this cache, so parse the table directly."""
+    sym = os.path.join(chunks_dir, "dyld_shared_cache_arm64e.symbols")
+    with open(sym, "rb") as f:
+        hdr = f.read(0x100)
+        if hdr[:15] != b"dyld_v1  arm64e":
+            raise RuntimeError(f"unexpected .symbols magic in {sym}")
+        local_off = struct.unpack_from("<Q", hdr, 72)[0]
+        f.seek(local_off)
+        nlist_off, nlist_cnt, str_off, str_sz, _eo, _ec = struct.unpack("<IIIIII", f.read(24))
+        f.seek(local_off + str_off)
+        strings = f.read(str_sz)
+        f.seek(local_off + nlist_off)
+        nl = f.read(nlist_cnt * 16)
+    want = name.encode()
+    for i in range(nlist_cnt):
+        n_strx, _t, _s, _d, n_value = struct.unpack_from("<IBBHQ", nl, i * 16)
+        if n_strx >= len(strings):
+            continue
+        end = strings.find(b"\x00", n_strx)
+        if strings[n_strx:end] == want:
+            return n_value
+    raise RuntimeError(f"could not resolve {name!r} in .symbols")
+
+
+def _disasm_function(chunks, vma, max_insns):
+    """Disassemble from `vma` up to the first ret/retab (function end) or
+    `max_insns`, whichever comes first. `chunks` is a DSCChunks."""
+    buf = chunks.bytes_at_vma(vma, max_insns * 4)
+    insns = []
+    for insn in _cs.disasm(buf, vma):
+        insns.append(insn)
+        if insn.mnemonic in ("ret", "retab"):
+            break
+    return insns
 
 
 class DSCChunks:
@@ -242,22 +277,6 @@ class DSCChunks:
                     out.append(addr_start + p)
                 i = p + 1
         return out
-
-    def iter_executable_mapping_bytes(self):
-        """Yield (chunk_path, file_offset, vmaddr_start, mapping_bytes) for
-        every mapping whose `initProt` includes VM_PROT_EXECUTE.
-
-        Non-executable mappings (LINKEDIT, __DATA, __DATA_CONST) are
-        skipped so we never try to disassemble them.
-        """
-        for addr_start, addr_end, file_off, init_prot, cp in self._ranges:
-            if not (init_prot & self.VM_PROT_EXECUTE):
-                continue
-            size = addr_end - addr_start
-            with open(cp, "rb") as f:
-                f.seek(file_off)
-                buf = f.read(size)
-            yield cp, file_off, addr_start, buf
 
     def read_at_vma(self, vma, length, *, allow_short=False):
         """Read `length` bytes starting at `vma`, contained in a single

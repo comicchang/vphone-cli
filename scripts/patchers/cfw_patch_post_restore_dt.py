@@ -252,7 +252,7 @@ def patch_devicetree_file(path: str, *, dry_run: bool = False) -> int:
 
     if im4p.fourcc != "dtre":
         raise ValueError(
-            f"{path}: expected DT payload (fourcc='dtre'), got fourcc={im4p.fourcc!r}"
+            f"expected DT payload (fourcc='dtre'), got fourcc={im4p.fourcc!r}"
         )
     print(
         f"  [.] {path}: {'IMG4' if is_img4 else 'IM4P'}  "
@@ -318,7 +318,7 @@ def _main(argv):
     try:
         patch_devicetree_file(path, dry_run=dry_run)
     except Exception as e:
-        print(f"[-] {type(e).__name__}: {e}", file=sys.stderr)
+        print(f"[-] {type(e).__name__}: Unable to patch {path}: {e}", file=sys.stderr)
         return 1
     return 0
 

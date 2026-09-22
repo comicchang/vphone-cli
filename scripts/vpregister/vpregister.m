@@ -14,20 +14,29 @@
                                                saveObserver:(id)observer
                                           registrationError:(NSError **)error;
 @end
-static BOOL regapp(LSApplicationWorkspace *ws, NSString *path) {
+static BOOL register_app(LSApplicationWorkspace *ws, NSString *path) {
     NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:[path stringByAppendingPathComponent:@"Info.plist"]];
-    NSString *bid = info[@"CFBundleIdentifier"];
-    if (bid.length == 0) return NO;
-    NSMutableDictionary *d = [NSMutableDictionary dictionary];
-    d[@"Path"] = path; d[@"CFBundleIdentifier"] = bid; d[@"CodeInfoIdentifier"] = bid;
-    d[@"ApplicationType"] = @"System"; d[@"CompatibilityState"] = @0;
-    d[@"SignerIdentity"] = @"Apple iPhone OS Application Signing";
-    d[@"SignerOrganization"] = @"Apple Inc."; d[@"IsAdHocSigned"] = @YES;
-    d[@"SignatureVersion"] = @132352; d[@"IsDeletable"] = @YES;
+    NSString *bundleID = info[@"CFBundleIdentifier"];
+    if (bundleID.length == 0) return NO;
+    NSDictionary *dictToRegister = @{
+        @"Path" : path,
+        @"CFBundleIdentifier" : bundleID,
+        @"CodeInfoIdentifier" : bundleID,
+        @"ApplicationType" : @"System",
+        @"CompatibilityState" : @0,
+        @"SignerIdentity" : @"Apple iPhone OS Application Signing",
+        @"SignerOrganization" : @"Apple Inc.",
+        @"IsAdHocSigned" : @YES,
+        @"SignatureVersion" : @132352,
+        @"IsDeletable" : @YES,
+    };
     NSError *err = nil;
-    [ws registerContainerizedApplicationWithInfoDictionaries:@[d] operationUUID:[NSUUID UUID]
+    // The containerized API returns NO even when registration succeeds, so a nil
+    // registrationError is the success signal (same rule as vphoned_install.m's
+    // containerized path).
+    [ws registerContainerizedApplicationWithInfoDictionaries:@[dictToRegister] operationUUID:[NSUUID UUID]
          requestContext:nil saveObserver:nil registrationError:&err];
-    if (err) fprintf(stderr, "  err: %s\n", err.description.UTF8String);
+    if (err) fprintf(stderr, "  Unable to register: %s\n", err.description.UTF8String);
     return err == nil;
 }
 int main(int argc, char **argv) {
@@ -35,15 +44,19 @@ int main(int argc, char **argv) {
         dlopen("/System/Library/Frameworks/CoreServices.framework/CoreServices", RTLD_NOW);
         LSApplicationWorkspace *ws = [LSApplicationWorkspace defaultWorkspace];
         NSMutableArray *paths = [NSMutableArray array];
-        if (argc > 1) { for (int i = 1; i < argc; i++) [paths addObject:@(argv[i])]; }
-        else {
+        for (int i = 1; i < argc; i++) [paths addObject:@(argv[i])];
+        if (paths.count == 0) {
             NSString *dir = @"/var/jb/Applications";
-            for (NSString *n in [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dir error:nil])
-                if ([n hasSuffix:@".app"]) [paths addObject:[dir stringByAppendingPathComponent:n]];
+            for (NSString *bundleName in [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dir error:nil])
+                if ([bundleName hasSuffix:@".app"]) [paths addObject:[dir stringByAppendingPathComponent:bundleName]];
         }
-        int ok = 0, fail = 0;
-        for (NSString *p in paths) { BOOL r = regapp(ws, p); printf("%-4s %s\n", r ? "OK" : "FAIL", p.UTF8String); r ? ok++ : fail++; }
-        printf("registered %d, failed %d\n", ok, fail);
+        int fail = 0;
+        for (NSString *appPath in paths) {
+            BOOL registered = register_app(ws, appPath);
+            printf("%-10s %s\n", registered ? "Registered" : "Failed", appPath.UTF8String);
+            if (!registered) fail++;
+        }
+        printf("Registered %d, failed %d\n", (int)paths.count - fail, fail);
         return fail ? 1 : 0;
     }
 }

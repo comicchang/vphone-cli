@@ -11,7 +11,8 @@ extension VPhoneLibraryError: CustomStringConvertible, LocalizedError {
         switch self {
         case let .notFound(name): "VM '\(name)' not found"
         case let .alreadyExists(name): "VM '\(name)' already exists"
-        case let .invalidName(name): "Invalid VM name '\(name)' (must be non-empty, contain no '/', and not start with '.')"
+        case let .invalidName(name):
+            "Invalid VM name '\(name)'. Use a name that is not empty, has no '/', and does not start with '.'."
         }
     }
     public var errorDescription: String? { description }

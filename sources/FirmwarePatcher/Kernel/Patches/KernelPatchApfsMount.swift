@@ -9,16 +9,6 @@ import Foundation
 extension KernelPatcher {
     // MARK: - Private Helpers
 
-    /// Decode a BL instruction at `offset`. Returns the target file offset, or nil.
-    private func apfsMountDecodeBL(at offset: Int) -> Int? {
-        guard offset + 4 <= buffer.count else { return nil }
-        let insn = buffer.readU32(at: offset)
-        guard insn >> 26 == 0b100101 else { return nil }
-        let imm26 = insn & 0x03FF_FFFF
-        let signedImm = Int32(bitPattern: imm26 << 6) >> 6
-        return offset + Int(signedImm) * 4
-    }
-
     /// Return true if the function at `funcOff` contains a RET within `maxBytes`.
     private func apfsMountIsLeaf(at funcOff: Int, maxBytes: Int = 0x20) -> Bool {
         let limit = min(funcOff + maxBytes, buffer.count)
@@ -73,7 +63,7 @@ extension KernelPatcher {
             for (rangeStart, rangeEnd) in codeRanges {
                 var off = rangeStart
                 while off + 4 <= rangeEnd {
-                    if let target = apfsMountDecodeBL(at: off),
+                    if let target = decodeBL(at: off),
                        target >= funcStart, target <= funcStart + 4
                     {
                         callers.append(off)
@@ -171,7 +161,7 @@ extension KernelPatcher {
                 break
             }
 
-            guard let blTarget = apfsMountDecodeBL(at: scan) else {
+            guard let blTarget = decodeBL(at: scan) else {
                 scan += 4; continue
             }
             // Target must be a small leaf function.

@@ -26,7 +26,6 @@ class VPhoneControl {
     private var connection: VZVirtioSocketConnection?
     private weak var device: VZVirtioSocketDevice?
     private(set) var isConnected = false
-    private(set) var guestName = ""
     private(set) var guestCaps: [String] = []
     private(set) var guestIP: String?
     /// Guest userland iOS version reported at handshake (e.g. "18.6.2"), if known.
@@ -99,7 +98,6 @@ class VPhoneControl {
     enum ControlError: Error, CustomStringConvertible {
         case notConnected
         case unsupportedCapability(String)
-        case cancelled(String)
         case requestTimedOut(type: String, seconds: Int)
         case protocolError(String)
         case guestError(String)
@@ -109,7 +107,6 @@ class VPhoneControl {
             case .notConnected: "not connected to vphoned"
             case let .unsupportedCapability(capability):
                 "guest does not support capability: \(capability)"
-            case let .cancelled(reason): "request cancelled: \(reason)"
             case let .requestTimedOut(type, seconds):
                 "request timed out (\(type), \(seconds)s)"
             case let .protocolError(msg): "protocol error: \(msg)"
@@ -213,7 +210,6 @@ class VPhoneControl {
                     self.disconnect(ifCurrentAttempt: attemptToken)
                     return
                 }
-                self.guestName = name
                 self.guestCaps = caps
                 self.guestIP = ip
                 self.guestIOSVersion = iosVersion
@@ -323,14 +319,9 @@ class VPhoneControl {
 
     // MARK: - Developer Mode
 
-    struct DevModeStatus {
-        let enabled: Bool
-    }
-
-    func sendDevModeStatus() async throws -> DevModeStatus {
+    func sendDevModeStatus() async throws -> Bool {
         let (resp, _) = try await sendRequest(["t": "devmode", "action": "status"])
-        let enabled = resp["enabled"] as? Bool ?? false
-        return DevModeStatus(enabled: enabled)
+        return resp["enabled"] as? Bool ?? false
     }
 
     func sendPing() async throws {
@@ -340,11 +331,6 @@ class VPhoneControl {
     func sendVersion() async throws -> String {
         let (resp, _) = try await sendRequest(["t": "version"])
         return resp["hash"] as? String ?? "unknown"
-    }
-
-    /// Cancel all currently pending request continuations.
-    func cancelPendingRequests(reason: String = "cancelled by host") {
-        failAllPending(with: .cancelled(reason))
     }
 
     // MARK: - Async Request-Response
@@ -513,9 +499,8 @@ class VPhoneControl {
         let diagnostics: [String]
     }
 
-    func listKeychainItems(filterClass: String? = nil) async throws -> KeychainResult {
-        var req: [String: Any] = ["t": "keychain_list"]
-        if let filterClass { req["class"] = filterClass }
+    func listKeychainItems() async throws -> KeychainResult {
+        let req: [String: Any] = ["t": "keychain_list"]
         let (resp, _) = try await sendRequest(req)
         guard let items = resp["items"] as? [[String: Any]] else {
             throw ControlError.protocolError("missing items in keychain response")
@@ -526,7 +511,7 @@ class VPhoneControl {
 
     func addKeychainItem(
         account: String = "vphone-test", service: String = "vphone", password: String = "testpass123"
-    ) async throws -> Bool {
+    ) async throws {
         let req: [String: Any] = [
             "t": "keychain_add", "account": account, "service": service, "password": password,
         ]
@@ -536,7 +521,6 @@ class VPhoneControl {
             let msg = resp["msg"] as? String ?? "unknown error"
             throw ControlError.protocolError("keychain_add: \(msg)")
         }
-        return true
     }
 
     // MARK: - Clipboard
@@ -616,7 +600,6 @@ class VPhoneControl {
         let state: String
         let pid: Int
         let path: String
-        let dataContainer: String
     }
 
     func appList(filter: String = "all") async throws -> [AppInfo] {
@@ -632,8 +615,7 @@ class VPhoneControl {
                 type: app["type"] as? String ?? "",
                 state: app["state"] as? String ?? "",
                 pid: app["pid"] as? Int ?? 0,
-                path: app["path"] as? String ?? "",
-                dataContainer: app["data_container"] as? String ?? ""
+                path: app["path"] as? String ?? ""
             )
         }
     }
@@ -737,7 +719,7 @@ class VPhoneControl {
             "t": "location_stop",
             "id": String(nextRequestId, radix: 16),
         ]
-        guard let fd = connection?.fileDescriptor, writeMessage(fd: fd, dict: msg) else { return }
+        if let fd = connection?.fileDescriptor { writeMessage(fd: fd, dict: msg) }
     }
 
     // MARK: - Disconnect & Reconnect
@@ -753,7 +735,6 @@ class VPhoneControl {
         let fd = connection?.fileDescriptor
         connection = nil
         isConnected = false
-        guestName = ""
         guestCaps = []
         guestIP = nil
 

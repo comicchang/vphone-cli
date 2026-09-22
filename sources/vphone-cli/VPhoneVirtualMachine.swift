@@ -55,33 +55,15 @@ class VPhoneVirtualMachine: NSObject, VZVirtualMachineDelegate {
         let machineIdentifier: VZMacMachineIdentifier
         var manifest = try VPhoneVirtualMachineManifest.load(from: options.configURL)
 
-        if manifest.machineIdentifier.isEmpty {
-            // Create new machineIdentifier and save to manifest
-            let newID = VZMacMachineIdentifier()
-            machineIdentifier = newID
-
-            // Update manifest with new machineIdentifier
-            manifest = VPhoneVirtualMachineManifest(
-                platformType: manifest.platformType,
-                platformFusing: manifest.platformFusing,
-                machineIdentifier: newID.dataRepresentation,
-                cpuCount: manifest.cpuCount,
-                memorySize: manifest.memorySize,
-                screenConfig: manifest.screenConfig,
-                networkConfig: manifest.networkConfig,
-                diskImage: manifest.diskImage,
-                nvramStorage: manifest.nvramStorage,
-                romImages: manifest.romImages,
-                sepStorage: manifest.sepStorage
-            )
-            try manifest.write(to: options.configURL)
-
-            print("[vphone] Created new machineIdentifier -> saved to config.plist")
-        } else if let savedID = VZMacMachineIdentifier(dataRepresentation: manifest.machineIdentifier) {
+        if !manifest.machineIdentifier.isEmpty,
+           let savedID = VZMacMachineIdentifier(dataRepresentation: manifest.machineIdentifier)
+        {
             machineIdentifier = savedID
             print("[vphone] Loaded machineIdentifier from config.plist (ECID stable)")
         } else {
-            // Invalid data in manifest, create new
+            let reason = manifest.machineIdentifier.isEmpty
+                ? "Created new machineIdentifier -> saved to config.plist"
+                : "Invalid machineIdentifier in config.plist, created new"
             let newID = VZMacMachineIdentifier()
             machineIdentifier = newID
 
@@ -100,7 +82,7 @@ class VPhoneVirtualMachine: NSObject, VZVirtualMachineDelegate {
             )
             try manifest.write(to: options.configURL)
 
-            print("[vphone] Invalid machineIdentifier in config.plist, created new")
+            print("[vphone] \(reason)")
         }
 
         // --- Platform ---

@@ -25,7 +25,7 @@ extension KernelPatcher {
         }
 
         let apfsRange = apfsTextRange()
-        let refs = findStringRefs(in: apfsRange, stringOffset: strOff)
+        let refs = findStringRefs(strOff, in: apfsRange)
         if refs.isEmpty {
             log("  [-] no ADRP+ADD refs to 'root volume seal is broken'")
             return false

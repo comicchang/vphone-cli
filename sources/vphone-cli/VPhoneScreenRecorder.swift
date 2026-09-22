@@ -17,18 +17,13 @@ class VPhoneScreenRecorder {
         var errorDescription: String? {
             switch self {
             case .captureFailed:
-                "Failed to capture a frame from the virtual machine."
+                "Unable to capture the screen. Try again."
             case .clipboardWriteFailed:
-                "Failed to copy the screenshot to the pasteboard."
+                "Unable to copy the screenshot to the clipboard. Try again."
             case .encodingFailed:
-                "Failed to encode the screenshot as PNG."
+                "Unable to save the screenshot. Try again."
             }
         }
-    }
-
-    private struct CaptureSource {
-        let graphicsDisplay: VZGraphicsDisplay
-        let description: String
     }
 
     private typealias ScreenshotCompletionBlock = @convention(block) (AnyObject?) -> Void
@@ -41,7 +36,6 @@ class VPhoneScreenRecorder {
     private var frameCount: Int64 = 0
     private var outputURL: URL?
     private var graphicsDisplay: VZGraphicsDisplay?
-    private var captureModeDescription = "private VZGraphicsDisplay screenshots"
     private var screenshotInFlight = false
     private var didLogCaptureFailure = false
 
@@ -52,8 +46,8 @@ class VPhoneScreenRecorder {
     func startRecording(view: NSView) throws {
         guard !isRecording else { return }
 
-        let source = try resolveCaptureSource(for: view)
-        let captureSize = source.graphicsDisplay.sizeInPixels
+        let display = try resolveCaptureSource(for: view)
+        let captureSize = display.sizeInPixels
         let width = max(Int(captureSize.width), 1)
         let height = max(Int(captureSize.height), 1)
 
@@ -87,8 +81,7 @@ class VPhoneScreenRecorder {
         self.writer = writer
         videoInput = input
         self.adaptor = adaptor
-        graphicsDisplay = source.graphicsDisplay
-        captureModeDescription = source.description
+        graphicsDisplay = display
         frameCount = 0
         screenshotInFlight = false
         didLogCaptureFailure = false
@@ -101,7 +94,7 @@ class VPhoneScreenRecorder {
         }
 
         print(
-            "[record] started - \(url.lastPathComponent) (\(width)x\(height), source: \(captureModeDescription))"
+            "[record] started - \(url.lastPathComponent) (\(width)x\(height), source: private VZGraphicsDisplay screenshots)"
         )
     }
 
@@ -210,9 +203,9 @@ class VPhoneScreenRecorder {
         }
     }
 
-    private func captureStillImage(from view: NSView) async throws -> CGImage {
-        let source = try resolveCaptureSource(for: view)
-        guard let cgImage = await takeGraphicsScreenshot(from: source.graphicsDisplay) else {
+    func captureStillImage(from view: NSView) async throws -> CGImage {
+        let display = try resolveCaptureSource(for: view)
+        guard let cgImage = await takeGraphicsScreenshot(from: display) else {
             throw CaptureError.captureFailed
         }
         return cgImage
@@ -248,17 +241,14 @@ class VPhoneScreenRecorder {
         frameCount += 1
     }
 
-    private func resolveCaptureSource(for view: NSView) throws -> CaptureSource {
+    private func resolveCaptureSource(for view: NSView) throws -> VZGraphicsDisplay {
         guard let vmView = view as? VPhoneVirtualMachineView,
               let graphicsDisplay = vmView.recordingGraphicsDisplay
         else {
             throw CaptureError.captureFailed
         }
 
-        return CaptureSource(
-            graphicsDisplay: graphicsDisplay,
-            description: "private VZGraphicsDisplay screenshots"
-        )
+        return graphicsDisplay
     }
 
     private func takeGraphicsScreenshot(

@@ -19,10 +19,10 @@
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>NSLocationUsageDescription</key>
-	<string>vphone-cli forwards your location to the guest VM for location simulation.</string>
+	<string>Shares your location with the virtual iPhone so apps running inside it see the same location.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>vphone-cli forwards your location to the guest VM for location simulation.</string>
+	<string>Shares your location with the virtual iPhone so apps running inside it see the same location.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>vphone-cli forwards your location to the guest VM for location simulation.</string>
+	<string>Shares your location with the virtual iPhone so apps running inside it see the same location.</string>
 </dict>
 </plist>

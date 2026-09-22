@@ -1,7 +1,6 @@
 // MachOHelpers.swift — Mach-O parsing utilities for firmware patching.
 
 import Foundation
-import MachOKit
 
 // MARK: - Segment/Section Info
 
@@ -116,12 +115,6 @@ public enum MachOParser {
             }
         }
         return nil
-    }
-
-    /// Convert a virtual address to a file offset by parsing segments from data.
-    public static func vaToFileOffset(_ va: UInt64, in data: Data) -> Int? {
-        let segments = parseSegments(from: data)
-        return vaToFileOffset(va, segments: segments)
     }
 
     /// Parse LC_SYMTAB information.

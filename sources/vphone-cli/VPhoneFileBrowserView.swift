@@ -154,7 +154,7 @@ struct VPhoneFileBrowserView: View {
                     .progressViewStyle(.linear)
             }
             HStack {
-                Text(model.transferName ?? "Transferring...")
+                Text(model.transferName ?? "Transferring…")
                     .lineLimit(1)
                 Spacer()
                 if model.transferTotal > 0 {
@@ -250,8 +250,8 @@ struct VPhoneFileBrowserView: View {
         Button("Copy Name") { copyNames(ids: ids) }
         Button("Copy Path") { copyPaths(ids: ids) }
         Divider()
-        Button("Upload...") { uploadAction() }
-        Button("New Folder...") {
+        Button("Upload…") { uploadAction() }
+        Button("New Folder…") {
             newFolderName = ""
             showNewFolder = true
         }
@@ -324,7 +324,7 @@ struct VPhoneFileBrowserView: View {
                 }
             }
             if urls.isEmpty {
-                model.error = "Could not load any files from the dropped items."
+                model.error = "Unable to read the dropped items. Drag files from Finder, then try again."
             } else {
                 await model.uploadFiles(urls: urls)
             }

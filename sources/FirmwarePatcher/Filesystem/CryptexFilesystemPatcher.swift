@@ -20,10 +20,6 @@ enum ProcessError: Error {
 }
 
 extension Data {
-    var hexString: String {
-        self.map { String(format: "%02x", $0) }.joined()
-    }
-    
     init?(fromHexString hex: String) {
         guard hex.count.isMultiple(of: 2) else {
             return nil
@@ -84,18 +80,18 @@ public final class CryptexFilesystemPatcher: Patcher {
     
     @discardableResult
     public func apply() throws -> Int {
-        print("Merging Filesystems")
+        print("Merging filesystems…")
         let (unencryptedImage, aeaImage) = try mergeFilesystems()
         defer { try? FileManager.default.removeItem(at: unencryptedImage) }
         
-        print("Creating Trustcache")
+        print("Creating trustcache…")
         let trustcachePath = try createTrustcache(filesystem: unencryptedImage)
         
-        print("Creating mtree")
+        print("Creating mtree…")
         let didEdit = try removeSpecificSystemFiles(filesystem: unencryptedImage)
         let mtreePath = try createMtree(filesystem: unencryptedImage)
         
-        print("Creating DigestDB and Root Hash")
+        print("Creating digest database and root hash…")
         let (digestDbPath, rootHashPath) = try createDigestAndHash(filesystem: unencryptedImage, mtree: mtreePath, remap: didEdit)
         let metadataPath = try compressCanonicalMetadata(mtree: mtreePath, digestDb: digestDbPath)
         let rootHashContainer = try wrapRootHash(rootHashPath)
@@ -115,11 +111,11 @@ public final class CryptexFilesystemPatcher: Patcher {
     // mergeFilesystems merges the main OS filesystem with the Cryptexes filesystems.
     // It returns the path of the merged image (plain and encrypted)
     func mergeFilesystems() throws -> (URL, URL) {
-        let osPath = try getOSFilesystemPath()
+        let osPath = try componentPath("OS")
         let osDmgPath = try decryptAeaFile(self.restoreDir.appending(path: osPath))
         let newDmgPath = self.restoreDir.appending(path: "new-filesystem.dmg")
         
-        print("- Converting OS image")
+        print("- Converting OS image…")
         let tmpDir = try createTmpDir()
         let targetImagePath = tmpDir.appending(path: "disk.dmg")
         do {
@@ -127,13 +123,13 @@ public final class CryptexFilesystemPatcher: Patcher {
             let (targetDevice, targetMount) = try attachImage(path: targetImagePath, forceRW: true)
             defer { try? detachImage(deviceNode: targetDevice) }
             
-            print("- Merging App OS Cryptex")
+            print("- Merging App OS cryptex…")
             try copyCryptex(targetMount: targetMount, appOS: true)
 
-            print("- Merging System OS Cryptex")
+            print("- Merging System OS cryptex…")
             try copyCryptex(targetMount: targetMount, systemOS: true)
             
-            print("- Fix Dyld Cache")
+            print("- Fixing dyld cache…")
             try addDyldSymlinks(targetMount: targetMount)
             
             let cfwInputOgPath = resources.resourceArchivesDir.appendingPathComponent("cfw_input.tar.zst")
@@ -142,18 +138,18 @@ public final class CryptexFilesystemPatcher: Patcher {
                 "--zstd", "-xf", cfwInputOgPath.path, "-C", cfwInputPath.path
             ])
             
-            print("- Fix GPU Driver")
+            print("- Fixing GPU driver…")
             try addGpuDriver(targetMount: targetMount, cfwInput: cfwInputPath)
             
-            print("- Patch Mobile Activation")
+            print("- Patching mobile activation…")
             try patchMobileActivation(targetMount: targetMount, cfwInput: cfwInputPath)
             
             if !noVphoned {
-                print("- Add vphoned")
+                print("- Adding vphoned…")
                 try addVphoned(targetMount: targetMount, cfwInput: cfwInputPath)
             }
             if !noBinpack {
-                print("- Add binpack")
+                print("- Adding binpack…")
                 try addExtraServices(targetMount: targetMount, cfwInput: cfwInputPath)
             }
             if !noVphoned || !noBinpack {
@@ -162,7 +158,7 @@ public final class CryptexFilesystemPatcher: Patcher {
             }
         }
         
-        print("- Finalizing merged image")
+        print("- Finalizing merged image…")
         try shrinkImage(dmg: targetImagePath)
         try convertToUDRWImage(input: targetImagePath, output: newDmgPath)
         let metadata = try getAeaMetadata(self.restoreDir.appending(path: osPath))
@@ -446,7 +442,7 @@ public final class CryptexFilesystemPatcher: Patcher {
             </dict>
             </plist>
             """
-        print("Used time: \(remap ? modificationTime : "none")")
+        print("Modification time: \(remap ? modificationTime : "none")")
         FileManager.default.createFile(atPath: mtreeRemapPath.path, contents: remapContent.data(using: .utf8))
 
         try unmount(mount: mount)
@@ -486,7 +482,7 @@ public final class CryptexFilesystemPatcher: Patcher {
             // Extract time=...
             guard let match = line.range(of: #"time=([0-9]+(?:\.[0-9]+)?)"#,
                                          options: .regularExpression) else {
-                throw FirmwareManifest.ManifestError.fileNotFound("time")
+                throw FirmwareManifest.ManifestError.fileNotFound("modification time for /private/var in \(mtree.path)")
             }
 
             let matchedText = String(line[match])
@@ -495,7 +491,7 @@ public final class CryptexFilesystemPatcher: Patcher {
                 .replacingOccurrences(of: ".", with: "")
         }
 
-        throw FirmwareManifest.ManifestError.fileNotFound("metadata")
+        throw FirmwareManifest.ManifestError.fileNotFound("the /private/var entry in \(mtree.path)")
     }
     
     func createMtree(filesystem: URL) throws -> URL {
@@ -535,7 +531,7 @@ public final class CryptexFilesystemPatcher: Patcher {
         let (device, mount) = try attachImage(path: filesystem, readonly: true)
         defer { try? detachImage(deviceNode: device) }
         
-        let oldTrustcache = try getTrustcachePath()
+        let oldTrustcache = try componentPath("StaticTrustCache")
         let oldTrustcachePath = self.restoreDir.appending(path: oldTrustcache)
         let newTrustcachePath = self.restoreDir.appending(path: "Firmware/new.trustcache")
         let tmpDir = try createTmpDir()
@@ -562,9 +558,9 @@ public final class CryptexFilesystemPatcher: Patcher {
         }
         
         let osPath = if appOS {
-            self.restoreDir.appending(path: try getAppOsFilesystemPath())
+            self.restoreDir.appending(path: try componentPath("Cryptex1,AppOS"))
         } else {
-            try decryptAeaFile(self.restoreDir.appending(path: try getSystemOsFilesystemPath()))
+            try decryptAeaFile(self.restoreDir.appending(path: try componentPath("Cryptex1,SystemOS")))
         }
         let (osDevice, osMount) = try attachImage(path: osPath, readonly: true)
         defer { try? detachImage(deviceNode: osDevice) }
@@ -651,30 +647,12 @@ public final class CryptexFilesystemPatcher: Patcher {
         return productVersion
     }
     
-    func getTrustcachePath() throws -> String {
+    func componentPath(_ component: String) throws -> String {
         let path = self.restoreDir.appending(path: "iPhone-BuildManifest.plist")
         let manifest = try getBuildIdentityManifest(path: path)
-        return try getComponentPath(component: "StaticTrustCache", buildManifest: manifest)
+        return try getComponentPath(component: component, buildManifest: manifest)
     }
-    
-    func getOSFilesystemPath() throws -> String {
-        let path = self.restoreDir.appending(path: "iPhone-BuildManifest.plist")
-        let manifest = try getBuildIdentityManifest(path: path)
-        return try getComponentPath(component: "OS", buildManifest: manifest)
-    }
-    
-    func getAppOsFilesystemPath() throws -> String {
-        let path = self.restoreDir.appending(path: "iPhone-BuildManifest.plist")
-        let manifest = try getBuildIdentityManifest(path: path)
-        return try getComponentPath(component: "Cryptex1,AppOS", buildManifest: manifest)
-    }
-    
-    func getSystemOsFilesystemPath() throws -> String {
-        let path = self.restoreDir.appending(path: "iPhone-BuildManifest.plist")
-        let manifest = try getBuildIdentityManifest(path: path)
-        return try getComponentPath(component: "Cryptex1,SystemOS", buildManifest: manifest)
-    }
-    
+
     func getComponentPath(component: String, buildManifest: PlistDict) throws -> String {
         let comp = try getChildPlistDict(parent: buildManifest, key: component)
         let info = try getChildPlistDict(parent: comp, key: "Info")
@@ -734,7 +712,9 @@ public final class CryptexFilesystemPatcher: Patcher {
         // We delete the files first as we want to replace symlinks with actual files.
         let keys: [URLResourceKey] = [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey]
         guard let enumerator = FileManager.default.enumerator(at: sourceRoot, includingPropertiesForKeys: keys) else {
-            throw FirmwareManifest.ManifestError.fileNotFound("enumerator")
+            throw FirmwareManifest.ManifestError.fileNotFound(
+                "Unable to read \(sourceRoot.path). Check that the image is still mounted, then try again."
+            )
         }
         for case let fileURL as URL in enumerator {
             guard fileURL.path.hasPrefix(sourcePath) else { continue }
@@ -750,7 +730,7 @@ public final class CryptexFilesystemPatcher: Patcher {
                 // try FileManager.default.copyItem(at: fileURL, to: destinationPath)
                 let result = copyfile(fileURL.path, destinationPath.path, nil, copyfile_flags_t(COPYFILE_SECURITY | COPYFILE_DATA))
                 if result < 0 {
-                    print("Failed to copy: \(destinationPath)")
+                    print("Unable to copy \(destinationPath.path). Check permissions and free space, then try again.")
                 }
                 continue
             }
@@ -763,7 +743,7 @@ public final class CryptexFilesystemPatcher: Patcher {
                 // try FileManager.default.copyItem(at: fileURL, to: destinationPath)
                 let result = copyfile(fileURL.path, destinationPath.path, nil, copyfile_flags_t(COPYFILE_SECURITY | COPYFILE_DATA))
                 if result < 0 {
-                    print("Failed to copy: \(destinationPath)")
+                    print("Unable to copy \(destinationPath.path). Check permissions and free space, then try again.")
                 }
             }
         }
@@ -868,14 +848,14 @@ public final class CryptexFilesystemPatcher: Patcher {
         let hexBytes = nonEmpty.flatMap { parseHexDumpLine($0) }
         if !hexBytes.isEmpty {
             let b64Encoded = Data(hexBytes).base64EncodedString()
-            return "hex:\(Data(b64Encoded.utf8).hexString)"
+            return "hex:\(Data(b64Encoded.utf8).hex)"
         }
 
         // Otherwise treat it as plain text / JSON / whatever the section contains.
         let text = bodyLines.joined(separator: "\n")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        return "hex:\(Data(text.utf8).hexString)"
+        return "hex:\(Data(text.utf8).hex)"
     }
 
     private func parseHexDumpLine(_ line: String) -> [UInt8] {
@@ -999,7 +979,7 @@ public final class CryptexFilesystemPatcher: Patcher {
         if sudo {
             let whoami = try runProcess("/usr/bin/whoami", [])
             if !whoami.contains("root") {
-                print("Please rerun as root or fix this program")
+                print("This step requires root. Run the command again with sudo.")
                 exit(42)
             }
         }

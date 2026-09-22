@@ -1,11 +1,8 @@
 """launchd cache loader patch module."""
 
 from .cfw_asm import *
-from .cfw_asm import _log_asm
-from capstone import Cs, CS_ARCH_ARM64, CS_MODE_LITTLE_ENDIAN
+from .cfw_asm import _log_asm, _cs
 
-_adrp_cs = Cs(CS_ARCH_ARM64, CS_MODE_LITTLE_ENDIAN)
-_adrp_cs.detail = True
 
 def patch_launchd_cache_loader(filepath):
     """NOP the cache validation check in launchd_cache_loader.
@@ -31,7 +28,6 @@ def patch_launchd_cache_loader(filepath):
     # Strategy 1: Search for anchor strings in __cstring
     # Code always references the START of a C string, so after finding a
     # substring match, back-scan to the enclosing string's first byte.
-    cstring_sec = find_section(sections, "__TEXT,__cstring")
     anchor_strings = [
         b"unsecure_cache",
         b"unsecure",
@@ -135,7 +131,7 @@ def _find_adrp_add_ref(code, base_va, target_va):
     adrp_cache = {}
 
     for off in range(0, len(code) - 4, 4):
-        insns = list(_adrp_cs.disasm(code[off : off + 4], base_va + off))
+        insns = list(_cs.disasm(code[off : off + 4], base_va + off))
         if not insns:
             continue
         insn = insns[0]
@@ -212,8 +208,3 @@ def _find_nearby_branch(data, ref_foff, text_foff, text_size):
             return check_foff
 
     return -1
-
-
-# ══════════════════════════════════════════════════════════════════
-# 3. mobileactivationd — Hackivation bypass
-# ══════════════════════════════════════════════════════════════════

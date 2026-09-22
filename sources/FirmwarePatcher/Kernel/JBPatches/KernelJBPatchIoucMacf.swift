@@ -50,7 +50,7 @@ extension KernelJBPatcher {
                 defer { off += 4 }
 
                 // Require BL at [off].
-                guard let blTarget = jbDecodeBL(at: off) else { continue }
+                guard let blTarget = decodeBL(at: off) else { continue }
 
                 // Require CBZ W0, <target> at [off + 4].
                 let cbzInsn = buffer.readU32(at: off + 4)

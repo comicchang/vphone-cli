@@ -212,7 +212,7 @@ static NSDictionary *handle_command(NSDictionary *msg) {
   if ([type isEqualToString:@"devmode"]) {
     if (!vp_devmode_available()) {
       NSMutableDictionary *r = vp_make_response(@"err", reqId);
-      r[@"msg"] = @"XPC not available";
+      r[@"msg"] = @"Developer Mode is not available on this guest.";
       return r;
     }
     NSString *action = msg[@"action"];
@@ -229,10 +229,10 @@ static NSDictionary *handle_command(NSDictionary *msg) {
       if (ok) {
         r[@"already_enabled"] = @(alreadyEnabled);
         r[@"msg"] = alreadyEnabled
-                        ? @"developer mode already enabled"
-                        : @"developer mode armed, reboot to activate";
+                        ? @"Developer Mode is already enabled."
+                        : @"Developer Mode will be enabled after you restart the guest.";
       } else {
-        r[@"msg"] = @"failed to arm developer mode";
+        r[@"msg"] = @"Unable to enable Developer Mode.";
       }
       return r;
     }
@@ -377,83 +377,41 @@ static BOOL handle_client(int fd) {
           NSLog(@"vphoned: receiving update (%lu bytes)", (unsigned long)size);
           if (size > 0 && size < 10 * 1024 * 1024 && receive_update(fd, size)) {
             NSMutableDictionary *r = vp_make_response(@"ok", reqId);
-            r[@"msg"] = @"updated, restarting";
+            r[@"msg"] = @"Updated. Restarting the guest agent…";
             vp_write_message(fd, r);
             should_restart = YES;
             break;
           } else {
             NSMutableDictionary *r = vp_make_response(@"err", reqId);
-            r[@"msg"] = @"update failed";
+            r[@"msg"] = @"Unable to update the guest agent. Try again.";
             vp_write_message(fd, r);
           }
           continue;
         }
 
-        // File operations (need fd for inline binary transfer)
+        NSDictionary *resp;
         if ([t hasPrefix:@"file_"]) {
-          NSDictionary *resp = vp_handle_file_command(fd, msg);
-          if (resp && !vp_write_message(fd, resp))
-            break;
-          continue;
+          // Needs fd for inline binary transfer.
+          resp = vp_handle_file_command(fd, msg);
+        } else if ([t hasPrefix:@"keychain_"]) {
+          resp = vp_handle_keychain_command(msg);
+        } else if ([t hasPrefix:@"clipboard_"]) {
+          // Needs fd for inline binary transfer.
+          resp = vp_handle_clipboard_command(fd, msg);
+        } else if ([t hasPrefix:@"app_"]) {
+          resp = vp_handle_apps_command(msg);
+        } else if ([t isEqualToString:@"open_url"]) {
+          resp = vp_handle_url_command(msg);
+        } else if ([t hasPrefix:@"settings_"]) {
+          resp = vp_handle_settings_command(msg);
+        } else if ([t isEqualToString:@"accessibility_tree"]) {
+          resp = vp_handle_accessibility_command(msg);
+        } else if ([t isEqualToString:@"low_power_mode"]) {
+          resp = vp_handle_notify_command(msg);
+        } else {
+          resp = handle_command(msg);
         }
 
-        // Keychain operations
-        if ([t hasPrefix:@"keychain_"]) {
-          NSDictionary *resp = vp_handle_keychain_command(msg);
-          if (resp && !vp_write_message(fd, resp))
-            break;
-          continue;
-        }
-
-        // Clipboard operations (need fd for inline binary transfer)
-        if ([t hasPrefix:@"clipboard_"]) {
-          NSDictionary *resp = vp_handle_clipboard_command(fd, msg);
-          if (resp && !vp_write_message(fd, resp))
-            break;
-          continue;
-        }
-
-        // App management operations
-        if ([t hasPrefix:@"app_"]) {
-          NSDictionary *resp = vp_handle_apps_command(msg);
-          if (resp && !vp_write_message(fd, resp))
-            break;
-          continue;
-        }
-
-        // URL opening
-        if ([t isEqualToString:@"open_url"]) {
-          NSDictionary *resp = vp_handle_url_command(msg);
-          if (resp && !vp_write_message(fd, resp))
-            break;
-          continue;
-        }
-
-        // Settings operations
-        if ([t hasPrefix:@"settings_"]) {
-          NSDictionary *resp = vp_handle_settings_command(msg);
-          if (resp && !vp_write_message(fd, resp))
-            break;
-          continue;
-        }
-
-        // Accessibility tree
-        if ([t isEqualToString:@"accessibility_tree"]) {
-          NSDictionary *resp = vp_handle_accessibility_command(msg);
-          if (resp && !vp_write_message(fd, resp))
-            break;
-          continue;
-        }
-
-        // Low power mode sync
-        if ([t isEqualToString:@"low_power_mode"]) {
-          NSDictionary *resp = vp_handle_notify_command(msg);
-          if (resp && !vp_write_message(fd, resp))
-            break;
-          continue;
-        }
-
-        NSDictionary *resp = handle_command(msg);
         if (resp && !vp_write_message(fd, resp))
           break;
       }

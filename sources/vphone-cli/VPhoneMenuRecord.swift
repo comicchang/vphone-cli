@@ -27,14 +27,18 @@ extension VPhoneMenuController {
             }
         } else {
             guard let view = activeCaptureView() else {
-                showAlert(title: "Recording", message: "No active VM window.", style: .warning)
+                showAlert(
+                    title: "Recording",
+                    message: "No VM window is open. Start a VM, then try again.",
+                    style: .warning
+                )
                 return
             }
             do {
                 try screenRecorder?.startRecording(view: view)
                 recordingItem?.title = "Stop Recording"
             } catch {
-                showAlert(title: "Recording", message: "\(error)", style: .warning)
+                showAlert(title: "Recording", message: "Unable to start recording. Try again.", style: .warning)
             }
         }
     }
@@ -42,7 +46,11 @@ extension VPhoneMenuController {
     @objc func copyScreenshotToClipboard() {
         guard let recorder = screenRecorder else { return }
         guard let view = activeCaptureView() else {
-            showAlert(title: "Screenshot", message: "No active VM window.", style: .warning)
+            showAlert(
+                title: "Screenshot",
+                message: "No VM window is open. Start a VM, then try again.",
+                style: .warning
+            )
             return
         }
 
@@ -51,7 +59,7 @@ extension VPhoneMenuController {
                 try await recorder.copyScreenshotToPasteboard(view: view)
                 showAlert(title: "Screenshot", message: "Copied to clipboard.", style: .informational)
             } catch {
-                showAlert(title: "Screenshot", message: "\(error)", style: .warning)
+                showAlert(title: "Screenshot", message: "Unable to copy the screenshot. Try again.", style: .warning)
             }
         }
     }
@@ -59,7 +67,11 @@ extension VPhoneMenuController {
     @objc func saveScreenshotToFile() {
         guard let recorder = screenRecorder else { return }
         guard let view = activeCaptureView() else {
-            showAlert(title: "Screenshot", message: "No active VM window.", style: .warning)
+            showAlert(
+                title: "Screenshot",
+                message: "No VM window is open. Start a VM, then try again.",
+                style: .warning
+            )
             return
         }
 
@@ -68,7 +80,7 @@ extension VPhoneMenuController {
                 let url = try await recorder.saveScreenshot(view: view)
                 showAlert(title: "Screenshot", message: "Saved to \(url.path)", style: .informational)
             } catch {
-                showAlert(title: "Screenshot", message: "\(error)", style: .warning)
+                showAlert(title: "Screenshot", message: "Unable to save the screenshot. Try again.", style: .warning)
             }
         }
     }
@@ -107,14 +119,6 @@ extension VPhoneMenuController {
         panel.contentView?.addSubview(reveal)
         panel.contentView?.addSubview(ok)
 
-        var shouldReveal = false
-        reveal.target = nil
-        reveal.action = nil
-
-        let capturedURL = url
-        reveal.target = NSApp
-        reveal.action = #selector(NSApplication.stopModal(withCode:))
-
         // Use a custom approach: reveal button stops modal with code 100
         class RevealHelper: NSObject {
             var action: () -> Void
@@ -131,7 +135,7 @@ extension VPhoneMenuController {
         panel.orderOut(nil)
 
         if response.rawValue == 100 {
-            NSWorkspace.shared.activateFileViewerSelecting([capturedURL])
+            NSWorkspace.shared.activateFileViewerSelecting([url])
         }
     }
 }

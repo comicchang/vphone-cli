@@ -96,7 +96,7 @@ extension KernelPatcher {
             var blTargets = Set<Int>()
             for scan in stride(from: callerStart, to: callerEnd, by: 4) {
                 if scan > callerStart, buffer.readU32(at: scan) == ARM64.pacibspU32 { break }
-                if let target = decodeBLOffset(at: scan) {
+                if let target = decodeBL(at: scan) {
                     blTargets.insert(target)
                 }
             }
@@ -125,7 +125,7 @@ extension KernelPatcher {
                     // Must be preceded by a BL within 2 instructions (4 or 8 bytes back).
                     var hasBlBefore = false
                     for back in stride(from: off - 4, through: max(off - 8, target), by: -4) {
-                        if decodeBLOffset(at: back) != nil {
+                        if decodeBL(at: back) != nil {
                             hasBlBefore = true
                             break
                         }
@@ -151,18 +151,6 @@ extension KernelPatcher {
     }
 
     // MARK: - Private helpers
-
-    /// Decode a BL instruction at `offset`. Returns the absolute file offset of the
-    /// target, or nil if the instruction at that offset is not a BL.
-    private func decodeBLOffset(at offset: Int) -> Int? {
-        guard offset >= 0, offset + 4 <= buffer.count else { return nil }
-        let insn = buffer.readU32(at: offset)
-        // BL: [31:26] = 0b100101
-        guard insn >> 26 == 0b100101 else { return nil }
-        let imm26 = insn & 0x03FF_FFFF
-        let signedImm = Int32(bitPattern: imm26 << 6) >> 6
-        return offset + Int(signedImm) * 4
-    }
 
     /// Find the start offset of the next function after `start` (exclusive),
     /// up to `maxSize` bytes ahead. Returns `start + maxSize` if none found.

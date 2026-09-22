@@ -218,55 +218,55 @@ extension KernelJBPatcher {
         // pacibsp
         code.append(ARM64.pacibsp)
         // sub sp, sp, #0x30
-        code.append(encodeU32k(0xD100_C3FF)) // sub sp, sp, #0x30
+        code.append(ARM64.encodeU32(0xD100_C3FF)) // sub sp, sp, #0x30
         // stp x21, x22, [sp]
-        code.append(encodeU32k(0xA900_5BF5)) // stp x21, x22, [sp]
+        code.append(ARM64.encodeU32(0xA900_5BF5)) // stp x21, x22, [sp]
         // stp x19, x20, [sp, #0x10]
-        code.append(encodeU32k(0xA901_53F3)) // stp x19, x20, [sp, #0x10]
+        code.append(ARM64.encodeU32(0xA901_53F3)) // stp x19, x20, [sp, #0x10]
         // stp x29, x30, [sp, #0x20]
-        code.append(encodeU32k(0xA902_7BFD)) // stp x29, x30, [sp, #0x20]
+        code.append(ARM64.encodeU32(0xA902_7BFD)) // stp x29, x30, [sp, #0x20]
         // add x29, sp, #0x20
-        code.append(encodeU32k(0x9100_83FD)) // add x29, sp, #0x20
+        code.append(ARM64.encodeU32(0x9100_83FD)) // add x29, sp, #0x20
         // mov w19, #22  (EINVAL = 22 = 0x16)
-        code.append(encodeU32k(0x5280_02D3)) // movz w19, #0x16
+        code.append(ARM64.encodeU32(0x5280_02D3)) // movz w19, #0x16
         // mov x20, x1  (save uap)
-        code.append(encodeU32k(0xAA01_03F4)) // mov x20, x1
+        code.append(ARM64.encodeU32(0xAA01_03F4)) // mov x20, x1
         // mov x21, x2  (save retval)
-        code.append(encodeU32k(0xAA02_03F5)) // mov x21, x2
+        code.append(ARM64.encodeU32(0xAA02_03F5)) // mov x21, x2
         // cbz x20, #0x30  (null uap → skip to exit, 12 instrs forward)
-        code.append(encodeU32k(0xB400_0194)) // cbz x20, #+0x30
+        code.append(ARM64.encodeU32(0xB400_0194)) // cbz x20, #+0x30
         // cbz x21, #0x2c  (null retval → skip to exit)
-        code.append(encodeU32k(0xB400_0175)) // cbz x21, #+0x2c
+        code.append(ARM64.encodeU32(0xB400_0175)) // cbz x21, #+0x2c
         // ldr x16, [x20]  (target = uap[0])
-        code.append(encodeU32k(0xF940_0290)) // ldr x16, [x20]
+        code.append(ARM64.encodeU32(0xF940_0290)) // ldr x16, [x20]
         // cbz x16, #0x24  (null target → skip, 9 instrs)
-        code.append(encodeU32k(0xB400_0130)) // cbz x16, #+0x24
+        code.append(ARM64.encodeU32(0xB400_0130)) // cbz x16, #+0x24
         // ldp x0, x1, [x20, #0x8]
-        code.append(encodeU32k(0xA940_8680)) // ldp x0, x1, [x20, #0x8]
+        code.append(ARM64.encodeU32(0xA940_8680)) // ldp x0, x1, [x20, #0x8]
         // ldp x2, x3, [x20, #0x18]
-        code.append(encodeU32k(0xA941_8E82)) // ldp x2, x3, [x20, #0x18]
+        code.append(ARM64.encodeU32(0xA941_8E82)) // ldp x2, x3, [x20, #0x18]
         // ldp x4, x5, [x20, #0x28]
-        code.append(encodeU32k(0xA942_9684)) // ldp x4, x5, [x20, #0x28]
+        code.append(ARM64.encodeU32(0xA942_9684)) // ldp x4, x5, [x20, #0x28]
         // ldr x6, [x20, #0x38]
-        code.append(encodeU32k(0xF940_1E86)) // ldr x6, [x20, #0x38]
+        code.append(ARM64.encodeU32(0xF940_1E86)) // ldr x6, [x20, #0x38]
         // mov x7, xzr
-        code.append(encodeU32k(0xAA1F_03E7)) // mov x7, xzr
+        code.append(ARM64.encodeU32(0xAA1F_03E7)) // mov x7, xzr
         // blr x16
-        code.append(encodeU32k(0xD63F_0200)) // blr x16
+        code.append(ARM64.encodeU32(0xD63F_0200)) // blr x16
         // str x0, [x21]  (store result in retval)
-        code.append(encodeU32k(0xF900_02A0)) // str x0, [x21]
+        code.append(ARM64.encodeU32(0xF900_02A0)) // str x0, [x21]
         // mov w19, #0
-        code.append(encodeU32k(0x5280_0013)) // movz w19, #0
+        code.append(ARM64.encodeU32(0x5280_0013)) // movz w19, #0
         // mov w0, w19  (return value)
-        code.append(encodeU32k(0x2A13_03E0)) // mov w0, w19
+        code.append(ARM64.encodeU32(0x2A13_03E0)) // mov w0, w19
         // ldp x21, x22, [sp]
-        code.append(encodeU32k(0xA940_5BF5)) // ldp x21, x22, [sp]
+        code.append(ARM64.encodeU32(0xA940_5BF5)) // ldp x21, x22, [sp]
         // ldp x19, x20, [sp, #0x10]
-        code.append(encodeU32k(0xA941_53F3)) // ldp x19, x20, [sp, #0x10]
+        code.append(ARM64.encodeU32(0xA941_53F3)) // ldp x19, x20, [sp, #0x10]
         // ldp x29, x30, [sp, #0x20]
-        code.append(encodeU32k(0xA942_7BFD)) // ldp x29, x30, [sp, #0x20]
+        code.append(ARM64.encodeU32(0xA942_7BFD)) // ldp x29, x30, [sp, #0x20]
         // add sp, sp, #0x30
-        code.append(encodeU32k(0x9100_C3FF)) // add sp, sp, #0x30
+        code.append(ARM64.encodeU32(0x9100_C3FF)) // add sp, sp, #0x30
         // retab
         code.append(ARM64.retab)
 
@@ -307,11 +307,5 @@ extension KernelJBPatcher {
 
     private func extractChainKey(_ raw: UInt64) -> UInt32 {
         UInt32((raw >> 49) & 3)
-    }
-
-    // MARK: - Encoding Helper
-
-    private func encodeU32k(_ value: UInt32) -> Data {
-        ARM64.encodeU32(value)
     }
 }

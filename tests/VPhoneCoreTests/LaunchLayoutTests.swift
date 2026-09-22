@@ -8,17 +8,9 @@ struct LaunchLayoutTests {
         #expect(layout.preflightScript.path == "/proj/scripts/boot_host_preflight.sh")
     }
 
-    @Test func resolvesToolPaths() {
-        let layout = VPhoneLaunchLayout(projectRoot: URL(fileURLWithPath: "/proj"))
-        #expect(layout.fwPrepareScript.path == "/proj/scripts/fw_prepare.sh")
-        #expect(layout.cfwInstallHostScript.path == "/proj/scripts/cfw_install_host.sh")
-        #expect(layout.pmd3Bridge.path == "/proj/scripts/pymobiledevice3_bridge.py")
-    }
-
     @Test func delegatesToResources() {
         let resources = VPhoneResources(base: URL(fileURLWithPath: "/proj"))
         let layout = VPhoneLaunchLayout(resources: resources)
-        #expect(layout.fwPrepareScript.path == resources.fwPrepareScript.path)
         #expect(layout.vphoned.path == resources.vphoned.path)
     }
 

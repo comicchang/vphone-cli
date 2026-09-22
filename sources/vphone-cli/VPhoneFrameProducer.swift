@@ -33,7 +33,6 @@ final class VPhoneTestPatternProducer: VPhoneFrameProducer, @unchecked Sendable 
     private let width: Int
     private let height: Int
     private let bytesPerRow: Int
-    private var frameIndex: UInt64 = 0
     private let startedAt: TimeInterval
 
     init(width: Int, height: Int) {
@@ -92,7 +91,6 @@ final class VPhoneTestPatternProducer: VPhoneFrameProducer, @unchecked Sendable 
             }
         }
 
-        frameIndex &+= 1
         let ts = UInt64(now * 1_000_000_000)
         return VPhoneCameraFrame(
             width: width,

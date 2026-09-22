@@ -8,6 +8,7 @@ Use these commands from repo root (`vphone-cli`).
 sqlite3 research/kernel_info/kernel_symbols.db ".schema kernel_symbols"
 sqlite3 research/kernel_info/kernel_symbols.db "select count(*) from kernel_symbols;"
 sqlite3 research/kernel_info/kernel_symbols.db "select kernel_name, matched, missed, percent, total from kernel_symbols order by kernel_name;"
+sqlite3 research/kernel_info/kernel_symbols.db "select kernel_name, json_path from kernel_symbols order by kernel_name;"
 ```
 
 ## Resolve JSON Path By Kernel Name

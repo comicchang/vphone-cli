@@ -43,15 +43,13 @@ import re
 import shutil
 import subprocess
 
-from capstone.arm64_const import ARM64_OP_REG, ARM64_OP_IMM
-
 try:
-    from .cfw_asm import asm, _cs
-    from .cfw_dsc_chunks import DSCChunks
+    from .cfw_asm import asm, _cs, _mov_reg_imm
+    from .cfw_dsc_chunks import DSCChunks, _disasm_function
     from .cfw_dsc_codesign import reattest_modified_pages
 except ImportError:  # direct self-test execution
-    from cfw_asm import asm, _cs
-    from cfw_dsc_chunks import DSCChunks
+    from cfw_asm import asm, _cs, _mov_reg_imm
+    from cfw_dsc_chunks import DSCChunks, _disasm_function
     from cfw_dsc_codesign import reattest_modified_pages
 
 
@@ -82,28 +80,6 @@ def _resolve_symbol(dsc_path, image, symbol):
         if m:
             return int(m.group(1), 16)
     raise RuntimeError(f"could not resolve {symbol} in {image}")
-
-
-def _mov_reg_imm(insn):
-    """If `insn` is `mov <reg>, #<imm>`, return (reg_name, imm); else None."""
-    if insn.mnemonic != "mov":
-        return None
-    ops = insn.operands
-    if len(ops) != 2 or ops[0].type != ARM64_OP_REG or ops[1].type != ARM64_OP_IMM:
-        return None
-    return insn.reg_name(ops[0].reg), ops[1].imm
-
-
-def _disasm_function(chunks, vma, max_insns=64):
-    """Disassemble from `vma` up to the first ret/retab (function end) or
-    `max_insns`, whichever comes first."""
-    buf = chunks.bytes_at_vma(vma, max_insns * 4)
-    insns = []
-    for insn in _cs.disasm(buf, vma):
-        insns.append(insn)
-        if insn.mnemonic in ("ret", "retab"):
-            break
-    return insns
 
 
 def _find_swap_size_insn(insns):
@@ -141,7 +117,7 @@ def patch_iomfb_swapend(chunks_dir, *, dsc_path=None, target_size=TARGET_SIZE,
     fn_vma = _resolve_symbol(dsc_path, IOMFB, SWAPEND_SYMBOL)
     print(f"  [.] {SWAPEND_SYMBOL} @ 0x{fn_vma:X}")
 
-    insns = _disasm_function(chunks, fn_vma)
+    insns = _disasm_function(chunks, fn_vma, 64)
     target = _find_swap_size_insn(insns)
     if target is None:
         raise ValueError(

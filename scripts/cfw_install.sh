@@ -14,7 +14,7 @@
 #   - VM restored (make restore) and powered off
 #   - `ipsw` tool installed (brew install blacktop/tap/ipsw)
 #   - `aea` tool available (macOS 12+)
-#   - Python: make setup_venv && source .venv/bin/activate
+#   - Python: make setup_tools && source .venv/bin/activate
 #   - cfw_input/ or resources/cfw_input.tar.zst present
 #
 # Usage: make cfw_install
@@ -60,7 +60,7 @@ die() {
     exit 1
 }
 
-check_prerequisites() {
+require_signing_tools() {
     local missing=()
     command -v ldid &>/dev/null || missing+=("ldid (brew install ldid-procursus)")
     if ((${#missing[@]} > 0)); then
@@ -146,14 +146,14 @@ setup_cfw_input() {
 }
 
 # ── Check prerequisites ────────────────────────────────────────
-check_prereqs() {
+require_firmware_tools() {
     command -v ipsw >/dev/null 2>&1 || die "'ipsw' not found. Install: brew install blacktop/tap/ipsw"
     command -v aea >/dev/null 2>&1 || die "'aea' not found (requires macOS 12+)"
-    [[ -x "$PYTHON3" ]] || die "python3 not found (tried: $PYTHON3). Run: make setup_venv"
+    [[ -x "$PYTHON3" ]] || die "python3 not found (tried: $PYTHON3). Run: make setup_tools"
     echo "[*] Python: $PYTHON3 ($("$PYTHON3" --version 2>&1))"
     local py_err
     py_err="$("$PYTHON3" -c "import capstone, keystone" 2>&1)" || {
-        die "Missing Python deps (using $PYTHON3).\n  Error: ${py_err}\n  Fix:   source ${SCRIPT_DIR:h}/.venv/bin/activate && pip install capstone keystone-engine\n  Or:    make setup_venv"
+        die "Missing Python dependencies (using $PYTHON3).\n  Error: ${py_err}\n  Fix:   source ${SCRIPT_DIR:h}/.venv/bin/activate && pip install capstone keystone-engine\n  Or:    make setup_tools"
     }
 }
 
@@ -188,7 +188,7 @@ mount_vol() {  # mount_vol <slice, e.g. s1> <mountpoint> [opts]
 # ════════════════════════════════════════════════════════════════
 echo "[*] cfw_install.sh — Installing CFW on vphone..."
 
-check_prereqs
+require_firmware_tools
 
 RESTORE_DIR=$(find_restore_dir)
 echo "[+] Restore directory: $RESTORE_DIR"
@@ -196,7 +196,7 @@ echo "[+] Restore directory: $RESTORE_DIR"
 setup_cfw_input
 INPUT_DIR="$VM_DIR/$CFW_INPUT"
 echo "[+] Input resources: $INPUT_DIR"
-check_prerequisites
+require_signing_tools
 
 mkdir -p "$TEMP_DIR"
 
@@ -324,16 +324,12 @@ fi
 # kernel patches that make the userclient accept 27's native 0x6e0 struct.
 IOS_VERSION=$(/usr/bin/plutil -extract ProductVersion raw -o - "$MNT1/System/Library/CoreServices/SystemVersion.plist" 2>/dev/null || true)
 DSC_DIR="$MNT1/System/Cryptexes/OS/System/Library/Caches/com.apple.dyld"
-IOMFB_TARGET=""
 case "$IOS_VERSION" in
-    26.0*|18.*) IOMFB_TARGET=0x560 ;;
-esac
-if [[ -n "$IOMFB_TARGET" ]]; then
-    echo "  [*] Patching IOMobileFramebuffer SwapEnd payload size (iOS $IOS_VERSION -> $IOMFB_TARGET)..."
-    [[ -d "$DSC_DIR" ]] || die "dyld cache dir missing: $DSC_DIR"
-    "$PYTHON3" "$SCRIPT_DIR/patchers/cfw.py" patch-iomfb-swapend "$DSC_DIR" --target-size "$IOMFB_TARGET"
-fi
-case "$IOS_VERSION" in
+    26.0*|18.*)
+        echo "  [*] Patching IOMobileFramebuffer SwapEnd payload size (iOS $IOS_VERSION -> 0x560)..."
+        [[ -d "$DSC_DIR" ]] || die "dyld cache dir missing: $DSC_DIR"
+        "$PYTHON3" "$SCRIPT_DIR/patchers/cfw.py" patch-iomfb-swapend "$DSC_DIR" --target-size 0x560
+        ;;
     27.*)
         echo "  [*] Forcing IOMobileFramebuffer present onto the kern (method-5) path (iOS $IOS_VERSION)..."
         [[ -d "$DSC_DIR" ]] || die "dyld cache dir missing: $DSC_DIR"
@@ -360,7 +356,6 @@ esac
 #    bluetoothd/...). Absent on 26.x/18.x libxpc (self-gating patcher no-ops there).
 # FORCE_DSC_MAXSLIDE=1 (default 0): opt in to zeroing maxSlide on non-27 bases,
 # whose caches fit and would otherwise self-gate to a no-op (--force bypasses that).
-DSC_DIR="$MNT1/System/Cryptexes/OS/System/Library/Caches/com.apple.dyld"
 FORCE_DSC_MAXSLIDE="${FORCE_DSC_MAXSLIDE:-0}"
 case "$IOS_VERSION" in
     27.*)

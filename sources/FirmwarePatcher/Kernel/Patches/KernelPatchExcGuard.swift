@@ -54,11 +54,7 @@ extension KernelPatcher {
         let scanStart = max(0, addOff - 200)
         let scanEnd = min(buffer.count - 4, addOff + 400)
         for off in stride(from: scanStart, to: scanEnd, by: 4) {
-            let insn = buffer.readU32(at: off)
-            guard insn >> 26 == 0b100101 else { continue } // BL
-            let imm26 = insn & 0x03FF_FFFF
-            let signedImm = Int32(bitPattern: imm26 << 6) >> 6
-            let target = off + Int(signedImm) * 4
+            guard let target = decodeBL(at: off) else { continue }
             guard target > 0, target + 40 <= buffer.count else { continue }
             // Check if target starts with PACIBSP
             guard buffer.readU32(at: target) == ARM64.pacibspU32 else { continue }
@@ -75,7 +71,7 @@ extension KernelPatcher {
                     hasTbCheck = true
                 }
                 // After TBZ, look for BL
-                if hasTbCheck, iraw >> 26 == 0b100101 {
+                if hasTbCheck, ARM64Inst.isBL(iraw) {
                     let iimm26 = iraw & 0x03FF_FFFF
                     let isigned = Int32(bitPattern: iimm26 << 6) >> 6
                     let bt = ioff + Int(isigned) * 4

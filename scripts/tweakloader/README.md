@@ -10,9 +10,14 @@ Purpose
 Current behavior
 
 - Enumerates substrate-style `.plist` files in the tweak directory.
-- Supports:
-  - `Filter.Bundles`
-  - `Filter.Executables`
+- Two engagement tiers:
+  - `Filter.Frameworks` tweaks are scheduled in *every* process and
+    `dlopen`ed asynchronously once a matching `*.framework/` image loads
+    (`_dyld_register_func_for_add_image`); no `dlopen` happens in a process
+    where the named framework never appears.
+  - Tweaks filtered by `Filter.Bundles` / `Filter.Executables`, or with no
+    filter, load only in `.app/` processes plus the daemon allowlist in
+    `kVPhoneAllowedDaemonPaths`.
 - `dlopen`s the corresponding `.dylib` when the current process matches.
 
 Logging

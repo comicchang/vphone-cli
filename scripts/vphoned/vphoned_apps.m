@@ -74,12 +74,6 @@ static pid_t pid_for_app(NSString *bundleID) {
       service, sel_registerName("pidForApplication:"), bundleID);
 }
 
-static NSString *state_for_pid(pid_t pid) {
-  if (pid > 0)
-    return @"running";
-  return @"not_running";
-}
-
 // MARK: - Command Handler
 
 NSDictionary *vp_handle_apps_command(NSDictionary *msg) {
@@ -118,7 +112,7 @@ NSDictionary *vp_handle_apps_command(NSDictionary *msg) {
         @"name" : proxy.localizedName ?: @"",
         @"version" : proxy.shortVersionString ?: @"",
         @"type" : isSystem ? @"system" : @"user",
-        @"state" : state_for_pid(pid),
+        @"state" : pid > 0 ? @"running" : @"not_running",
         @"pid" : @(pid > 0 ? pid : 0),
         @"path" : proxy.bundleURL.path ?: @"",
         @"data_container" : proxy.dataContainerURL.path ?: @"",
@@ -142,18 +136,12 @@ NSDictionary *vp_handle_apps_command(NSDictionary *msg) {
     LSApplicationWorkspace *ws = [LSApplicationWorkspace defaultWorkspace];
     NSString *url = msg[@"url"];
 
+    // openURL:withOptions: is private and absent on some iOS versions; fall back to a plain launch.
+    SEL openURLSel = sel_registerName("openURL:withOptions:");
     BOOL ok;
-    if (url) {
-      // Open URL (which will launch the handling app)
-      NSURL *nsurl = [NSURL URLWithString:url];
-      // Try openURL:withOptions: if available
-      SEL openURLSel = sel_registerName("openURL:withOptions:");
-      if ([ws respondsToSelector:openURLSel]) {
-        ok = ((BOOL (*)(id, SEL, id, id))objc_msgSend)(ws, openURLSel, nsurl,
-                                                       nil);
-      } else {
-        ok = [ws openApplicationWithBundleID:bundleID];
-      }
+    if (url && [ws respondsToSelector:openURLSel]) {
+      ok = ((BOOL (*)(id, SEL, id, id))objc_msgSend)(
+          ws, openURLSel, [NSURL URLWithString:url], nil);
     } else {
       ok = [ws openApplicationWithBundleID:bundleID];
     }

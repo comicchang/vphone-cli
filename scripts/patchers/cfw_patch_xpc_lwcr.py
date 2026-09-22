@@ -43,60 +43,21 @@ enforces per-page); the CDHash change is accepted by the JB's always-true AMFI
 cdhash-trust patch.
 """
 
-import os
-import struct
-
 from capstone.arm64_const import ARM64_OP_REG, ARM64_OP_IMM
 
 try:
-    from .cfw_asm import asm, _cs
-    from .cfw_dsc_chunks import DSCChunks
+    from .cfw_asm import asm
+    from .cfw_dsc_chunks import DSCChunks, resolve_local_symbol, _disasm_function
     from .cfw_dsc_codesign import reattest_modified_pages
 except ImportError:  # direct self-test / standalone execution
-    from cfw_asm import asm, _cs
-    from cfw_dsc_chunks import DSCChunks
+    from cfw_asm import asm
+    from cfw_dsc_chunks import DSCChunks, resolve_local_symbol, _disasm_function
     from cfw_dsc_codesign import reattest_modified_pages
 
 
 SYMBOL = "_xpc_token_satisfies_lwcr"
 # Mach-O mangles the leading-underscore source name to a double underscore.
 SYMBOL_CANDIDATES = ("__xpc_token_satisfies_lwcr", SYMBOL)
-
-
-def _resolve_local_symbol(chunks_dir, name):
-    """Resolve a symbol to its vmaddr via the DSC's own `.symbols` local-symbol
-    table (in-image; no repo-exported dumps)."""
-    sym = os.path.join(chunks_dir, "dyld_shared_cache_arm64e.symbols")
-    with open(sym, "rb") as f:
-        hdr = f.read(0x100)
-        if hdr[:15] != b"dyld_v1  arm64e":
-            raise RuntimeError(f"unexpected .symbols magic in {sym}")
-        local_off = struct.unpack_from("<Q", hdr, 72)[0]
-        f.seek(local_off)
-        nlist_off, nlist_cnt, str_off, str_sz, _eo, _ec = struct.unpack("<IIIIII", f.read(24))
-        f.seek(local_off + str_off)
-        strings = f.read(str_sz)
-        f.seek(local_off + nlist_off)
-        nl = f.read(nlist_cnt * 16)
-    want = name.encode()
-    for i in range(nlist_cnt):
-        n_strx, _t, _s, _d, n_value = struct.unpack_from("<IBBHQ", nl, i * 16)
-        if n_strx >= len(strings):
-            continue
-        end = strings.find(b"\x00", n_strx)
-        if strings[n_strx:end] == want:
-            return n_value
-    raise RuntimeError(f"could not resolve {name!r} in .symbols")
-
-
-def _disasm_function(chunks, vma, max_insns=160):
-    buf = chunks.bytes_at_vma(vma, max_insns * 4)
-    insns = []
-    for insn in _cs.disasm(buf, vma):
-        insns.append(insn)
-        if insn.mnemonic in ("ret", "retab"):
-            break
-    return insns
 
 
 def _rn(insn, idx):
@@ -108,7 +69,7 @@ def _rn(insn, idx):
 
 def _find_consistency_check(insns):
     """Locate the LWCR self-consistency idiom and return the (cset, eor, tbz)
-    instructions plus the error_code register.
+    instructions.
 
     Shape:
         cset  wC, ne
@@ -135,17 +96,14 @@ def _find_consistency_check(insns):
         for j in range(i - 1, max(-1, i - 6), -1):
             cand = insns[j]
             if cand.mnemonic == "cset" and _rn(cand, 0) == wC:
-                cops = cand.operands
-                if len(cops) >= 2 and cops[1].type == ARM64_OP_IMM:
-                    # capstone renders the condition as an operand imm code;
-                    # use op_str to confirm it is `ne`.
-                    pass
+                # capstone renders the condition as an operand imm code;
+                # use op_str to confirm it is `ne`.
                 if cand.op_str.strip().endswith("ne"):
                     cset = cand
                 break
         if cset is None:
             continue
-        return cset, eor, tbz, wC
+        return cset, eor, tbz
     return None
 
 
@@ -159,7 +117,7 @@ def patch_xpc_lwcr(chunks_dir, *, dry_run=False):
     resolved_name = None
     for candidate in SYMBOL_CANDIDATES:
         try:
-            fn_vma = _resolve_local_symbol(chunks_dir, candidate)
+            fn_vma = resolve_local_symbol(chunks_dir, candidate)
             resolved_name = candidate
             break
         except RuntimeError:
@@ -169,14 +127,14 @@ def patch_xpc_lwcr(chunks_dir, *, dry_run=False):
         return 0
     print(f"  [.] {resolved_name} @ 0x{fn_vma:X}")
 
-    insns = _disasm_function(chunks, fn_vma)
+    insns = _disasm_function(chunks, fn_vma, 160)
     found = _find_consistency_check(insns)
     if found is None:
         raise ValueError(
             f"{SYMBOL}: LWCR consistency idiom (cset wC,ne; eor wE,w0,wC; "
             f"tbz wE,#0) not found"
         )
-    cset, eor, tbz, wC = found
+    cset, eor, tbz = found
     print(f"      [.] cset @ 0x{cset.address:X}: {cset.mnemonic} {cset.op_str}")
     print(f"      [.] eor  @ 0x{eor.address:X}: {eor.mnemonic} {eor.op_str}")
     print(f"      [.] tbz  @ 0x{tbz.address:X}: {tbz.mnemonic} {tbz.op_str}")

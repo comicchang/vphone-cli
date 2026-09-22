@@ -85,20 +85,6 @@ extension KernelPatcher {
 
     // MARK: - Private Helpers
 
-    /// Decode a BL instruction at `offset` and return its absolute file-offset target,
-    /// or nil if the instruction at that offset is not a BL.
-    ///
-    /// BL encoding: bits [31:26] = 0b100101, imm26 is PC-relative in 4-byte units.
-    private func decodeBL(at offset: Int) -> Int? {
-        guard offset >= 0, offset + 4 <= buffer.count else { return nil }
-        let insn = buffer.readU32(at: offset)
-        guard insn >> 26 == 0b100101 else { return nil }
-        let imm26 = insn & 0x03FF_FFFF
-        // Sign-extend the 26-bit immediate
-        let signedImm = Int32(bitPattern: imm26 << 6) >> 6
-        return offset + Int(signedImm) * 4
-    }
-
     /// Return true when the instruction at `offset` is a conditional branch
     /// that tests w0 or x0 (CBZ, CBNZ, TBZ, TBNZ on register 0).
     private func isCondBranchOnW0(at offset: Int) -> Bool {

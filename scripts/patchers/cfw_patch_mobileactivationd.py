@@ -101,11 +101,6 @@ def _find_via_objc_metadata(data):
     return -1
 
 
-# ══════════════════════════════════════════════════════════════════
-# 5. Mach-O dylib injection (optool replacement)
-# ══════════════════════════════════════════════════════════════════
-
-
 def patch_mobileactivationd(filepath):
     """Dynamically find -[DeviceType should_hactivate] and patch to return YES.
 
@@ -154,9 +149,3 @@ def patch_mobileactivationd(filepath):
     open(filepath, "wb").write(data)
     print(f"  [+] Patched at 0x{imp_foff:X}: mov x0, #1; ret")
     return True
-
-
-# ══════════════════════════════════════════════════════════════════
-# 4. launchd — Jetsam panic bypass
-# ══════════════════════════════════════════════════════════════════
-

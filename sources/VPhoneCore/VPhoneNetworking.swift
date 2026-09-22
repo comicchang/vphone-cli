@@ -18,13 +18,13 @@ extension VPhoneNetworkingError: CustomStringConvertible, LocalizedError {
     public var description: String {
         switch self {
         case .hostOnlyUnsupported:
-            "network mode 'hostOnly' is not supported (Virtualization.framework has no host-only attachment); use nat, bridged, or none"
+            "Network mode 'hostOnly' is not supported. Use nat, bridged, or none."
         case let .bridgeInterfaceNotFound(requested, available):
-            "bridge interface '\(requested)' not found; available: \(available.isEmpty ? "(none)" : available.joined(separator: ", "))"
+            "Bridge interface '\(requested)' not found. Available: \(available.isEmpty ? "none" : available.joined(separator: ", "))."
         case .noBridgeInterfaces:
-            "bridged mode requires a host interface, but none are available for bridging"
+            "Bridged mode needs a host network interface, but none are available. Use nat instead."
         case .bridgeInterfaceWithoutBridgedMode:
-            "--bridge-interface is only valid with --network bridged"
+            "--bridge-interface is only valid with --network bridged."
         }
     }
     public var errorDescription: String? { description }

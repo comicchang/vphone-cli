@@ -199,18 +199,11 @@ def apply_avf_auth_only(chunks_dir, dsc_path, *, dry_run=False, force=False):
     return 1
 
 
-def patch_camera_in_dsc(chunks_dir, dsc_path=None):
-    """Entry point used by `cfw.py patch-camera-dsc`."""
-    if not dsc_path:
-        raise RuntimeError("dsc_path is required (pass --dsc-header on the CLI)")
-    return apply_all_camera_patches(chunks_dir, dsc_path)
-
-
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser(description="Camera DSC patcher")
-    ap.add_argument("chunks_dir", help="directory containing dyld_shared_cache_arm64e.* files")
-    ap.add_argument("dsc_header", help="path to the dyld_shared_cache_arm64e header (no suffix)")
+    ap.add_argument("chunks_dir", help="Directory containing dyld_shared_cache_arm64e.* files")
+    ap.add_argument("dsc_header", help="Path to the dyld_shared_cache_arm64e header (no suffix)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--avf-only", action="store_true",

@@ -45,7 +45,7 @@ extension KernelJBPatcher {
 
         // Shape A: explicit skip branch (26.1 / 26.3). Rewrite `b.ne skip` -> `b skip`.
         if let (brOff, target) = findWriteDowngradeGate(start: funcStart, end: funcEnd) {
-            guard let bBytes = encodeB(from: brOff, to: target) else {
+            guard let bBytes = ARM64Encoder.encodeB(from: brOff, to: target) else {
                 log("  [-] branch rewrite out of range")
                 return false
             }

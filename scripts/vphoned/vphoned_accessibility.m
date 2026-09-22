@@ -16,6 +16,6 @@ NSDictionary *vp_handle_accessibility_command(NSDictionary *msg) {
   id reqId = msg[@"id"];
 
   NSMutableDictionary *r = vp_make_response(@"err", reqId);
-  r[@"msg"] = @"accessibility_tree not yet implemented — requires XPC research";
+  r[@"msg"] = @"The accessibility tree is not available on this guest yet.";
   return r;
 }

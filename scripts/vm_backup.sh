@@ -51,7 +51,7 @@ if [[ ! -d "${VM_DIR}" ]]; then
 fi
 
 if [[ ! -f "${VM_DIR}/config.plist" ]]; then
-    echo "ERROR: ${VM_DIR}/config.plist not found — is this a valid VM directory?"
+    echo "ERROR: ${VM_DIR} is not a valid VM directory (config.plist is missing)."
     exit 1
 fi
 

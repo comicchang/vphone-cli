@@ -23,8 +23,7 @@
  *   No hardcoded image VMAs. All CMCapture addresses are recovered at
  *   runtime via:
  *     - dlsym for exported functions (FigCaptureSourceServerStart,
- *       FigCaptureSourceCreateFromBacking, FigSimpleMutexLock/Unlock,
- *       CMBaseObjectGetVTable).
+ *       FigCaptureSourceCreateFromBacking, CMBaseObjectGetVTable).
  *     - getsectiondata to map CMCapture's __text bounds.
  *     - Structural xref pattern scan of __text to find the
  *       `_sSourceList` / `_sSourceListLock` slots:
@@ -553,18 +552,6 @@ static uintptr_t vcc_find_data_xref(const vcc_image_t *img, unsigned offset) {
   return cands[best].addr;
 }
 
-// Read a pointer-sized value from `addr` and store in `*out`. The
-// slot addresses we feed this function are always in CMCapture's
-// __DATA / __DATA_CONST segments (filtered upstream by
-// vcc_addr_in_data) so the read itself is safe — those pages are
-// mapped read-something into the process. Wrapped in a function for
-// future swap-in of a safer reader if the constraint changes.
-static BOOL vcc_safe_read_ptr(uintptr_t addr, uintptr_t *out) {
-  if (!addr || !out) return NO;
-  *out = *(uintptr_t *)addr;
-  return YES;
-}
-
 // arm64e ISA class-pointer mask, per libobjc's objc-private.h:
 // `#define ISA_MASK 0x00007ffffffffff8ULL`. Bits 0-2 are isa flags
 // (has_assoc / has_cxx_dtor / is_indexed), bits 3-46 are the class
@@ -578,8 +565,11 @@ static BOOL vcc_safe_read_ptr(uintptr_t addr, uintptr_t *out) {
 // instances are always heap allocations from the default malloc zone,
 // so a non-heap value can't be _sSourceList.
 static BOOL vcc_slot_value_is_cfarray(uintptr_t slot_addr) {
-  uintptr_t val_ptr = 0;
-  if (!vcc_safe_read_ptr(slot_addr, &val_ptr)) return NO;
+  if (!slot_addr) return NO;
+  // The slot addresses read here are always in CMCapture's __DATA /
+  // __DATA_CONST segments (filtered upstream by vcc_addr_in_data) so the read
+  // itself is safe — those pages are mapped read-something into the process.
+  uintptr_t val_ptr = *(uintptr_t *)slot_addr;
   if (!val_ptr) return NO;
   if (val_ptr < 0x100000000ULL || val_ptr > 0x800000000000ULL) return NO;
   // malloc_zone_from_ptr returns NULL for non-malloc pointers — this
@@ -669,6 +659,11 @@ static void *vcc_dlsym_fn(const char *name) {
 
 // MARK: - synthetic source construction
 
+// Published as the synthetic source's CaptureDeviceID attribute, and matched
+// against by the -[BWFigCaptureDeviceVendor copyDeviceWithID:…] hook. One
+// declaration: the two must stay identical or the device lookup stops matching.
+static NSString *const kVccSynthDeviceID = @"vphone:vcam:device:0";
+
 static id vcc_build_backing(void) {
   Class backingClass = NSClassFromString(@"FigCaptureSourceBacking");
   if (!backingClass) {
@@ -720,7 +715,7 @@ static id vcc_build_backing(void) {
   // _createDevice:reason:clientPID:figCaptureDevice:] sends isEqualToString:
   // to it; an NSNumber raises "unrecognized selector". Use a unique opaque
   // string outside whatever pattern Apple uses for hardware cameras.
-  if (k_cdid) attrs[(__bridge NSString *)k_cdid] = @"vphone:vcam:device:0";
+  if (k_cdid) attrs[(__bridge NSString *)k_cdid] = kVccSynthDeviceID;
 
   // After hooking _FigCaptureSourceGetAttribute via lldb we observed
   // Camera.app's graph builder also queries these 5 boolean / scheme keys
@@ -729,6 +724,10 @@ static id vcc_build_backing(void) {
   //   SmartCameraSupported, StillImageNoiseReductionAndFusionScheme,
   //   MidFrameSynchronizationNotSupported, TimeOfFlightAssistedAutoFocusSupported,
   //   StructuredLightAssistedAutoFocusSupported
+  // Resolve the canonical CFString constant by symbol name when possible (some
+  // are defined in a private framework not in the dyld exports trie, so we fall
+  // back to the plain string after the Fig naming convention:
+  // kFigSupportedFormat_VideoMinFrameRate → "VideoMinFrameRate").
   NSString *(^figKeyN)(const char *) = ^NSString *(const char *symname) {
     void **slot = dlsym(RTLD_DEFAULT, symname);
     if (slot && *slot) return (__bridge NSString *)(CFStringRef)(*slot);
@@ -755,18 +754,6 @@ static id vcc_build_backing(void) {
   NSArray *formats = @[];
   Class fmtClass = NSClassFromString(@"FigCaptureSourceVideoFormat");
   if (fmtClass) {
-    // Resolve the canonical CFString constants by name when possible (some
-    // are defined in a private framework not in the dyld exports trie, so
-    // we fall back to the plain string after the Fig naming convention).
-    NSString *(^figKey)(const char *) = ^NSString *(const char *symname) {
-      void **slot = dlsym(RTLD_DEFAULT, symname);
-      if (slot && *slot) return (__bridge NSString *)(CFStringRef)(*slot);
-      // Convention: kFigSupportedFormat_VideoMinFrameRate → "VideoMinFrameRate"
-      const char *cs = symname;
-      const char *u = strrchr(cs, '_');
-      if (u) cs = u + 1;
-      return [NSString stringWithUTF8String:cs];
-    };
     // Publish TWO formats: one BGRA, one 420v at the same 1280x720
     // dimensions. Clients that filter on BGRA (e.g. Loupe / Magnifier)
     // see one; clients that pick the canonical ISP pixel format (AVF's
@@ -774,8 +761,8 @@ static id vcc_build_backing(void) {
     // pick the 420v one. Same preset list + frame-rate range on both.
     NSDictionary *commonKeys = @{
       @"DefaultActiveFormat" : @NO,  // overridden on the active one
-      figKey("kFigSupportedFormat_VideoMinFrameRate") : @(1),
-      figKey("kFigSupportedFormat_VideoMaxFrameRate") : @(60),
+      figKeyN("kFigSupportedFormat_VideoMinFrameRate") : @(1),
+      figKeyN("kFigSupportedFormat_VideoMaxFrameRate") : @(60),
       // -[FigCaptureSourceVideoFormat maxZoomFactor] takes a fast path that
       // returns 1.0 for raw bayer formats; for BGRA (our case) it falls to
       // a fancy path that reads stabilizationTypeOverrideForCinematic / -ForStandard
@@ -812,12 +799,11 @@ static id vcc_build_backing(void) {
       @"Width"           : @1280,
       @"Height"          : @720,
       @"PixelFormatType" : @(0x34323076u),  // '420v'
-      // Mark 420v as default — it's what AVF's preset matcher prefers
-      // when picking _setActiveFormat: under standard presets.
-      @"DefaultActiveFormat" : @YES,
     } mutableCopy];
     [y420v_fmt addEntriesFromDictionary:commonKeys];
-    y420v_fmt[@"DefaultActiveFormat"] = @YES;  // re-set after the merge
+    // Mark 420v as default — it's what AVF's preset matcher prefers when
+    // picking _setActiveFormat: under standard presets.
+    y420v_fmt[@"DefaultActiveFormat"] = @YES;
 
     SEL fmtInitSel = NSSelectorFromString(
         @"initWithFigCaptureStreamFormatDictionary:");
@@ -1166,7 +1152,7 @@ static void vcc_install_synthetic(void) {
       for (unsigned i = 0; i < ng; i++) {
         if (vcc_slot_value_is_cfarray(globals[i])) {
           uintptr_t val = 0;
-          vcc_safe_read_ptr(globals[i], &val);
+          if (globals[i]) val = *(uintptr_t *)globals[i];
           vcc_log(@"  _sSourceList chosen (init-store #%u, CFArray @ 0x%lx) at 0x%lx",
                   i, (unsigned long)val, (unsigned long)globals[i]);
           sSourceListAddr = globals[i];
@@ -1195,11 +1181,9 @@ static void vcc_install_synthetic(void) {
   // _sSourceList during this init window.
   CFMutableArrayRef *sSourceListSlot =
       (CFMutableArrayRef *)sSourceListAddr;
-  void **sSourceListLockSlot = NULL;
-  void *lockPtr = NULL;
   vcc_log(@"  lock acquisition skipped (single-threaded init window)");
-  vcc_log(@"  _sSourceList slot @ %p (list=%p), _sSourceListLock slot @ %p (lock=%p)",
-          sSourceListSlot, *sSourceListSlot, sSourceListLockSlot, lockPtr);
+  vcc_log(@"  _sSourceList slot @ %p (list=%p)", sSourceListSlot,
+          *sSourceListSlot);
 
   // Resolve FigCaptureSourceCreateFromBacking. Marked `external` in
   // CMCapture's symtab — should be in the dyld exports trie.
@@ -1209,15 +1193,6 @@ static void vcc_install_synthetic(void) {
     return;
   }
   VCC_CreateFn create_fn = (VCC_CreateFn)create_p;
-
-  // FigSimpleMutex helpers — best-effort: we still call them when lockPtr
-  // is non-null (the daemon's mutex is alive), but skip when we couldn't
-  // safely resolve the lock global. Resolution failure of the lock is
-  // not fatal anymore — we operate as a single writer during init.
-  void (*FigSimpleMutexLock)(void *) =
-      (void (*)(void *))dlsym(RTLD_DEFAULT, "FigSimpleMutexLock");
-  void (*FigSimpleMutexUnlock)(void *) =
-      (void (*)(void *))dlsym(RTLD_DEFAULT, "FigSimpleMutexUnlock");
 
   id backing = vcc_build_backing();
   if (!backing) return;
@@ -1233,7 +1208,6 @@ static void vcc_install_synthetic(void) {
   // the daemon's stock (bring-up / hardware) sources use for keys like
   // DeviceType, SmartCameraSupported, Streams, Ports, etc.
   {
-    if (lockPtr && FigSimpleMutexLock) FigSimpleMutexLock(lockPtr);
     CFMutableArrayRef listSnap = *sSourceListSlot;
     CFIndex cnt = listSnap ? CFArrayGetCount(listSnap) : 0;
     vcc_log(@"  --- existing sources (count=%ld) ---", (long)cnt);
@@ -1268,20 +1242,16 @@ static void vcc_install_synthetic(void) {
       vcc_log(@"      attrs ret=%d -> %@", e, (__bridge id)out);
       if (out) CFRelease(out);
     }
-    if (lockPtr && FigSimpleMutexUnlock) FigSimpleMutexUnlock(lockPtr);
   }
 
-  if (lockPtr && FigSimpleMutexLock) FigSimpleMutexLock(lockPtr);
   CFMutableArrayRef list = *sSourceListSlot;
   if (!list) {
     vcc_log(@"  _sSourceList is NULL (server init not yet allocated it) — abort");
-    if (lockPtr && FigSimpleMutexUnlock) FigSimpleMutexUnlock(lockPtr);
     return;
   }
   CFIndex preCount = CFArrayGetCount(list);
   CFArrayAppendValue(list, source);
   CFIndex postCount = CFArrayGetCount(list);
-  if (lockPtr && FigSimpleMutexUnlock) FigSimpleMutexUnlock(lockPtr);
   vcc_log(@"  appended source — list %ld -> %ld", (long)preCount,
           (long)postCount);
 
@@ -1323,9 +1293,7 @@ static void vcc_install_synthetic(void) {
 //
 // This hook is observation-only; it does not deliver frames yet.
 
-static SEL  vcc_add_endpoint_sel = NULL;
-static Method vcc_add_endpoint_method = NULL;
-static IMP    vcc_add_endpoint_orig_imp = NULL;
+static IMP vcc_add_endpoint_orig_imp = NULL;
 
 typedef BOOL (*VccAddEndpointFn)(id, SEL,
                                   id /*endpoint*/,
@@ -1364,18 +1332,16 @@ static void vcc_install_endpoint_hook(void) {
     vcc_log(@"  endpoint hook: class missing");
     return;
   }
-  vcc_add_endpoint_sel = NSSelectorFromString(
+  SEL sel = NSSelectorFromString(
       @"addEndpoint:endpointUniqueID:endpointType:endpointPID:"
       @"endpointProxyPID:endpointAuditToken:endpointProxyAuditToken:"
       @"endpointCameraUniqueID:");
-  vcc_add_endpoint_method = class_getClassMethod(cls,
-                                                  vcc_add_endpoint_sel);
-  if (!vcc_add_endpoint_method) {
+  Method m = class_getClassMethod(cls, sel);
+  if (!m) {
     vcc_log(@"  endpoint hook: class_getClassMethod returned NULL");
     return;
   }
-  vcc_add_endpoint_orig_imp = method_setImplementation(
-      vcc_add_endpoint_method, (IMP)vcc_add_endpoint_hook);
+  vcc_add_endpoint_orig_imp = method_setImplementation(m, (IMP)vcc_add_endpoint_hook);
   vcc_log(@"  endpoint hook installed (orig=%p)",
           vcc_add_endpoint_orig_imp);
 }
@@ -1460,11 +1426,7 @@ static void vcc_dump_sink_node_methods(void) {
 //   2) See whether ANY renderSampleBuffer:forInput: calls fire — if they do,
 //      we know the pipeline runs and we just need to substitute the
 //      sample-buffer contents.
-//   3) Capture sink instance + input identifier on first real call so we can
-//      drive them ourselves on a timer if the source-side stays starved.
 
-static NSMutableArray *vcc_captured_sinks = nil;  // weak refs via NSValue
-static NSValue *vcc_first_input_ref = nil;
 static unsigned long vcc_render_call_count = 0;
 static unsigned long vcc_iqsn_init_count = 0;
 static unsigned long vcc_rqsn_init_count = 0;
@@ -1497,11 +1459,6 @@ static id vcc_iqsn_init_hook(
   vcc_iqsn_init_count++;
   vcc_log(@"  [IQSN init] -> %p sinkID=%@ count=%lu",
           ret, sinkID, vcc_iqsn_init_count);
-  if (ret) {
-    if (!vcc_captured_sinks)
-      vcc_captured_sinks = [NSMutableArray array];
-    [vcc_captured_sinks addObject:[NSValue valueWithPointer:(__bridge void *)ret]];
-  }
   return ret;
 }
 
@@ -1515,11 +1472,6 @@ static id vcc_rqsn_init_hook(
   vcc_rqsn_init_count++;
   vcc_log(@"  [RQSN init] -> %p mediaType=0x%x sinkID=%@ count=%lu",
           ret, mediaType, sinkID, vcc_rqsn_init_count);
-  if (ret) {
-    if (!vcc_captured_sinks)
-      vcc_captured_sinks = [NSMutableArray array];
-    [vcc_captured_sinks addObject:[NSValue valueWithPointer:(__bridge void *)ret]];
-  }
   return ret;
 }
 
@@ -1530,9 +1482,6 @@ static void vcc_iqsn_render_hook(
     vcc_log(@"  [IQSN render] self=%p cmsb=%p input=%p inputCls=%@ #%lu",
             self, cmsb, input, NSStringFromClass([input class]),
             vcc_render_call_count);
-    if (input && !vcc_first_input_ref) {
-      vcc_first_input_ref = [NSValue valueWithPointer:(__bridge void *)input];
-    }
   }
   VccRenderFn orig = (VccRenderFn)vcc_iqsn_render_orig;
   orig(self, _cmd, cmsb, input);
@@ -1580,8 +1529,7 @@ static IMP vcc_copy_device_orig = NULL;
 typedef id (*VccCopyDeviceFn)(id self, SEL _cmd, NSString *deviceID,
                               int clientPID, BOOL informClient, int *err);
 
-static NSString *const kVccSynthDeviceID = @"vphone:vcam:device:0";
-static Class       vcc_synth_device_class = Nil;
+static Class vcc_synth_device_class = Nil;
 
 // Forward decls.
 static void vcc_init_synth_device_class(void);
@@ -1654,13 +1602,11 @@ static ptrdiff_t vcc_resolve_ivar(Class cls, const char *what,
   return -1;
 }
 
-// Cached CF constants — resolved lazily from CMCaptureCore / CMCaptureDevice.
-static CFStringRef vcc_cf_kClock              = NULL;
-static CFStringRef vcc_cf_kUnitInfo           = NULL;
+// Cached CF constant — resolved lazily from CMCaptureCore / CMCaptureDevice.
+static CFStringRef vcc_cf_kClock = NULL;
 
 static void vcc_load_synth_cfconsts(void) {
   if (!vcc_cf_kClock) vcc_cf_kClock = vcc_cfconst("kFigCaptureDeviceProperty_Clock");
-  if (!vcc_cf_kUnitInfo) vcc_cf_kUnitInfo = vcc_cfconst("kFigCaptureDeviceProperty_UnitInfo");
 }
 
 // Returns a CMClockRef (CoreMedia host time clock). Lifetime tied to the
@@ -2042,15 +1988,7 @@ static void vcc_install_copy_streams_hook(void) {
   if (!cls) return;
   SEL sel = NSSelectorFromString(
       @"copyStreamsWithUniqueIDs:forDevice:deviceClientPriority:error:");
-  Method m = class_getInstanceMethod(cls, sel);
-  if (!m) {
-    vcc_log(@"  copyStreams hook: selector missing");
-    return;
-  }
-  vcc_copy_streams_orig = method_setImplementation(m,
-                                                    (IMP)vcc_copy_streams_hook);
-  vcc_log(@"  swizzled -[BWFigCaptureDeviceVendor copyStreamsWithUniqueIDs:...] orig=%p",
-          vcc_copy_streams_orig);
+  vcc_swizzle_method(cls, sel, (IMP)vcc_copy_streams_hook, &vcc_copy_streams_orig);
 }
 
 static IMP vcc_copy_streams_from_orig = NULL;
@@ -2089,15 +2027,8 @@ static void vcc_install_copy_streams_from_hook(void) {
   if (!cls) return;
   SEL sel = NSSelectorFromString(
       @"copyStreamsFromDevice:positions:deviceTypes:deviceClientPriority:allowsStreamControlLoss:error:");
-  Method m = class_getInstanceMethod(cls, sel);
-  if (!m) {
-    vcc_log(@"  copyStreamsFromDevice hook: selector missing");
-    return;
-  }
-  vcc_copy_streams_from_orig = method_setImplementation(m,
-                                                         (IMP)vcc_copy_streams_from_hook);
-  vcc_log(@"  swizzled -[BWFigCaptureDeviceVendor copyStreamsFromDevice:...] orig=%p",
-          vcc_copy_streams_from_orig);
+  vcc_swizzle_method(cls, sel, (IMP)vcc_copy_streams_from_hook,
+                     &vcc_copy_streams_from_orig);
 }
 
 __attribute__((ns_returns_retained))
@@ -2141,15 +2072,7 @@ static void vcc_install_device_vendor_hook(void) {
   }
   SEL sel = NSSelectorFromString(
       @"copyDeviceWithID:forClient:informClientWhenDeviceAvailableAgain:error:");
-  Method m = class_getInstanceMethod(cls, sel);
-  if (!m) {
-    vcc_log(@"  device-vendor hook: selector missing");
-    return;
-  }
-  vcc_copy_device_orig = method_setImplementation(m,
-                                                    (IMP)vcc_copy_device_hook);
-  vcc_log(@"  swizzled -[BWFigCaptureDeviceVendor copyDeviceWithID:...] orig=%p",
-          vcc_copy_device_orig);
+  vcc_swizzle_method(cls, sel, (IMP)vcc_copy_device_hook, &vcc_copy_device_orig);
 }
 
 // MARK: - viewfinder stream injection
@@ -2169,9 +2092,6 @@ typedef struct vcc_latest_frame_s {
   uint32_t width;
   uint32_t height;
   uint32_t bytes_per_row;
-  uint32_t pixel_format;
-  uint64_t timestamp_ns;
-  uint64_t frame_index;
   uint8_t *pixels;
   size_t   pixels_capacity;
   size_t   pixels_length;
@@ -2836,7 +2756,6 @@ static void vcc_install_csp_requires_master_clock_hook(void) {
 // sink and delivers our shm frame through it.
 
 static id vcc_synth_still_sink = nil;
-static dispatch_queue_t vcc_still_inject_q = NULL;
 
 static void vcc_construct_still_sink(void) {
   Class cls = NSClassFromString(@"BWStillImageSampleBufferSinkNode");
@@ -2886,9 +2805,6 @@ static void vcc_construct_still_sink(void) {
   } @catch (NSException *e) {
     vcc_log(@"  manual still-sink: probe exception: %@", e);
   }
-
-  vcc_still_inject_q =
-      dispatch_queue_create("com.vphone.vcam.still-inject", DISPATCH_QUEUE_SERIAL);
 
   // Synthesize a sampleBufferAvailableHandler block and set it on our sink.
   //
@@ -3128,7 +3044,6 @@ static int vcc_shm_read_latest(void) {
   uint32_t h   = hdr->height;
   uint32_t bpr = hdr->bytes_per_row;
   uint32_t fmt = hdr->pixel_format;
-  uint64_t ts  = hdr->timestamp_ns;
   uint64_t idx = hdr->frame_index;
   uint32_t pix_len = hdr->pixels_length;
 
@@ -3149,9 +3064,6 @@ static int vcc_shm_read_latest(void) {
     vcc_latest_frame.width = w;
     vcc_latest_frame.height = h;
     vcc_latest_frame.bytes_per_row = bpr;
-    vcc_latest_frame.pixel_format = fmt;
-    vcc_latest_frame.timestamp_ns = ts;
-    vcc_latest_frame.frame_index = idx;
   }
   pthread_mutex_unlock(&vcc_latest_frame.lock);
 

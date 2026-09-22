@@ -278,26 +278,22 @@ static int vp_sign_binary(
     NSString **errorOutput
 ) {
     if (ldidPath.length == 0) {
-        if (errorOutput) *errorOutput = @"ldid not found in guest or uploaded payload";
+        if (errorOutput) *errorOutput = @"The code-signing tool (ldid) is missing on the guest.";
         return ENOENT;
     }
 
     NSString *entitlementsPath = nil;
     NSMutableArray<NSString *> *args = [NSMutableArray array];
-    if (entitlements) {
-        NSData *entitlementsXML = [NSPropertyListSerialization
-            dataWithPropertyList:entitlements
-            format:NSPropertyListXMLFormat_v1_0
-            options:0
-            error:nil];
-        if (entitlementsXML) {
-            entitlementsPath = [[NSTemporaryDirectory() stringByAppendingPathComponent:[NSUUID UUID].UUIDString]
-                stringByAppendingPathExtension:@"plist"];
-            [entitlementsXML writeToFile:entitlementsPath atomically:NO];
-            [args addObject:[@"-S" stringByAppendingString:entitlementsPath]];
-        } else {
-            [args addObject:@"-S"];
-        }
+    NSData *entitlementsXML = entitlements ? [NSPropertyListSerialization
+        dataWithPropertyList:entitlements
+        format:NSPropertyListXMLFormat_v1_0
+        options:0
+        error:nil] : nil;
+    if (entitlementsXML) {
+        entitlementsPath = [[NSTemporaryDirectory() stringByAppendingPathComponent:[NSUUID UUID].UUIDString]
+            stringByAppendingPathExtension:@"plist"];
+        [entitlementsXML writeToFile:entitlementsPath atomically:NO];
+        [args addObject:[@"-S" stringByAppendingString:entitlementsPath]];
     } else {
         [args addObject:@"-S"];
     }
@@ -320,13 +316,13 @@ static int vp_sign_binary(
 
 static int vp_sign_app(NSString *appPath, NSString *certPath, NSString *ldidPath, NSString **errorOutput) {
     if (!vp_info_dictionary_for_app_path(appPath)) {
-        if (errorOutput) *errorOutput = @"missing app Info.plist";
+        if (errorOutput) *errorOutput = @"The app package is incomplete and cannot be signed.";
         return 172;
     }
 
     NSString *mainExecutablePath = vp_app_main_executable_path_for_app_path(appPath);
     if (mainExecutablePath.length == 0 || ![[NSFileManager defaultManager] fileExistsAtPath:mainExecutablePath]) {
-        if (errorOutput) *errorOutput = @"missing main executable";
+        if (errorOutput) *errorOutput = @"The app package is missing its program and cannot be signed.";
         return 174;
     }
 
@@ -473,6 +469,65 @@ static NSSet<NSString *> *vp_immutable_app_bundle_identifiers(void) {
     return systemAppIdentifiers.copy;
 }
 
+/// Build the LaunchServices registration dictionary shared by an app bundle and its PlugIns.
+/// The caller adds the keys that differ: ApplicationType, Path, and the app- or plugin-only keys.
+static NSMutableDictionary *vp_registration_dictionary(
+    NSString *bundleID,
+    NSString *executablePath,
+    Class containerClass
+) {
+    NSDictionary *entitlements = vp_dump_entitlements_from_binary_at_path(executablePath);
+
+    NSString *dataContainerID = bundleID;
+    BOOL containerized = vp_construct_containerization_for_entitlements(entitlements ?: @{}, &dataContainerID);
+
+    MCMContainer *dataContainer = [containerClass
+        containerWithIdentifier:dataContainerID
+        createIfNecessary:YES
+        existed:nil
+        error:nil];
+    NSString *containerPath = dataContainer.url.path;
+
+    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+    if (entitlements) {
+        dict[@"Entitlements"] = entitlements;
+    }
+    dict[@"CFBundleIdentifier"] = bundleID;
+    dict[@"CodeInfoIdentifier"] = bundleID;
+    dict[@"CompatibilityState"] = @0;
+    dict[@"IsContainerized"] = @(containerized);
+    if (containerPath.length > 0) {
+        dict[@"Container"] = containerPath;
+        dict[@"EnvironmentVariables"] =
+            vp_construct_environment_variables_for_container_path(containerPath, containerized);
+    }
+    dict[@"SignerOrganization"] = @"Apple Inc.";
+    dict[@"SignatureVersion"] = @132352;
+    dict[@"SignerIdentity"] = @"Apple iPhone OS Application Signing";
+
+    NSString *teamIdentifier = vp_construct_team_identifier_for_entitlements(entitlements ?: @{});
+    if (teamIdentifier.length > 0) {
+        dict[@"TeamIdentifier"] = teamIdentifier;
+    }
+
+    NSDictionary *appGroupContainers = vp_construct_groups_containers_for_entitlements(entitlements, NO);
+    NSDictionary *systemGroupContainers = vp_construct_groups_containers_for_entitlements(entitlements, YES);
+    NSMutableDictionary *groupContainers = [NSMutableDictionary dictionary];
+    [groupContainers addEntriesFromDictionary:appGroupContainers];
+    [groupContainers addEntriesFromDictionary:systemGroupContainers];
+    if (groupContainers.count > 0) {
+        if (appGroupContainers.count > 0) {
+            dict[@"HasAppGroupContainers"] = @YES;
+        }
+        if (systemGroupContainers.count > 0) {
+            dict[@"HasSystemGroupContainers"] = @YES;
+        }
+        dict[@"GroupContainers"] = groupContainers.copy;
+    }
+
+    return dict;
+}
+
 static BOOL vp_register_path(NSString *path, BOOL unregister, BOOL forceSystem) {
     if (path.length == 0) return NO;
 
@@ -492,69 +547,22 @@ static BOOL vp_register_path(NSString *path, BOOL unregister, BOOL forceSystem) 
 
     if (!unregister) {
         NSString *appExecutablePath = [path stringByAppendingPathComponent:appInfoPlist[@"CFBundleExecutable"]];
-        NSDictionary *entitlements = vp_dump_entitlements_from_binary_at_path(appExecutablePath);
-
-        NSString *appDataContainerID = appBundleID;
-        BOOL appContainerized = vp_construct_containerization_for_entitlements(entitlements ?: @{}, &appDataContainerID);
-
-        Class appDataContainerClass = NSClassFromString(@"MCMAppDataContainer");
-        MCMContainer *appDataContainer = [appDataContainerClass
-            containerWithIdentifier:appDataContainerID
-            createIfNecessary:YES
-            existed:nil
-            error:nil];
-        NSString *containerPath = appDataContainer.url.path;
+        NSMutableDictionary *dictToRegister = vp_registration_dictionary(
+            appBundleID, appExecutablePath, NSClassFromString(@"MCMAppDataContainer"));
 
         BOOL isRemovableSystemApp = [[NSFileManager defaultManager]
             fileExistsAtPath:[@"/System/Library/AppSignatures" stringByAppendingPathComponent:appBundleID]];
         BOOL registerAsUser = [path hasPrefix:@"/var/containers"] && !isRemovableSystemApp && !forceSystem;
 
-        NSMutableDictionary *dictToRegister = [NSMutableDictionary dictionary];
-        if (entitlements) {
-            dictToRegister[@"Entitlements"] = entitlements;
-        }
-
         dictToRegister[@"ApplicationType"] = registerAsUser ? @"User" : @"System";
-        dictToRegister[@"CFBundleIdentifier"] = appBundleID;
-        dictToRegister[@"CodeInfoIdentifier"] = appBundleID;
-        dictToRegister[@"CompatibilityState"] = @0;
-        dictToRegister[@"IsContainerized"] = @(appContainerized);
-        if (containerPath.length > 0) {
-            dictToRegister[@"Container"] = containerPath;
-            dictToRegister[@"EnvironmentVariables"] =
-                vp_construct_environment_variables_for_container_path(containerPath, appContainerized);
-        }
         dictToRegister[@"IsDeletable"] = @YES;
         dictToRegister[@"Path"] = path;
-        dictToRegister[@"SignerOrganization"] = @"Apple Inc.";
-        dictToRegister[@"SignatureVersion"] = @132352;
-        dictToRegister[@"SignerIdentity"] = @"Apple iPhone OS Application Signing";
         dictToRegister[@"IsAdHocSigned"] = @YES;
         dictToRegister[@"LSInstallType"] = @1;
         dictToRegister[@"HasMIDBasedSINF"] = @0;
         dictToRegister[@"MissingSINF"] = @0;
         dictToRegister[@"FamilyID"] = @0;
         dictToRegister[@"IsOnDemandInstallCapable"] = @0;
-
-        NSString *teamIdentifier = vp_construct_team_identifier_for_entitlements(entitlements ?: @{});
-        if (teamIdentifier.length > 0) {
-            dictToRegister[@"TeamIdentifier"] = teamIdentifier;
-        }
-
-        NSDictionary *appGroupContainers = vp_construct_groups_containers_for_entitlements(entitlements, NO);
-        NSDictionary *systemGroupContainers = vp_construct_groups_containers_for_entitlements(entitlements, YES);
-        NSMutableDictionary *groupContainers = [NSMutableDictionary dictionary];
-        [groupContainers addEntriesFromDictionary:appGroupContainers];
-        [groupContainers addEntriesFromDictionary:systemGroupContainers];
-        if (groupContainers.count > 0) {
-            if (appGroupContainers.count > 0) {
-                dictToRegister[@"HasAppGroupContainers"] = @YES;
-            }
-            if (systemGroupContainers.count > 0) {
-                dictToRegister[@"HasSystemGroupContainers"] = @YES;
-            }
-            dictToRegister[@"GroupContainers"] = groupContainers.copy;
-        }
 
         NSString *pluginsPath = [path stringByAppendingPathComponent:@"PlugIns"];
         NSArray<NSString *> *plugins = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:pluginsPath error:nil];
@@ -570,60 +578,11 @@ static BOOL vp_register_path(NSString *path, BOOL unregister, BOOL forceSystem) 
             }
             NSString *pluginExecutablePath = [pluginPath stringByAppendingPathComponent:pluginExecutable];
 
-            NSDictionary *pluginEntitlements = vp_dump_entitlements_from_binary_at_path(pluginExecutablePath);
-            NSString *pluginDataContainerID = pluginBundleID;
-            BOOL pluginContainerized =
-                vp_construct_containerization_for_entitlements(pluginEntitlements ?: @{}, &pluginDataContainerID);
-
-            Class pluginContainerClass = NSClassFromString(@"MCMPluginKitPluginDataContainer");
-            MCMContainer *pluginContainer = [pluginContainerClass
-                containerWithIdentifier:pluginDataContainerID
-                createIfNecessary:YES
-                existed:nil
-                error:nil];
-            NSString *pluginContainerPath = pluginContainer.url.path;
-
-            NSMutableDictionary *pluginDict = [NSMutableDictionary dictionary];
-            if (pluginEntitlements) {
-                pluginDict[@"Entitlements"] = pluginEntitlements;
-            }
+            NSMutableDictionary *pluginDict = vp_registration_dictionary(
+                pluginBundleID, pluginExecutablePath, NSClassFromString(@"MCMPluginKitPluginDataContainer"));
             pluginDict[@"ApplicationType"] = @"PluginKitPlugin";
-            pluginDict[@"CFBundleIdentifier"] = pluginBundleID;
-            pluginDict[@"CodeInfoIdentifier"] = pluginBundleID;
-            pluginDict[@"CompatibilityState"] = @0;
-            pluginDict[@"IsContainerized"] = @(pluginContainerized);
-            if (pluginContainerPath.length > 0) {
-                pluginDict[@"Container"] = pluginContainerPath;
-                pluginDict[@"EnvironmentVariables"] =
-                    vp_construct_environment_variables_for_container_path(pluginContainerPath, pluginContainerized);
-            }
             pluginDict[@"Path"] = pluginPath;
             pluginDict[@"PluginOwnerBundleID"] = appBundleID;
-            pluginDict[@"SignerOrganization"] = @"Apple Inc.";
-            pluginDict[@"SignatureVersion"] = @132352;
-            pluginDict[@"SignerIdentity"] = @"Apple iPhone OS Application Signing";
-
-            NSString *pluginTeamIdentifier = vp_construct_team_identifier_for_entitlements(pluginEntitlements ?: @{});
-            if (pluginTeamIdentifier.length > 0) {
-                pluginDict[@"TeamIdentifier"] = pluginTeamIdentifier;
-            }
-
-            NSDictionary *pluginAppGroupContainers =
-                vp_construct_groups_containers_for_entitlements(pluginEntitlements, NO);
-            NSDictionary *pluginSystemGroupContainers =
-                vp_construct_groups_containers_for_entitlements(pluginEntitlements, YES);
-            NSMutableDictionary *pluginGroupContainers = [NSMutableDictionary dictionary];
-            [pluginGroupContainers addEntriesFromDictionary:pluginAppGroupContainers];
-            [pluginGroupContainers addEntriesFromDictionary:pluginSystemGroupContainers];
-            if (pluginGroupContainers.count > 0) {
-                if (pluginAppGroupContainers.count > 0) {
-                    pluginDict[@"HasAppGroupContainers"] = @YES;
-                }
-                if (pluginSystemGroupContainers.count > 0) {
-                    pluginDict[@"HasSystemGroupContainers"] = @YES;
-                }
-                pluginDict[@"GroupContainers"] = pluginGroupContainers.copy;
-            }
 
             bundlePlugins[pluginBundleID] = pluginDict;
         }
@@ -684,18 +643,18 @@ static int vp_install_app_from_package(
     NSString *appPayloadPath = [appPackagePath stringByAppendingPathComponent:@"Payload"];
     NSString *appBundleToInstallPath = vp_find_app_path_in_bundle_path(appPayloadPath);
     if (appBundleToInstallPath.length == 0) {
-        if (detailOutput) *detailOutput = @"IPA does not contain an .app payload";
+        if (detailOutput) *detailOutput = @"The app package does not contain an app.";
         return 167;
     }
 
     NSString *appId = vp_app_id_for_app_path(appBundleToInstallPath);
     if (appId.length == 0) {
-        if (detailOutput) *detailOutput = @"missing CFBundleIdentifier";
+        if (detailOutput) *detailOutput = @"The app package has no bundle identifier.";
         return 176;
     }
 
     if ([vp_immutable_app_bundle_identifiers() containsObject:appId.lowercaseString]) {
-        if (detailOutput) *detailOutput = @"cannot overwrite immutable system app";
+        if (detailOutput) *detailOutput = @"This app is part of iOS and cannot be replaced.";
         return 179;
     }
 
@@ -708,7 +667,7 @@ static int vp_install_app_from_package(
 
     Class appContainerClass = NSClassFromString(@"MCMAppContainer");
     if (!appContainerClass) {
-        if (detailOutput) *detailOutput = @"MCMAppContainer unavailable";
+        if (detailOutput) *detailOutput = @"The app container service is unavailable.";
         return 170;
     }
 
@@ -717,7 +676,7 @@ static int vp_install_app_from_package(
         NSURL *bundleContainerURL = appContainer.url;
         NSURL *appBundleURL = vp_find_app_url_in_bundle_url(bundleContainerURL);
         if (appBundleURL.path.length > 0 && !vp_container_has_known_marker(bundleContainerURL.path)) {
-            if (detailOutput) *detailOutput = @"a non-managed app with the same bundle identifier is already installed";
+            if (detailOutput) *detailOutput = @"An app with the same bundle identifier is already installed. Remove it and try again.";
             return 171;
         }
         if (appBundleURL.path.length > 0) {
@@ -727,7 +686,7 @@ static int vp_install_app_from_package(
         NSError *mcmError = nil;
         appContainer = [appContainerClass containerWithIdentifier:appId createIfNecessary:YES existed:nil error:&mcmError];
         if (!appContainer || mcmError) {
-            if (detailOutput) *detailOutput = mcmError.localizedDescription ?: @"failed to create app container";
+            if (detailOutput) *detailOutput = mcmError.localizedDescription ?: @"Unable to prepare storage for the app.";
             return 170;
         }
     }
@@ -735,24 +694,24 @@ static int vp_install_app_from_package(
     NSString *newAppBundlePath = [appContainer.url.path stringByAppendingPathComponent:appBundleToInstallPath.lastPathComponent];
     NSError *copyError = nil;
     if (![[NSFileManager defaultManager] copyItemAtPath:appBundleToInstallPath toPath:newAppBundlePath error:&copyError]) {
-        if (detailOutput) *detailOutput = copyError.localizedDescription ?: @"failed to copy app bundle";
+        if (detailOutput) *detailOutput = copyError.localizedDescription ?: @"Unable to copy the app onto the guest.";
         return 178;
     }
 
     if (!vp_mark_container_as_managed(appContainer.url.path)) {
-        if (detailOutput) *detailOutput = @"installed app but failed to write management marker";
+        if (detailOutput) *detailOutput = @"The app was installed but could not be marked as managed.";
         return 177;
     }
 
     NSURL *updatedAppURL = vp_find_app_url_in_bundle_url(appContainer.url);
     if (updatedAppURL.path.length == 0) {
-        if (detailOutput) *detailOutput = @"installed app but failed to resolve final app path";
+        if (detailOutput) *detailOutput = @"The app was installed but could not be located afterwards.";
         return 178;
     }
 
     vp_fix_permissions_of_app_bundle(updatedAppURL.path);
     if (!vp_register_path(updatedAppURL.path, NO, forceSystem)) {
-        if (detailOutput) *detailOutput = @"install copied files but LaunchServices registration failed";
+        if (detailOutput) *detailOutput = @"The app was copied but could not be registered with the system.";
         return 181;
     }
 
@@ -770,7 +729,7 @@ static int vp_extract_package_to_directory(
     NSString *archiveError = nil;
     int ret = vp_extract_archive(fileToExtract, extractionPath, &archiveError);
     if (ret != 0) {
-        if (detailOutput) *detailOutput = archiveError ?: @"libarchive extraction failed";
+        if (detailOutput) *detailOutput = archiveError ?: @"Unable to extract the app package.";
         return 168;
     }
     return 0;
@@ -793,12 +752,12 @@ NSDictionary *vp_handle_custom_install(NSDictionary *msg) {
 
     if (ipaPath.length == 0) {
         NSMutableDictionary *response = vp_make_response(@"err", reqId);
-        response[@"msg"] = @"missing ipa path";
+        response[@"msg"] = @"No app package was specified.";
         return response;
     }
     if (![[NSFileManager defaultManager] fileExistsAtPath:ipaPath]) {
         NSMutableDictionary *response = vp_make_response(@"err", reqId);
-        response[@"msg"] = [NSString stringWithFormat:@"IPA not found: %@", ipaPath];
+        response[@"msg"] = [NSString stringWithFormat:@"App package not found at %@.", ipaPath];
         return response;
     }
     if (!vp_custom_installer_available()) {
@@ -807,12 +766,13 @@ NSDictionary *vp_handle_custom_install(NSDictionary *msg) {
         if (NSClassFromString(@"MCMAppContainer") == Nil) [missing addObject:@"MCMAppContainer"];
         if (NSClassFromString(@"LSApplicationWorkspace") == Nil) [missing addObject:@"LSApplicationWorkspace"];
         NSString *detail = missing.count > 0 ? [missing componentsJoinedByString:@", "] : @"unknown";
-        response[@"msg"] = [NSString stringWithFormat:@"Built-in IPA installer prerequisites are missing: %@", detail];
+        NSLog(@"vphoned: custom installer unavailable: %@", detail);
+        response[@"msg"] = @"This guest cannot install apps. The built-in installer is not supported here.";
         return response;
     }
     if (ldidPath.length == 0) {
         NSMutableDictionary *response = vp_make_response(@"err", reqId);
-        response[@"msg"] = @"Built-in IPA installer could not find a guest-side iOS ldid.";
+        response[@"msg"] = @"The code-signing tool (ldid) is missing on the guest. Install it and try again.";
         return response;
     }
     if (certPath.length > 0 && ![[NSFileManager defaultManager] fileExistsAtPath:certPath]) {
@@ -822,7 +782,7 @@ NSDictionary *vp_handle_custom_install(NSDictionary *msg) {
     NSString *tmpPackagePath = [[NSTemporaryDirectory() stringByResolvingSymlinksInPath] stringByAppendingPathComponent:[NSUUID UUID].UUIDString];
     if (![[NSFileManager defaultManager] createDirectoryAtPath:tmpPackagePath withIntermediateDirectories:NO attributes:nil error:nil]) {
         NSMutableDictionary *response = vp_make_response(@"err", reqId);
-        response[@"msg"] = @"failed to create temporary extraction directory";
+        response[@"msg"] = @"Unable to prepare the guest for installation. Try again.";
         return response;
     }
 
@@ -843,14 +803,14 @@ NSDictionary *vp_handle_custom_install(NSDictionary *msg) {
         int retCode = extractRet != 0 ? extractRet : installRet;
         NSString *trimmed = vp_trimmed_output(detail ?: @"");
         response[@"msg"] = trimmed.length > 0
-            ? [NSString stringWithFormat:@"built-in installer failed (%d)\n%@", retCode, trimmed]
-            : [NSString stringWithFormat:@"built-in installer failed (%d)", retCode];
+            ? [NSString stringWithFormat:@"Unable to install the app (code %d).\n%@", retCode, trimmed]
+            : [NSString stringWithFormat:@"Unable to install the app (code %d).", retCode];
         return response;
     }
 
     NSMutableDictionary *response = vp_make_response(@"ok", reqId);
     response[@"msg"] = forceSystem
-        ? [NSString stringWithFormat:@"Installed via built-in installer as System: %@", detail]
-        : [NSString stringWithFormat:@"Installed via built-in installer as User: %@", detail];
+        ? [NSString stringWithFormat:@"Installed %@ as a system app.", detail]
+        : [NSString stringWithFormat:@"Installed %@ as a user app.", detail];
     return response;
 }

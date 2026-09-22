@@ -41,7 +41,7 @@ public final class TXMDevPatcher: TXMPatcher {
             let rawB = buffer.readU32(at: off + 4)
 
             // ADRP: bits[31]=1, bits[28:24]=10000
-            guard rawA & 0x9F00_0000 == 0x9000_0000 else { off += 4; continue }
+            guard ARM64Inst.isADRP(rawA) else { off += 4; continue }
             // ADD immediate (64-bit): bits[31:24] = 0x91
             guard rawB & 0xFF80_0000 == 0x9100_0000 else { off += 4; continue }
 

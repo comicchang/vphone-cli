@@ -107,8 +107,8 @@ async def resolve_device(ecid: Optional[int], udid: Optional[str]) -> Device:
 
     if ecid is None and udid_normalized is not None:
         raise RuntimeError(
-            "Target UDID not available over usbmux in lockdownd mode and ECID is unset; "
-            "set RESTORE_ECID for DFU/Recovery targeting"
+            "The device with that UDID was not found, and no ECID is set; "
+            "set RESTORE_ECID to target the device in DFU or Recovery mode"
         )
 
     return Device(irecv=IRecv(ecid=ecid))

@@ -93,7 +93,7 @@ extension KernelJBPatcher {
 
         // 7. Build deny shellcode (8 bytes): MOV W0,#0 + B epilogue.
         if !denyAlreadyAllowed, let dOff = denyOff, let dCaveOff = denyCaveOff {
-            guard let branchBack = encodeB(from: dCaveOff + 4, to: epilogueOff) else {
+            guard let branchBack = ARM64Encoder.encodeB(from: dCaveOff + 4, to: epilogueOff) else {
                 log("  [-] deny trampoline → epilogue branch out of range")
                 return
             }
@@ -108,7 +108,7 @@ extension KernelJBPatcher {
             }
 
             // Redirect deny site → deny cave
-            guard let branchToCave = encodeB(from: dOff, to: dCaveOff) else {
+            guard let branchToCave = ARM64Encoder.encodeB(from: dOff, to: dCaveOff) else {
                 log("  [-] branch from deny site 0x\(String(format: "%X", dOff)) to cave out of range")
                 return
             }
@@ -126,7 +126,7 @@ extension KernelJBPatcher {
         //   str w8, [x26]
         //   mov w0, #0
         //   b epilogue
-        guard let successBranchBack = encodeB(from: successCaveOff + 28, to: epilogueOff) else {
+        guard let successBranchBack = ARM64Encoder.encodeB(from: successCaveOff + 28, to: epilogueOff) else {
             log("  [-] success trampoline → epilogue branch out of range")
             return
         }
@@ -155,7 +155,7 @@ extension KernelJBPatcher {
 
         // 9. Redirect success exits → success cave.
         for exitOff in successExits {
-            guard let branchToCave = encodeB(from: exitOff, to: successCaveOff) else {
+            guard let branchToCave = ARM64Encoder.encodeB(from: exitOff, to: successCaveOff) else {
                 log("  [-] branch from success exit 0x\(String(format: "%X", exitOff)) to cave out of range")
                 return
             }

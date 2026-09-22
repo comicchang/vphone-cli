@@ -39,12 +39,7 @@ BOOT_PROMPT_FALLBACK_TIMEOUT="${BOOT_PROMPT_FALLBACK_TIMEOUT:-60}"
 BOOT_BASH_PROMPT_REGEX="${BOOT_BASH_PROMPT_REGEX:-bash-[0-9]+(\.[0-9]+)+#|:/[^ ]* root#}"
 BOOT_PANIC_REGEX="${BOOT_PANIC_REGEX:-(^|[^p])(panic|kernel panic|panic\\.apple\\.com|stackshot succeeded)}"
 PMD3_BRIDGE="${PMD3_BRIDGE:-${PROJECT_ROOT}/scripts/pymobiledevice3_bridge.py}"
-INTERACTIVE_RAW="${INTERACTIVE:-0}"
 NON_INTERACTIVE=1
-NO_BINPACK_RAW="${NO_BINPACK:-0}"
-NO_BINPACK=0
-NO_VPHONED_RAW="${NO_VPHONED:-0}"
-NO_VPHONED=0
 JB_MODE=0
 DEV_MODE=0
 EXP_MODE=0
@@ -410,52 +405,6 @@ wait_for_first_boot_prompt_auto() {
   esac
 }
 
-wait_for_device_ssh() {
-  local port="${1:-22222}"
-  local timeout="${2:-120}"
-  local pass="${3:-alpine}"
-  local sshpass_bin waited=0
-
-  sshpass_bin="$(command -v sshpass || true)"
-  [[ -x "$sshpass_bin" ]] || die "sshpass not found (run: make setup_tools)"
-
-  echo "[*] Waiting for device SSH on localhost:${port} (timeout=${timeout}s)..."
-  while (( waited < timeout )); do
-    if [[ -n "$BOOT_PID" ]] && ! kill -0 "$BOOT_PID" 2>/dev/null; then
-      die "VM exited while waiting for device SSH."
-    fi
-    if "$sshpass_bin" -p "$pass" ssh \
-      -o StrictHostKeyChecking=no \
-      -o UserKnownHostsFile=/dev/null \
-      -o PreferredAuthentications=password \
-      -o ConnectTimeout=5 -q \
-      -p "$port" root@localhost "echo ready" >/dev/null 2>&1; then
-      echo "[+] Device SSH is ready on port ${port}"
-      return
-    fi
-    if (( waited == 0 || waited % 10 == 0 )); then
-      echo "  waiting... ${waited}s elapsed"
-    fi
-    sleep 2
-    (( waited += 2 ))
-  done
-  die "Device SSH not ready after ${timeout}s"
-}
-
-halt_device_ssh() {
-  local port="${1:-22222}"
-  local pass="${2:-alpine}"
-  local sshpass_bin
-  sshpass_bin="$(command -v sshpass)"
-  echo "[*] Halting device via SSH..."
-  "$sshpass_bin" -p "$pass" ssh \
-    -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null \
-    -o PreferredAuthentications=password \
-    -o ConnectTimeout=10 -q \
-    -p "$port" root@localhost "halt" 2>/dev/null || true
-}
-
 run_boot_analysis() {
   local boot_state
 
@@ -692,10 +641,11 @@ Options:
 Environment:
   INTERACTIVE=1           Prompt at first-boot stages (default: non-interactive — auto-continue + boot analysis).
   SUDO_PASSWORD=...       Preload sudo credential via askpass.
-  NO_BINPACK=1            Excludes the SSH, VNC, ... binaries from being installed (patchless-only, currently)
-  NO_VPHONED=1            Excludes vphoned from being installed (patchless-only, currently)
+  NO_BINPACK=1            Skip installing the bundled binaries (SSH, VNC, and others).
+                          Patchless variant only.
+  NO_VPHONED=1            Skip installing vphoned. Patchless variant only.
   SPOOF_BUILD=<id>        (EXP only) Rewrite SystemVersion.plist ProductBuildVersion
-                          to <id> (e.g. 23F77). Omitted/empty -> skipped.
+                          to <id> (e.g. 23F77). Leave unset to skip.
 EOF
         exit 0
         ;;
@@ -708,14 +658,18 @@ EOF
 
 main() {
   parse_args "$@"
-  if parse_bool "$INTERACTIVE_RAW"; then
+  if parse_bool "${INTERACTIVE:-0}"; then
     NON_INTERACTIVE=0
   fi
-  if parse_bool "$NO_BINPACK_RAW"; then
+  if parse_bool "${NO_BINPACK:-0}"; then
     NO_BINPACK=1
+  else
+    NO_BINPACK=0
   fi
-  if parse_bool "$NO_VPHONED_RAW"; then
+  if parse_bool "${NO_VPHONED:-0}"; then
     NO_VPHONED=1
+  else
+    NO_VPHONED=0
   fi
   setup_sudo_noninteractive
 
@@ -801,9 +755,9 @@ main() {
     echo ""
     echo "=== First boot ==="
     if [[ "$NON_INTERACTIVE" -eq 0 ]]; then
-      read -r "?[*] press Enter to start VM, after the VM has finished booting, press Enter again to finish last stage"
+      read -r "?[*] Press Enter to start the VM. After it boots, press Enter again for the final stage."
     else
-      echo "[*] non-interactive (default): auto-starting first boot"
+      echo "[*] Non-interactive mode. Starting the first boot automatically…"
     fi
 
     start_first_boot "$LESS_MODE"

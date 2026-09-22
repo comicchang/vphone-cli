@@ -59,7 +59,6 @@ Commands:
         installs. Self-gating (no-op on pre-iOS-27 userlands where the method is absent).
 
     patch-xpc-lwcr <chunks_dir> [--dry-run]
-    patch-lockdown-mode <chunks_dir> [--dry-run]
         Stop libxpc's Lightweight Code Requirement self-check (_xpc_token_satisfies_lwcr)
         from brk-aborting on our JB. iOS 27's LWCR matcher returns the contradictory
         (matched=0, error_code=MATCH) pair under our code-signing environment; the
@@ -67,6 +66,15 @@ Commands:
         (intelligencetasksd/searchpartyd/transparencyd/bluetoothd/...). Derives `matched`
         from error_code + drops the abort (cset w0,eq; nop; nop) and re-attests the page.
         Self-gating (no-op on pre-iOS-27 userlands where the symbol is absent).
+
+    patch-lockdown-mode <chunks_dir> [--dry-run]
+        Stop libSystem's os_lockdown_mode_enabled() from aborting when the
+        Lockdown Mode sysctl is missing. iOS 27 crashes on a -1 return from
+        security.mac.lockdown_mode_state_public, which the vphone600 26.x kernel
+        does not implement, so launchd is the first caller to abort and the
+        kernel panics at boot. NOPs the error branch so the query reads 0 and
+        boot continues, then re-attests the page. Self-gating (no-op on
+        pre-iOS-27 userlands where the symbol is absent).
 
     patch-camera-dsc <chunks_dir> <dsc_header> [--dry-run] [--force]
         Apply the 10-patch set to the DSC chunks that makes Camera.app
@@ -107,7 +115,8 @@ Commands:
 
 Dependencies:
     pip install capstone keystone-engine
-    ipsw CLI in $PATH (only required for patch-hv-vmm-dsc, experimental variant only)
+    ipsw CLI in $PATH (required for patch-camera-dsc, patch-iomfb-swapend and
+        patch-iomfb-force-kern)
 """
 
 import os
@@ -160,7 +169,7 @@ def main():
 
     if cmd == "cryptex-paths":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py cryptex-paths <BuildManifest.plist>")
+            print("Usage: cfw.py cryptex-paths <BuildManifest.plist>")
             sys.exit(1)
         sysos, appos = parse_cryptex_paths(sys.argv[2])
         print(sysos)
@@ -168,43 +177,43 @@ def main():
 
     elif cmd == "patch-seputil":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-seputil <binary>")
+            print("Usage: cfw.py patch-seputil <binary>")
             sys.exit(1)
         if not patch_seputil(sys.argv[2]):
             sys.exit(1)
 
     elif cmd == "patch-launchd-cache-loader":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-launchd-cache-loader <binary>")
+            print("Usage: cfw.py patch-launchd-cache-loader <binary>")
             sys.exit(1)
         if not patch_launchd_cache_loader(sys.argv[2]):
             sys.exit(1)
 
     elif cmd == "patch-mobileactivationd":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-mobileactivationd <binary>")
+            print("Usage: cfw.py patch-mobileactivationd <binary>")
             sys.exit(1)
         if not patch_mobileactivationd(sys.argv[2]):
             sys.exit(1)
 
     elif cmd == "patch-launchd-jetsam":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-launchd-jetsam <binary>")
+            print("Usage: cfw.py patch-launchd-jetsam <binary>")
             sys.exit(1)
         if not patch_launchd_jetsam(sys.argv[2]):
             sys.exit(1)
 
     elif cmd == "patch-hv-vmm-dsc":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-hv-vmm-dsc <chunks_dir> [--dry-run]")
+            print("Usage: cfw.py patch-hv-vmm-dsc <chunks_dir> [--dry-run]")
             sys.exit(1)
         dry_run = "--dry-run" in sys.argv[3:]
-        results = patch_hv_vmm_in_dsc(sys.argv[2], dry_run=dry_run)
+        patch_hv_vmm_in_dsc(sys.argv[2], dry_run=dry_run)
         sys.exit(0)
 
     elif cmd == "patch-iomfb-swapend":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-iomfb-swapend <chunks_dir> "
+            print("Usage: cfw.py patch-iomfb-swapend <chunks_dir> "
                   "[--target-size <hex|int>] [--dry-run]")
             sys.exit(1)
         dry_run = "--dry-run" in sys.argv[3:]
@@ -221,7 +230,7 @@ def main():
 
     elif cmd == "patch-iomfb-force-kern":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-iomfb-force-kern <chunks_dir> [--dry-run]")
+            print("Usage: cfw.py patch-iomfb-force-kern <chunks_dir> [--dry-run]")
             sys.exit(1)
         dry_run = "--dry-run" in sys.argv[3:]
         try:
@@ -233,7 +242,7 @@ def main():
 
     elif cmd == "patch-dsc-maxslide":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-dsc-maxslide <chunks_dir> [--dry-run] [--force]")
+            print("Usage: cfw.py patch-dsc-maxslide <chunks_dir> [--dry-run] [--force]")
             sys.exit(1)
         dry_run = "--dry-run" in sys.argv[3:]
         force = "--force" in sys.argv[3:]
@@ -242,7 +251,7 @@ def main():
 
     elif cmd == "patch-lsd-embedded-reg":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-lsd-embedded-reg <chunks_dir> [--dry-run]")
+            print("Usage: cfw.py patch-lsd-embedded-reg <chunks_dir> [--dry-run]")
             sys.exit(1)
         dry_run = "--dry-run" in sys.argv[3:]
         patch_lsd_embedded_reg(sys.argv[2], dry_run=dry_run)
@@ -250,14 +259,14 @@ def main():
 
     elif cmd == "patch-xpc-lwcr":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-xpc-lwcr <chunks_dir> [--dry-run]")
+            print("Usage: cfw.py patch-xpc-lwcr <chunks_dir> [--dry-run]")
             sys.exit(1)
         dry_run = "--dry-run" in sys.argv[3:]
         patch_xpc_lwcr(sys.argv[2], dry_run=dry_run)
 
     elif cmd == "patch-lockdown-mode":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-lockdown-mode <chunks_dir> [--dry-run]")
+            print("Usage: cfw.py patch-lockdown-mode <chunks_dir> [--dry-run]")
             sys.exit(1)
         dry_run = "--dry-run" in sys.argv[3:]
         patch_lockdown_mode(sys.argv[2], dry_run=dry_run)
@@ -265,7 +274,7 @@ def main():
 
     elif cmd == "patch-camera-dsc":
         if len(sys.argv) < 4:
-            print("Usage: patch_cfw.py patch-camera-dsc <chunks_dir> <dsc_header> [--dry-run] [--force]")
+            print("Usage: cfw.py patch-camera-dsc <chunks_dir> <dsc_header> [--dry-run] [--force]")
             sys.exit(1)
         dry_run = "--dry-run" in sys.argv[4:]
         force   = "--force"   in sys.argv[4:]
@@ -274,11 +283,11 @@ def main():
 
     elif cmd == "patch-watchdogd":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-watchdogd <binary> [--dry-run]")
+            print("Usage: cfw.py patch-watchdogd <binary> [--dry-run]")
             sys.exit(1)
         dry_run = "--dry-run" in sys.argv[3:]
         try:
-            n = patch_watchdogd(sys.argv[2], dry_run=dry_run)
+            patch_watchdogd(sys.argv[2], dry_run=dry_run)
         except ValueError as e:
             print(f"[-] {e}")
             sys.exit(1)
@@ -289,26 +298,26 @@ def main():
 
     elif cmd == "patch-diskimagesiod":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-diskimagesiod <binary>")
+            print("Usage: cfw.py patch-diskimagesiod <binary>")
             sys.exit(1)
         if not patch_diskimagesiod(sys.argv[2]):
             sys.exit(1)
 
     elif cmd == "inject-daemons":
         if len(sys.argv) < 4:
-            print("Usage: patch_cfw.py inject-daemons <launchd.plist> <daemon_dir>")
+            print("Usage: cfw.py inject-daemons <launchd.plist> <daemon_dir>")
             sys.exit(1)
         inject_daemons(sys.argv[2], sys.argv[3])
 
     elif cmd == "patch-dropbear-plist":
         if len(sys.argv) < 3:
-            print("Usage: patch_cfw.py patch-dropbear-plist <dropbear.plist>")
+            print("Usage: cfw.py patch-dropbear-plist <dropbear.plist>")
             sys.exit(1)
         patch_dropbear_plist(sys.argv[2])
 
     elif cmd == "inject-dylib":
         if len(sys.argv) < 4:
-            print("Usage: patch_cfw.py inject-dylib <binary> <dylib_path>")
+            print("Usage: cfw.py inject-dylib <binary> <dylib_path>")
             sys.exit(1)
         import subprocess, shutil
         insert_dylib_bin = shutil.which("insert_dylib")

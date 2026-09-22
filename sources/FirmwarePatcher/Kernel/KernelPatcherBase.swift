@@ -113,12 +113,10 @@ open class KernelPatcherBase {
         }
     }
 
-    /// Apply all collected patches to the buffer.
+    /// Number of collected patches. `emit()` already wrote every record through to
+    /// `buffer.data`, so there is nothing left to apply here.
     public func applyPatches() -> Int {
-        for record in patches {
-            buffer.writeBytes(at: record.fileOffset, bytes: record.patchedBytes)
-        }
-        return patches.count
+        patches.count
     }
 
     // MARK: - Index Building
@@ -131,7 +129,7 @@ open class KernelPatcherBase {
             while offset + 4 <= end {
                 let insn = buffer.readU32(at: offset)
                 // ADRP: [31]=1, [28:24]=10000
-                if insn & 0x9F00_0000 == 0x9000_0000 {
+                if ARM64Inst.isADRP(insn) {
                     // Decode page address
                     let immhi = (insn >> 5) & 0x7FFFF
                     let immlo = (insn >> 29) & 0x3
@@ -153,12 +151,7 @@ open class KernelPatcherBase {
         for (start, end) in codeRanges {
             var offset = start
             while offset + 4 <= end {
-                let insn = buffer.readU32(at: offset)
-                // BL: [31:26] = 100101
-                if insn >> 26 == 0b100101 {
-                    let imm26 = insn & 0x03FF_FFFF
-                    let signedImm = Int32(bitPattern: imm26 << 6) >> 6
-                    let target = offset + Int(signedImm) * 4
+                if let target = decodeBL(at: offset) {
                     blIndex[target, default: []].append(offset)
                 }
                 offset += 4
@@ -209,24 +202,25 @@ open class KernelPatcherBase {
         return findStringRefs(strOff, in: range)
     }
 
-    /// Convenience: find a string by file offset, with range filter.
-    public func findStringRefs(in range: (start: Int, end: Int), stringOffset: Int) -> [(adrpOff: Int, addOff: Int)] {
-        findStringRefs(stringOffset, in: range)
-    }
-
     // MARK: - Branch Helpers
+
+    /// Decode the BL at `offset` and return its target as a file offset,
+    /// or nil when the instruction there is not a BL.
+    ///
+    /// BL encoding: [31:26] = 0b100101, imm26 is PC-relative in 4-byte units.
+    public func decodeBL(at offset: Int) -> Int? {
+        guard offset >= 0, offset + 4 <= buffer.count else { return nil }
+        let insn = buffer.readU32(at: offset)
+        guard ARM64Inst.isBL(insn) else { return nil }
+        let imm26 = insn & 0x03FF_FFFF
+        let signedImm = Int32(bitPattern: imm26 << 6) >> 6
+        return offset + Int(signedImm) * 4
+    }
 
     /// Check whether the instruction at `offset` is a BL targeting `target` (file offset).
     /// Returns true if the BL opcode decodes to the exact target offset.
     public func isBL(at offset: Int, target: Int) -> Bool {
-        guard offset + 4 <= buffer.count else { return false }
-        let insn = buffer.readU32(at: offset)
-        // BL encoding: [31:26] = 0b100101
-        guard insn >> 26 == 0b100101 else { return false }
-        let imm26 = insn & 0x03FF_FFFF
-        let signedImm = Int32(bitPattern: imm26 << 6) >> 6
-        let resolved = offset + Int(signedImm) * 4
-        return resolved == target
+        decodeBL(at: offset) == target
     }
 
     // MARK: - Conditional Branch Helpers

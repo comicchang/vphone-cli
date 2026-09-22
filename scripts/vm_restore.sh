@@ -100,7 +100,7 @@ if [[ ! -d "${SRC}" ]]; then
 fi
 
 if [[ ! -f "${SRC}/config.plist" ]]; then
-    echo "ERROR: ${SRC}/config.plist not found — backup appears invalid."
+    echo "ERROR: Backup '${NAME}' is incomplete (config.plist is missing from ${SRC}/)."
     exit 1
 fi
 

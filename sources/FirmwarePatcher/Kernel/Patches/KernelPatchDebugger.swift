@@ -73,7 +73,7 @@ extension KernelPatcher {
     /// ADRP encoding: [31]=1, [28:24]=10000, [4:0]=Rd
     /// Rd == 8 (x8).
     private func isADRPx8(_ insn: UInt32) -> Bool {
-        (insn & 0x9F00_0000) == 0x9000_0000 && (insn & 0x1F) == 8
+        ARM64Inst.isADRP(insn) && (insn & 0x1F) == 8
     }
 
     /// Return true if the 32-bit value is a recognised function-boundary instruction.

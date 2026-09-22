@@ -1,20 +1,22 @@
 import Foundation
-import Virtualization
 
 // MARK: - Errors
 
 public enum VPhoneManifestError: Error {
-    case loadFailed(path: String, underlying: Error)
-    case parseFailed(path: String, underlying: Error)
-    case writeFailed(path: String, underlying: Error)
+    case loadFailed(path: String)
+    case parseFailed(path: String)
+    case writeFailed(path: String)
 }
 
 extension VPhoneManifestError: CustomStringConvertible, LocalizedError {
     public var description: String {
         switch self {
-        case let .loadFailed(path, underlying): "Failed to load manifest from \(path): \(underlying)"
-        case let .parseFailed(path, underlying): "Failed to parse manifest at \(path): \(underlying)"
-        case let .writeFailed(path, underlying): "Failed to write manifest to \(path): \(underlying)"
+        case let .loadFailed(path):
+            "Unable to read the VM configuration at \(path). Check that the file exists and try again."
+        case let .parseFailed(path):
+            "The VM configuration at \(path) is not valid. Recreate the VM, or restore a backup of config.plist."
+        case let .writeFailed(path):
+            "Unable to save the VM configuration to \(path). Check that the file is writable and try again."
         }
     }
     public var errorDescription: String? { description }
@@ -172,14 +174,14 @@ public struct VPhoneVirtualMachineManifest: Codable, Sendable {
         do {
             data = try Data(contentsOf: url)
         } catch {
-            throw VPhoneManifestError.loadFailed(path: url.path, underlying: error)
+            throw VPhoneManifestError.loadFailed(path: url.path)
         }
 
         let decoder = PropertyListDecoder()
         do {
             return try decoder.decode(VPhoneVirtualMachineManifest.self, from: data)
         } catch {
-            throw VPhoneManifestError.parseFailed(path: url.path, underlying: error)
+            throw VPhoneManifestError.parseFailed(path: url.path)
         }
     }
 
@@ -192,31 +194,15 @@ public struct VPhoneVirtualMachineManifest: Codable, Sendable {
             let data = try encoder.encode(self)
             try data.write(to: url)
         } catch {
-            throw VPhoneManifestError.writeFailed(path: url.path, underlying: error)
+            throw VPhoneManifestError.writeFailed(path: url.path)
         }
     }
 
     // MARK: - Convenience
 
-    /// Convert to JSON string for logging/debugging
-    public func asJSON() -> String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .withoutEscapingSlashes
-        do {
-            return try String(decoding: encoder.encode(self), as: UTF8.self)
-        } catch {
-            return "{ }"
-        }
-    }
-
     /// Resolve relative path to absolute URL within VM directory
     public func resolve(path: String, in vmDirectory: URL) -> URL {
         vmDirectory.appendingPathComponent(path)
-    }
-
-    /// Get VZMacMachineIdentifier from manifest data
-    public func vzMachineIdentifier() -> VZMacMachineIdentifier? {
-        VZMacMachineIdentifier(dataRepresentation: machineIdentifier)
     }
 
     // MARK: - Editing
@@ -224,7 +210,6 @@ public struct VPhoneVirtualMachineManifest: Codable, Sendable {
     public func updating(
         cpuCount: UInt? = nil,
         memorySize: UInt64? = nil,
-        screenConfig: ScreenConfig? = nil,
         machineIdentifier: Data? = nil,
         networkConfig: NetworkConfig? = nil
     ) -> VPhoneVirtualMachineManifest {
@@ -234,7 +219,7 @@ public struct VPhoneVirtualMachineManifest: Codable, Sendable {
             machineIdentifier: machineIdentifier ?? self.machineIdentifier,
             cpuCount: cpuCount ?? self.cpuCount,
             memorySize: memorySize ?? self.memorySize,
-            screenConfig: screenConfig ?? self.screenConfig,
+            screenConfig: screenConfig,
             networkConfig: networkConfig ?? self.networkConfig,
             diskImage: diskImage,
             nvramStorage: nvramStorage,

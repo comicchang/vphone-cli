@@ -84,19 +84,6 @@ public final class FirmwarePipeline {
     let enableFrida: Bool
     let loader: any FirmwareLoader
 
-    /// Set when the iPhone base is iOS 18.x (read from iPhone-BuildManifest.plist).
-    /// Gates the skywalk-netagent boot-arg workaround (18.x-specific mDNSResponder
-    /// crash-loop). Computed in `patchAll()` before `buildComponentList()` runs.
-    private var iosBaseIs18 = false
-
-    /// Set when the iPhone base is iOS 27.x. Gates the iOS-27-only JB kernel patches
-    /// (KernelJBPatcher.applyIOS27); false for 18.x/26.x so those bases are
-    /// byte-identical to pre-branch. Computed in `patchAll()` alongside iosBaseIs18.
-    private var iosBaseIs27 = false
-
-    /// Set when the cloudOS kernel is 26.4+; gates the opt-in Frida kernel patches.
-    private var cloudOSIsFridaCapable = false
-
     // MARK: - Init
 
     public init(
@@ -135,8 +122,8 @@ public final class FirmwarePipeline {
         // fw_prepare preserves — the live BuildManifest.plist reads the cloudOS
         // version, not the base). iOS 18 bases need the skywalk-netagent boot-arg.
         let baseVersion = Self.readBaseProductVersion(restoreDir)
-        iosBaseIs18 = baseVersion?.hasPrefix("18.") ?? false
-        iosBaseIs27 = baseVersion?.hasPrefix("27.") ?? false
+        let iosBaseIs18 = baseVersion?.hasPrefix("18.") ?? false
+        let iosBaseIs27 = baseVersion?.hasPrefix("27.") ?? false
         let baseGateNote = iosBaseIs18 ? "  (enabling iOS-18 netagent boot-arg)"
             : iosBaseIs27 ? "  (enabling iOS-27 JB kernel patches)" : ""
         log("[*] iPhone base iOS:   \(baseVersion ?? "unknown")\(baseGateNote)")
@@ -145,14 +132,19 @@ public final class FirmwarePipeline {
         // were validated); older kernels are left untouched. The Frida deb install is
         // separate and version-independent.
         let cloudOSVersion = Self.readCloudOSProductVersion(restoreDir)
-        cloudOSIsFridaCapable = Self.productVersionAtLeast(cloudOSVersion, 26, 4)
+        let cloudOSIsFridaCapable = Self.productVersionAtLeast(cloudOSVersion, 26, 4)
         if enableFrida {
             log("[*] cloudOS kernel:    \(cloudOSVersion ?? "unknown")"
                 + (cloudOSIsFridaCapable ? "  (Frida kernel patches enabled)"
                     : "  (< 26.4 — Frida kernel patches skipped)"))
         }
 
-        let components = buildComponentList()
+        let components = buildComponentList(
+            restoreDir: restoreDir,
+            iosBaseIs18: iosBaseIs18,
+            iosBaseIs27: iosBaseIs27,
+            cloudOSIsFridaCapable: cloudOSIsFridaCapable
+        )
         log("[*] Patching \(components.count) boot-chain components ...")
 
         var allRecords: [PatchRecord] = []
@@ -217,7 +209,24 @@ public final class FirmwarePipeline {
     // MARK: - Component List Builder
 
     /// Build the ordered component list based on the variant.
-    func buildComponentList() -> [ComponentDescriptor] {
+    ///
+    /// - Parameters:
+    ///   - restoreDir: The `*Restore*` directory `patchAll()` resolved, captured by value
+    ///     into the patcher factory closures below.
+    ///   - iosBaseIs18: True when the iPhone base is iOS 18.x (read from
+    ///     `iPhone-BuildManifest.plist`). Gates the skywalk-netagent boot-arg workaround
+    ///     (18.x-specific mDNSResponder crash-loop).
+    ///   - iosBaseIs27: True when the iPhone base is iOS 27.x. Gates the iOS-27-only JB
+    ///     kernel patches (`KernelJBPatcher.applyIOS27`); false for 18.x/26.x so those
+    ///     bases are byte-identical to pre-branch.
+    ///   - cloudOSIsFridaCapable: True when the cloudOS kernel is 26.4+; gates the opt-in
+    ///     Frida kernel patches.
+    func buildComponentList(
+        restoreDir: URL,
+        iosBaseIs18: Bool,
+        iosBaseIs27: Bool,
+        cloudOSIsFridaCapable: Bool
+    ) -> [ComponentDescriptor] {
         var components: [ComponentDescriptor] = []
 
         // Captured by value into the patcher factory closures below (avoids
@@ -410,7 +419,7 @@ public final class FirmwarePipeline {
                 return switch variant {
                 case .less:
                     [{ data, verbose in
-                        CryptexFilesystemPatcher(buildManiest: data, restoreDir: try! self.findRestoreDirectory(), verbose: verbose, noBinpack: self.noBinpack, noVphoned: self.noVphoned)
+                        CryptexFilesystemPatcher(buildManiest: data, restoreDir: restoreDir, verbose: verbose, noBinpack: self.noBinpack, noVphoned: self.noVphoned)
                     }]
                 case .regular, .dev, .jb, .exp:
                     []
@@ -427,7 +436,7 @@ public final class FirmwarePipeline {
                 return switch variant {
                 case .less:
                     [{ data, verbose in
-                        ManifestHashPatcher(data: data, restoreDir: try? self.findRestoreDirectory(), verbose: verbose)
+                        ManifestHashPatcher(data: data, restoreDir: restoreDir, verbose: verbose)
                     }]
                 case .regular, .dev, .jb, .exp:
                     []
@@ -453,7 +462,7 @@ public final class FirmwarePipeline {
         .sorted(by: compareRestoreDirectories)
 
         guard let restoreDir = contents.first else {
-            throw PatcherError.fileNotFound("No *Restore* directory found in \(vmDirectory.path). Run prepare_firmware first.")
+            throw PatcherError.fileNotFound("Restore directory in \(vmDirectory.path). Run make fw_prepare first.")
         }
         return restoreDir
     }
@@ -560,7 +569,7 @@ public final class FirmwarePipeline {
             }
         }
         let searched = patterns.map { baseDir.appendingPathComponent($0).path }.joined(separator: "\n    ")
-        throw PatcherError.fileNotFound("\(label) not found. Searched:\n    \(searched)")
+        throw PatcherError.fileNotFound("\(label). Looked in:\n    \(searched)")
     }
 
     // MARK: - Data Extraction

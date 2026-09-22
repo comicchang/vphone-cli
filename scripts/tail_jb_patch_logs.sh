@@ -2,14 +2,18 @@
 set -euo pipefail
 unsetopt BG_NICE 2>/dev/null || true
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TARGET_DIR="${1:-${PROJECT_ROOT}/setup_logs/jb_patch_tests_20260306_113510}"
+TARGET_DIR="${1:-}"
 TAIL_LINES="${2:-20}"
 SCAN_INTERVAL="${SCAN_INTERVAL:-1}"
 
+if [[ -z "$TARGET_DIR" ]]; then
+  echo "Usage: $0 <log_dir> [tail_lines]" >&2
+  exit 1
+fi
+
 if [[ ! -d "$TARGET_DIR" ]]; then
-  echo "error: directory not found: $TARGET_DIR" >&2
-  echo "usage: $0 [log_dir] [tail_lines]" >&2
+  echo "Error: log directory not found: $TARGET_DIR" >&2
+  echo "Usage: $0 <log_dir> [tail_lines]" >&2
   exit 1
 fi
 

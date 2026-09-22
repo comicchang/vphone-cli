@@ -33,10 +33,8 @@ public final class KernelEXPPatcher: KernelJBPatcherBase, Patcher {
     }
 
     public func apply() throws -> Int {
+        // `emit()` already wrote every record through to `buffer.data`.
         let records = try (patches.isEmpty ? findAll() : patches)
-        for record in records {
-            buffer.writeBytes(at: record.fileOffset, bytes: record.patchedBytes)
-        }
         return records.count
     }
 }

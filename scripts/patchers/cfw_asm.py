@@ -1,48 +1,9 @@
 """Shared helpers for CFW patch modules."""
-#!/usr/bin/env python3
-"""
-patch_cfw.py — Dynamic binary patching for CFW installation on vphone600.
 
-Uses capstone for disassembly-based anchoring and keystone for instruction
-assembly, producing reliable, upgrade-proof patches.
-
-Called by install_cfw.sh during CFW installation.
-
-Commands:
-    cryptex-paths <BuildManifest.plist>
-        Print SystemOS and AppOS DMG paths from BuildManifest.
-
-    patch-seputil <binary>
-        Patch seputil gigalocker UUID to "AA".
-
-    patch-launchd-cache-loader <binary>
-        NOP the cache validation check in launchd_cache_loader.
-
-    patch-mobileactivationd <binary>
-        Patch -[DeviceType should_hactivate] to always return true.
-
-    patch-launchd-jetsam <binary>
-        Patch launchd jetsam panic guard to avoid initproc crash loop.
-
-    inject-daemons <launchd.plist> <daemon_dir>
-        Inject bash/dropbear/trollvnc into launchd.plist.
-
-    inject-dylib <binary> <dylib_path>
-        Inject LC_LOAD_DYLIB into Mach-O binary (thin or universal).
-        Equivalent to: optool install -c load -p <dylib_path> -t <binary>
-
-Dependencies:
-    pip install capstone keystone-engine
-"""
-
-import os
-import plistlib
 import struct
-import subprocess
-import sys
 
 from capstone import Cs, CS_ARCH_ARM64, CS_MODE_LITTLE_ENDIAN
-from capstone.arm64_const import ARM64_OP_IMM
+from capstone.arm64_const import ARM64_OP_REG, ARM64_OP_IMM
 from keystone import Ks, KS_ARCH_ARM64, KS_MODE_LITTLE_ENDIAN as KS_MODE_LE
 
 # ══════════════════════════════════════════════════════════════════
@@ -92,6 +53,16 @@ def _log_asm(data, offset, count=5, marker_off=-1):
     for insn in insns:
         tag = " >>>" if insn.address == marker_off else "    "
         print(f"  {tag} 0x{insn.address:08X}: {insn.mnemonic:8s} {insn.op_str}")
+
+
+def _mov_reg_imm(insn):
+    """If `insn` is `mov <reg>, #<imm>`, return (reg_name, imm); else None."""
+    if insn.mnemonic != "mov":
+        return None
+    ops = insn.operands
+    if len(ops) != 2 or ops[0].type != ARM64_OP_REG or ops[1].type != ARM64_OP_IMM:
+        return None
+    return insn.reg_name(ops[0].reg), ops[1].imm
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -199,9 +170,3 @@ def find_symbol_va(data, name_fragment):
             return n_value
 
     return -1
-
-
-# ══════════════════════════════════════════════════════════════════
-# 1. seputil — Gigalocker UUID patch
-# ══════════════════════════════════════════════════════════════════
-

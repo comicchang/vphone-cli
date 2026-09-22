@@ -12,7 +12,7 @@
 
 ### Files Created
 
-- `sources/vphone-cli/VPhoneVirtualMachineManifest.swift` - Manifest structure (compatible with security-pcc)
+- `sources/VPhoneCore/VPhoneVirtualMachineManifest.swift` - Manifest structure (compatible with security-pcc)
 - `scripts/vm_manifest.py` - Python script to generate config.plist
 
 ### Changes Made
@@ -111,14 +111,14 @@
 
 #### Refactored Version Created
 
-`sources/vphone-cli/VPhoneVirtualMachineRefactored.swift` demonstrates:
+`research/VPhoneVirtualMachineRefactored.swift` demonstrates:
 
 1. **Extracted configuration methods**:
 
    ```swift
    private func configurePlatform(...)
-   private func configureDisplay(_ config: inout VZVirtualMachineConfiguration, screen: ScreenConfiguration)
-   private func configureAudio(_ config: inout VZVirtualMachineConfiguration)
+   private func configureDisplay(_ config: VZVirtualMachineConfiguration, screen: ScreenConfiguration)
+   private func configureAudio(_ config: VZVirtualMachineConfiguration)
    // ... etc
    ```
 

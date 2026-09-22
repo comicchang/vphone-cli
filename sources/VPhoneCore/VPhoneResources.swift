@@ -3,7 +3,6 @@ import Foundation
 // MARK: - VPhoneResourcesError
 
 public enum VPhoneResourcesError: Error, Equatable {
-    case pythonNotFound(String)
     case venvBootstrapFailed(String)
 }
 
@@ -57,7 +56,6 @@ public struct VPhoneResources: Sendable {
     public var preflightScript: URL { scriptsDir.appendingPathComponent("boot_host_preflight.sh") }
     public var pmd3Bridge: URL { scriptsDir.appendingPathComponent("pymobiledevice3_bridge.py") }
     public var cfwPy: URL { patchersDir.appendingPathComponent("cfw.py") }
-    public var apfsSnapRename: URL { base.appendingPathComponent("tools/apfs_snap_rename.py") }
     public var signcert: URL { scriptsDir.appendingPathComponent("vphoned/signcert.p12") }
 
     public var vphoned: URL {
@@ -80,11 +78,9 @@ public struct VPhoneResources: Sendable {
         return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".vphone")
     }
 
-    public var userCacheDir: URL { Self.userDataRoot() }
-    public var ipswCacheDir: URL { userCacheDir.appendingPathComponent("ipsws") }
-    public var sealVolumeCacheDir: URL { userCacheDir.appendingPathComponent("tools") }
-    public var debsCacheDir: URL { userCacheDir.appendingPathComponent("debs") }
-    public var toolsBinDir: URL { base.appendingPathComponent(".tools/bin") }
+    public var ipswCacheDir: URL { Self.userDataRoot().appendingPathComponent("ipsws") }
+    public var sealVolumeCacheDir: URL { Self.userDataRoot().appendingPathComponent("tools") }
+    public var debsCacheDir: URL { Self.userDataRoot().appendingPathComponent("debs") }
 
     // MARK: - Python
 
@@ -103,7 +99,7 @@ public struct VPhoneResources: Sendable {
         if let dir = ProcessInfo.processInfo.environment["VPHONE_VENV_DIR"], !dir.isEmpty {
             return URL(fileURLWithPath: dir)
         }
-        return userCacheDir.appendingPathComponent("venv")
+        return Self.userDataRoot().appendingPathComponent("venv")
     }
     private var managedVenvPython: URL { managedVenvDir.appendingPathComponent("bin/python3") }
 
@@ -211,32 +207,33 @@ public struct VPhoneResources: Sendable {
         let candidates = candidateHostPythons()
         guard !candidates.isEmpty else {
             throw VPhoneResourcesError.venvBootstrapFailed(
-                "no host python3 found — install one (e.g. `brew install python@3.13`) or set VPHONE_PYTHON")
+                "No python3 found on this system. Install it with 'brew install python@3.13', or set VPHONE_PYTHON.")
         }
-        log("[*] First run: provisioning the vphone Python environment at \(managedVenvDir.path) (one-time)…")
+        log("[*] First run: setting up the Python environment at \(managedVenvDir.path)…")
         let py = managedVenvPython
         let install: [String] = FileManager.default.fileExists(atPath: requirementsFile.path)
             ? ["-m", "pip", "install", "-r", requirementsFile.path]
             : ["-m", "pip", "install"] + Self.fallbackRequirements
-        var lastError = "no candidate python could build a usable venv"
+        var lastError = "No usable Python could be found on this system"
 
         for host in candidates {
-            log("    → trying \(host.path) …")
+            log("    → Trying \(host.path)…")
             try? FileManager.default.removeItem(at: managedVenvDir)
-            try FileManager.default.createDirectory(at: userCacheDir, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(
+                at: Self.userDataRoot(), withIntermediateDirectories: true)
             guard (try? VPhoneProcessRunner.runStreaming(host, ["-m", "venv", managedVenvDir.path])) == 0 else {
-                lastError = "python -m venv failed with \(host.path)"; continue
+                lastError = "Could not create a Python environment with \(host.path)"; continue
             }
             _ = try? VPhoneProcessRunner.runStreaming(py, ["-m", "pip", "install", "--upgrade", "-q", "pip"])
             guard (try? VPhoneProcessRunner.runStreaming(py, install)) == 0 else {
-                lastError = "pip install failed with \(host.path)"; continue
+                lastError = "Could not install the required Python packages with \(host.path)"; continue
             }
             guard pythonIsUsable(py) else {
-                lastError = "venv from \(host.path) still lacks a usable ipsw_parser (too old?)"; continue
+                lastError = "The Python environment built with \(host.path) is missing a required package"; continue
             }
             guard keystoneIsUsable(py) || repairKeystone(py) else {
-                lastError = "venv from \(host.path) has no working libkeystone — "
-                    + "`brew install keystone`, or install cmake so pip can build it"
+                lastError = "Could not set up keystone in the Python environment built with \(host.path). "
+                    + "Install it with 'brew install keystone', or install cmake so it can be built"
                 continue
             }
             log("[+] Python environment ready: \(py.path)")
@@ -244,7 +241,8 @@ public struct VPhoneResources: Sendable {
         }
         try? FileManager.default.removeItem(at: managedVenvDir)
         throw VPhoneResourcesError.venvBootstrapFailed(
-            lastError + " — install a modern python3 (e.g. `brew install python@3.13`) or set VPHONE_PYTHON")
+            lastError + ". If the problem persists, install a modern python3 with "
+                + "'brew install python@3.13', or set VPHONE_PYTHON.")
     }
 
     /// Ordered, existence-checked host python3 candidates to bootstrap from.

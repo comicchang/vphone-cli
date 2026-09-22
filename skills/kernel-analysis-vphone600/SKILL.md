@@ -11,10 +11,14 @@ Use `research/reference/xnu` as the source-level reference for semantics and str
 ## Required Paths
 
 - `research/kernel_info/kernel_symbols.db`
-- `research/kernel_info/kernel_index.tsv`
-- `research/kernel_info/json/kernelcache.release.vphone600.bin.symbols.json`
-- `research/kernel_info/json/kernelcache.research.vphone600.bin.symbols.json`
+- `research/kernel_info/kernel_index.tsv` (plain-text `kernel_name → json_path` index with `json_sha256`)
+- `research/kernel_info/json/` — the recovered symbol datasets:
+  - `kernelcache.release.vphone600.bin.symbols.json`
+  - `kernelcache.research.vphone600.bin.symbols.json`
 - `research/reference/xnu`
+
+The `json_path` column in both the database and `kernel_index.tsv` records the absolute path from symbolication
+time and may not match this checkout; resolve the JSON files under `research/kernel_info/json/` instead.
 
 If `research/reference/xnu` is missing, create it with a shallow clone:
 
@@ -30,17 +34,6 @@ git clone --depth 1 https://github.com/apple-oss-distributions/xnu.git research/
 3. Load the linked JSON symbol file and perform symbol/address lookups.
 4. Cross-reference candidate code paths in `research/reference/xnu`.
 5. Report findings with explicit kernel name, symbol path, and address.
-
-## Standard Queries
-
-- List known kernels:
-  - `sqlite3 research/kernel_info/kernel_symbols.db "select kernel_name, json_path from kernel_symbols order by kernel_name;"`
-- Find one kernel by name:
-  - `sqlite3 research/kernel_info/kernel_symbols.db "select * from kernel_symbols where kernel_name='kernelcache.release.vphone600';"`
-- Search symbol by substring in release JSON:
-  - `rg -n 'symbol_name_fragment' research/kernel_info/json/kernelcache.release.vphone600.bin.symbols.json`
-- Search symbol by address in research JSON:
-  - `rg -n '0xfffffe00...' research/kernel_info/json/kernelcache.research.vphone600.bin.symbols.json`
 
 ## Output Rules
 

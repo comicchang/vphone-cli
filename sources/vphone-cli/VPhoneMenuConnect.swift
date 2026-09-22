@@ -44,19 +44,19 @@ extension VPhoneMenuController {
         clipboardGetItem = clipGet
         menu.addItem(clipGet)
 
-        let clipSet = makeItem("Set Clipboard Text...", action: #selector(setClipboardText))
+        let clipSet = makeItem("Set Clipboard Text…", action: #selector(setClipboardText))
         clipSet.isEnabled = false
         clipboardSetItem = clipSet
         menu.addItem(clipSet)
 
         menu.addItem(NSMenuItem.separator())
 
-        let settingsGet = makeItem("Read Setting...", action: #selector(readSetting))
+        let settingsGet = makeItem("Read Setting…", action: #selector(readSetting))
         settingsGet.isEnabled = false
         settingsGetItem = settingsGet
         menu.addItem(settingsGet)
 
-        let settingsSet = makeItem("Write Setting...", action: #selector(writeSetting))
+        let settingsSet = makeItem("Write Setting…", action: #selector(writeSetting))
         settingsSet.isEnabled = false
         settingsSetItem = settingsSet
         menu.addItem(settingsSet)
@@ -95,14 +95,19 @@ extension VPhoneMenuController {
     @objc func devModeStatus() {
         Task {
             do {
-                let status = try await control.sendDevModeStatus()
+                let enabled = try await control.sendDevModeStatus()
                 showAlert(
                     title: "Developer Mode",
-                    message: status.enabled ? "Developer Mode is enabled." : "Developer Mode is disabled.",
+                    message: enabled ? "Developer Mode is enabled." : "Developer Mode is disabled.",
                     style: .informational
                 )
             } catch {
-                showAlert(title: "Developer Mode", message: "\(error)", style: .warning)
+                showAlert(
+                    title: "Developer Mode",
+                    message: "Unable to read Developer Mode status. Check that the guest agent is connected, "
+                        + "then try again.",
+                    style: .warning
+                )
             }
         }
     }
@@ -111,9 +116,13 @@ extension VPhoneMenuController {
         Task {
             do {
                 try await control.sendPing()
-                showAlert(title: "Ping", message: "pong", style: .informational)
+                showAlert(title: "Ping", message: "The guest responded.", style: .informational)
             } catch {
-                showAlert(title: "Ping", message: "\(error)", style: .warning)
+                showAlert(
+                    title: "Ping",
+                    message: "The guest did not respond. Check that the guest agent is connected, then try again.",
+                    style: .warning
+                )
             }
         }
     }
@@ -122,9 +131,14 @@ extension VPhoneMenuController {
         Task {
             do {
                 let hash = try await control.sendVersion()
-                showAlert(title: "Guest Version", message: "build: \(hash)", style: .informational)
+                showAlert(title: "Guest Version", message: "Build \(hash)", style: .informational)
             } catch {
-                showAlert(title: "Guest Version", message: "\(error)", style: .warning)
+                showAlert(
+                    title: "Guest Version",
+                    message: "Unable to read the guest version. Check that the guest agent is connected, "
+                        + "then try again.",
+                    style: .warning
+                )
             }
         }
     }
@@ -142,15 +156,19 @@ extension VPhoneMenuController {
                 let content = try await control.clipboardGet()
                 var message = ""
                 if let text = content.text {
-                    let truncated = text.count > 500 ? String(text.prefix(500)) + "..." : text
+                    let truncated = text.count > 500 ? String(text.prefix(500)) + "…" : text
                     message += "Text: \(truncated)\n"
                 }
                 message += "Types: \(content.types.joined(separator: ", "))\n"
-                message += "Has Image: \(content.hasImage)\n"
+                message += "Image: \(content.hasImage ? "Yes" : "No")\n"
                 message += "Change Count: \(content.changeCount)"
                 showAlert(title: "Clipboard Content", message: message, style: .informational)
             } catch {
-                showAlert(title: "Clipboard", message: "\(error)", style: .warning)
+                showAlert(
+                    title: "Clipboard",
+                    message: "Unable to read the guest clipboard. Try again.",
+                    style: .warning
+                )
             }
         }
     }
@@ -201,7 +219,11 @@ extension VPhoneMenuController {
                 try await control.clipboardSet(text: text)
                 showAlert(title: "Clipboard", message: "Text set successfully.", style: .informational)
             } catch {
-                showAlert(title: "Clipboard", message: "\(error)", style: .warning)
+                showAlert(
+                    title: "Clipboard",
+                    message: "Unable to set the guest clipboard. Try again.",
+                    style: .warning
+                )
             }
         }
     }
@@ -267,16 +289,20 @@ extension VPhoneMenuController {
                     )
                     display = String(data: data, encoding: .utf8) ?? "\(dict)"
                 } else {
-                    display = "\(value ?? "nil")"
+                    display = "\(value ?? "Not set")"
                 }
-                let truncated = display.count > 2000 ? String(display.prefix(2000)) + "\n..." : display
+                let truncated = display.count > 2000 ? String(display.prefix(2000)) + "\n…" : display
                 showAlert(
                     title: "Setting: \(domain)\(key.map { ".\($0)" } ?? "")",
                     message: truncated,
                     style: .informational
                 )
             } catch {
-                showAlert(title: "Read Setting", message: "\(error)", style: .warning)
+                showAlert(
+                    title: "Read Setting",
+                    message: "Unable to read that setting. Check the domain and key, then try again.",
+                    style: .warning
+                )
             }
         }
     }
@@ -304,7 +330,7 @@ extension VPhoneMenuController {
         let lbl3 = NSTextField(labelWithString: "Type:")
         lbl3.frame = NSRect(x: 20, y: 98, width: 380, height: 18)
         let typeField = NSTextField(frame: NSRect(x: 20, y: 72, width: 380, height: 22))
-        typeField.placeholderString = "Type: boolean | string | integer | float"
+        typeField.placeholderString = "boolean | string | integer | float"
 
         let lbl4 = NSTextField(labelWithString: "Value:")
         lbl4.frame = NSRect(x: 20, y: 48, width: 380, height: 18)
@@ -368,7 +394,11 @@ extension VPhoneMenuController {
                     style: .informational
                 )
             } catch {
-                showAlert(title: "Write Setting", message: "\(error)", style: .warning)
+                showAlert(
+                    title: "Write Setting",
+                    message: "Unable to write that setting. Check the domain, key and type, then try again.",
+                    style: .warning
+                )
             }
         }
     }

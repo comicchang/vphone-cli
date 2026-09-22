@@ -8,8 +8,8 @@ public enum VPhoneFirmwarePickerError: Error, CustomStringConvertible, Equatable
 
     public var description: String {
         switch self {
-        case .aborted: "firmware selection aborted"
-        case .invalidSelection: "no valid firmware selection made"
+        case .aborted: "Firmware selection cancelled."
+        case .invalidSelection: "No valid selection. Enter a number from the list."
         }
     }
 }

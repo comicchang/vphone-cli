@@ -94,12 +94,8 @@ class VPhoneFileBrowserModel {
     }
 
     func goToBreadcrumb(_ path: String) {
-        if path == currentPath { return }
-        pathHistory.append(currentPath)
-        forwardHistory.removeAll()
-        currentPath = path
-        selection.removeAll()
-        Task { await refresh() }
+        guard path != currentPath else { return }
+        navigate(to: path)
     }
 
     var canGoBack: Bool { !pathHistory.isEmpty }

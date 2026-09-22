@@ -65,16 +65,14 @@ public class IBootPatcher: Patcher {
         patchSerialLabels()
         patchImage4Callback()
 
-        if mode == .llb {
-            patchBootArgs()
-        }
-
-        if mode == .ibec {
+        switch mode {
+        case .ibss:
+            break
+        case .ibec:
             patchBootArgs()
             patchBootxPrecondition()
-        }
-
-        if mode == .llb {
+        case .llb:
+            patchBootArgs()
             patchRootfssBypass()
             patchPanicBypass()
         }
@@ -171,12 +169,6 @@ public class IBootPatcher: Patcher {
     func encodedMovkW8Lsl16(_ imm16: UInt32) -> Data {
         let insn: UInt32 = 0x72A0_0000 | ((imm16 & 0xFFFF) << 5) | 8
         return withUnsafeBytes(of: insn.littleEndian) { Data($0) }
-    }
-
-    /// Find all file offsets where the given 4-byte pattern appears.
-    /// Equivalent to Python `_find_asm_pattern(data, asm_str)`.
-    func findPattern(_ pattern: Data) -> [Int] {
-        buffer.findAll(pattern)
     }
 
     // MARK: - Chunked Disassembly
@@ -471,7 +463,7 @@ public class IBootPatcher: Patcher {
     /// Python: `_patch_cbz_before_error()`
     private func patchCbzBeforeError(errorCode: UInt32, description: String) {
         let pattern = encodedMovW8(errorCode)
-        let locs = findPattern(pattern)
+        let locs = buffer.findAll(pattern)
 
         guard locs.count == 1 else {
             if verbose {
@@ -532,7 +524,7 @@ public class IBootPatcher: Patcher {
     /// Python: `_patch_null_check_0x78()`
     private func patchNullCheck0x78() {
         let pattern = encodedMovW8(0x110)
-        let locs = findPattern(pattern)
+        let locs = buffer.findAll(pattern)
 
         guard locs.count == 1 else {
             if verbose { print("  [-] rootfs null check: expected 1 'mov w8, #0x110', found \(locs.count)") }
@@ -574,7 +566,7 @@ public class IBootPatcher: Patcher {
     /// Python: `patch_panic_bypass()`
     func patchPanicBypass() {
         let mov328 = encodedMovW8(0x328)
-        let locs = findPattern(mov328)
+        let locs = buffer.findAll(mov328)
 
         for loc in locs {
             // Verify movk w8, #0x40, lsl #16 follows

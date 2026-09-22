@@ -28,7 +28,7 @@ struct ManifestTests {
     }
 
     @Test func updatingReplacesOnlyGivenFields() {
-        let updated = sampleManifest().updating(cpuCount: 4, memorySize: nil, screenConfig: nil)
+        let updated = sampleManifest().updating(cpuCount: 4, memorySize: nil)
         #expect(updated.cpuCount == 4)
         #expect(updated.memorySize == 8 * 1024 * 1024 * 1024)
         // networkConfig is preserved when not passed.

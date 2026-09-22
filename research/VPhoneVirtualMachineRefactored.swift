@@ -54,36 +54,29 @@ class VPhoneVirtualMachineRefactored: NSObject, VZVirtualMachineDelegate {
     }
 
     init(options: Configuration) throws {
-        // Create hardware model
         let hardwareModel = try VPhoneHardware.createModel()
         print("[vphone] PV=3 hardware model: isSupported = true")
 
-        // Configure platform
         let platform = try configurePlatform(
             machineIDURL: options.machineIDURL,
             nvramURL: options.nvramURL,
             hardwareModel: hardwareModel
         )
 
-        // Resolve device identity
         if let machineIdentifier = platform.machineIdentifier {
             ecidHex = Self.resolveDeviceIdentity(machineIdentifier: machineIdentifier)?.ecidHex
         } else {
             ecidHex = nil
         }
 
-        // Create bootloader
         let bootloader = createBootloader(romURL: options.romURL)
 
-        // Build VM configuration
         let config = buildConfiguration(
             options: options,
-            hardwareModel: hardwareModel,
             platform: platform,
             bootloader: bootloader
         )
 
-        // Validate configuration
         try config.validate()
         print("[vphone] Configuration validated")
 
@@ -91,7 +84,6 @@ class VPhoneVirtualMachineRefactored: NSObject, VZVirtualMachineDelegate {
         super.init()
         virtualMachine.delegate = self
 
-        // Setup serial output forwarding
         if let readHandle = serialOutputReadHandle {
             readHandle.readabilityHandler = { handle in
                 let data = handle.availableData
@@ -111,11 +103,9 @@ class VPhoneVirtualMachineRefactored: NSObject, VZVirtualMachineDelegate {
         let platform = VZMacPlatformConfiguration()
         platform.hardwareModel = hardwareModel
 
-        // Load or create machine identifier
         let machineIdentifier = loadOrCreateMachineIdentifier(at: machineIDURL)
         platform.machineIdentifier = machineIdentifier
 
-        // Create auxiliary storage (NVRAM)
         let auxiliaryStorage = try VZMacAuxiliaryStorage(
             creatingStorageAt: nvramURL,
             hardwareModel: hardwareModel,
@@ -123,7 +113,6 @@ class VPhoneVirtualMachineRefactored: NSObject, VZVirtualMachineDelegate {
         )
         platform.auxiliaryStorage = auxiliaryStorage
 
-        // Configure boot args for serial output
         setBootArgsSerialOutput(auxiliaryStorage)
 
         return platform
@@ -168,7 +157,6 @@ class VPhoneVirtualMachineRefactored: NSObject, VZVirtualMachineDelegate {
 
     private func buildConfiguration(
         options: Configuration,
-        hardwareModel _: VZMacHardwareModel,
         platform: VZMacPlatformConfiguration,
         bootloader: VZMacOSBootLoader
     ) -> VZVirtualMachineConfiguration {
@@ -178,22 +166,21 @@ class VPhoneVirtualMachineRefactored: NSObject, VZVirtualMachineDelegate {
         config.cpuCount = max(options.cpuCount, VZVirtualMachineConfiguration.minimumAllowedCPUCount)
         config.memorySize = max(options.memorySize, VZVirtualMachineConfiguration.minimumAllowedMemorySize)
 
-        // Configure each subsystem
-        configureDisplay(&config, screen: options.screenConfiguration)
-        configureAudio(&config)
-        configureStorage(&config, diskURL: options.diskURL)
-        configureNetwork(&config)
-        configureSerialPort(&config)
-        configureInputDevices(&config)
-        configureSocketDevice(&config)
-        configureBattery(&config)
-        configureDebugStub(&config, port: options.kernelDebugPort)
-        configureSEP(&config, options: options)
+        configureDisplay(config, screen: options.screenConfiguration)
+        configureAudio(config)
+        configureStorage(config, diskURL: options.diskURL)
+        configureNetwork(config)
+        configureSerialPort(config)
+        configureInputDevices(config)
+        configureSocketDevice(config)
+        configureBattery(config)
+        configureDebugStub(config, port: options.kernelDebugPort)
+        configureSEP(config, options: options)
 
         return config
     }
 
-    private func configureDisplay(_ config: inout VZVirtualMachineConfiguration, screen: ScreenConfiguration) {
+    private func configureDisplay(_ config: VZVirtualMachineConfiguration, screen: ScreenConfiguration) {
         let graphicsConfiguration = VZMacGraphicsDeviceConfiguration()
         let displayConfiguration = VZMacGraphicsDisplayConfiguration(
             widthInPixels: screen.width,
@@ -204,7 +191,7 @@ class VPhoneVirtualMachineRefactored: NSObject, VZVirtualMachineDelegate {
         config.graphicsDevices = [graphicsConfiguration]
     }
 
-    private func configureAudio(_ config: inout VZVirtualMachineConfiguration) {
+    private func configureAudio(_ config: VZVirtualMachineConfiguration) {
         let soundDevice = VZVirtioSoundDeviceConfiguration()
         let inputStream = VZVirtioSoundDeviceInputStreamConfiguration()
         inputStream.source = VZHostAudioInputStreamSource()
@@ -216,7 +203,7 @@ class VPhoneVirtualMachineRefactored: NSObject, VZVirtualMachineDelegate {
         config.audioDevices = [soundDevice]
     }
 
-    private func configureStorage(_ config: inout VZVirtualMachineConfiguration, diskURL: URL) {
+    private func configureStorage(_ config: VZVirtualMachineConfiguration, diskURL: URL) {
         guard FileManager.default.fileExists(atPath: diskURL.path) else {
             print("[vphone] Warning: Disk image not found at \(diskURL.path)")
             return
@@ -227,13 +214,13 @@ class VPhoneVirtualMachineRefactored: NSObject, VZVirtualMachineDelegate {
         config.storageDevices = [storageDevice]
     }
 
-    private func configureNetwork(_ config: inout VZVirtualMachineConfiguration) {
+    private func configureNetwork(_ config: VZVirtualMachineConfiguration) {
         let networkDevice = VZVirtioNetworkDeviceConfiguration()
         networkDevice.attachment = VZNATNetworkDeviceAttachment()
         config.networkDevices = [networkDevice]
     }
 
-    private func configureSerialPort(_ config: inout VZVirtualMachineConfiguration) {
+    private func configureSerialPort(_ config: VZVirtualMachineConfiguration) {
         guard let serialPort = Dynamic._VZPL011SerialPortConfiguration().asObject as? VZSerialPortConfiguration else {
             return
         }
@@ -246,7 +233,6 @@ class VPhoneVirtualMachineRefactored: NSObject, VZVirtualMachineDelegate {
             fileHandleForWriting: outputPipe.fileHandleForWriting
         )
 
-        // Forward host stdin → VM serial input
         forwardStandardInput(to: inputPipe.fileHandleForWriting)
         serialOutputReadHandle = outputPipe.fileHandleForReading
 
@@ -266,62 +252,62 @@ class VPhoneVirtualMachineRefactored: NSObject, VZVirtualMachineDelegate {
         }
     }
 
-    private func configureInputDevices(_ config: inout VZVirtualMachineConfiguration) {
-        // Multi-touch screen
+    private func configureInputDevices(_ config: VZVirtualMachineConfiguration) {
         if let touchScreen = Dynamic._VZUSBTouchScreenConfiguration().asObject {
             Dynamic(config)._setMultiTouchDevices([touchScreen])
             print("[vphone] USB touch screen configured")
         }
 
-        // Keyboard
         config.keyboards = [VZUSBKeyboardConfiguration()]
     }
 
-    private func configureSocketDevice(_ config: inout VZVirtualMachineConfiguration) {
+    private func configureSocketDevice(_ config: VZVirtualMachineConfiguration) {
         config.socketDevices = [VZVirtioSocketDeviceConfiguration()]
     }
 
-    private func configureBattery(_ config: inout VZVirtualMachineConfiguration) {
-        let batterySource = Dynamic._VZMacSyntheticBatterySource()
-        batterySource.setCharge(100.0)
-        batterySource.setConnectivity(BatteryConnectivity.charging)
+    private func configureBattery(_ config: VZVirtualMachineConfiguration) {
+        let syntheticBatterySource = Dynamic._VZMacSyntheticBatterySource()
+        syntheticBatterySource.setCharge(100.0)
+        syntheticBatterySource.setConnectivity(BatteryConnectivity.charging)
 
         let batteryConfiguration = Dynamic._VZMacBatteryPowerSourceDeviceConfiguration()
-        batteryConfiguration.setSource(batterySource.asObject)
+        batteryConfiguration.setSource(syntheticBatterySource.asObject)
 
         guard let batteryObject = batteryConfiguration.asObject else { return }
 
         Dynamic(config)._setPowerSourceDevices([batteryObject])
-        self.batterySource = batterySource.asObject as AnyObject?
+        self.batterySource = syntheticBatterySource.asObject as AnyObject?
         print("[vphone] Synthetic battery configured (100%, charging)")
     }
 
-    private func configureDebugStub(_ config: inout VZVirtualMachineConfiguration, port: Int?) {
-        if let port {
-            guard (6000 ... 65535).contains(port) else {
-                print("[vphone] Warning: Invalid kernel debug port \(port), using system-assigned")
-                configureDefaultDebugStub(&config)
-                return
-            }
-
-            if let debugStub = Dynamic._VZGDBDebugStubConfiguration(port: port).asObject {
-                Dynamic(config)._setDebugStub(debugStub)
-                print("[vphone] Kernel GDB debug stub: tcp://127.0.0.1:\(port)")
-            } else {
-                configureDefaultDebugStub(&config)
-            }
-        } else {
-            configureDefaultDebugStub(&config)
+    private func configureDebugStub(_ config: VZVirtualMachineConfiguration, port: Int?) {
+        guard let port else {
+            configureDefaultDebugStub(config)
+            return
         }
+
+        guard (6000 ... 65535).contains(port) else {
+            print("[vphone] Warning: Invalid kernel debug port \(port), using system-assigned")
+            configureDefaultDebugStub(config)
+            return
+        }
+
+        guard let debugStub = Dynamic._VZGDBDebugStubConfiguration(port: port).asObject else {
+            configureDefaultDebugStub(config)
+            return
+        }
+
+        Dynamic(config)._setDebugStub(debugStub)
+        print("[vphone] Kernel GDB debug stub: tcp://127.0.0.1:\(port)")
     }
 
-    private func configureDefaultDebugStub(_ config: inout VZVirtualMachineConfiguration) {
+    private func configureDefaultDebugStub(_ config: VZVirtualMachineConfiguration) {
         let debugStub = Dynamic._VZGDBDebugStubConfiguration().asObject
         Dynamic(config)._setDebugStub(debugStub)
         print("[vphone] Kernel GDB debug stub enabled (system-assigned port)")
     }
 
-    private func configureSEP(_ config: inout VZVirtualMachineConfiguration, options: Configuration) {
+    private func configureSEP(_ config: VZVirtualMachineConfiguration, options: Configuration) {
         let sepConfiguration = Dynamic._VZSEPCoprocessorConfiguration(storageURL: options.sepStorageURL)
         sepConfiguration.setRomBinaryURL(options.sepRomURL)
         sepConfiguration.setDebugStub(Dynamic._VZGDBDebugStubConfiguration().asObject)

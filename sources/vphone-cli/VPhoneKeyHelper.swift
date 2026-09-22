@@ -33,10 +33,12 @@ class VPhoneKeyHelper {
             backing: .buffered,
             defer: false
         )
-        panel.title = "vphoned Not Connected"
+        panel.title = "Guest Agent Not Connected"
         panel.center()
 
-        let msg = NSTextField(labelWithString: "The guest agent is not connected. Key injection requires vphoned running inside the VM.")
+        let msg = NSTextField(
+            labelWithString: "The guest agent is not connected. Wait for it to connect, then try again."
+        )
         msg.frame = NSRect(x: 20, y: 50, width: 340, height: 44)
         msg.lineBreakMode = .byWordWrapping
         msg.maximumNumberOfLines = 3

@@ -3,6 +3,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+static NSMutableDictionary *vp_missing_path_error(id reqId) {
+    NSMutableDictionary *r = vp_make_response(@"err", reqId);
+    r[@"msg"] = @"missing path";
+    return r;
+}
+
 NSDictionary *vp_handle_file_command(int fd, NSDictionary *msg) {
     NSString *type = msg[@"t"];
     id reqId = msg[@"id"];
@@ -10,11 +16,7 @@ NSDictionary *vp_handle_file_command(int fd, NSDictionary *msg) {
     // -- file_list: list directory contents --
     if ([type isEqualToString:@"file_list"]) {
         NSString *path = msg[@"path"];
-        if (!path) {
-            NSMutableDictionary *r = vp_make_response(@"err", reqId);
-            r[@"msg"] = @"missing path";
-            return r;
-        }
+        if (!path) return vp_missing_path_error(reqId);
 
         NSFileManager *fm = [NSFileManager defaultManager];
         NSError *err = nil;
@@ -66,16 +68,12 @@ NSDictionary *vp_handle_file_command(int fd, NSDictionary *msg) {
     // -- file_get: download file from guest to host --
     if ([type isEqualToString:@"file_get"]) {
         NSString *path = msg[@"path"];
-        if (!path) {
-            NSMutableDictionary *r = vp_make_response(@"err", reqId);
-            r[@"msg"] = @"missing path";
-            return r;
-        }
+        if (!path) return vp_missing_path_error(reqId);
 
         int fileFd = open([path fileSystemRepresentation], O_RDONLY);
         if (fileFd < 0) {
             NSMutableDictionary *r = vp_make_response(@"err", reqId);
-            r[@"msg"] = [NSString stringWithFormat:@"open failed: %s", strerror(errno)];
+            r[@"msg"] = [NSString stringWithFormat:@"Unable to open the file (%s).", strerror(errno)];
             return r;
         }
 
@@ -83,13 +81,13 @@ NSDictionary *vp_handle_file_command(int fd, NSDictionary *msg) {
         if (fstat(fileFd, &st) != 0) {
             close(fileFd);
             NSMutableDictionary *r = vp_make_response(@"err", reqId);
-            r[@"msg"] = [NSString stringWithFormat:@"stat failed: %s", strerror(errno)];
+            r[@"msg"] = [NSString stringWithFormat:@"Unable to read the file (%s).", strerror(errno)];
             return r;
         }
         if (!S_ISREG(st.st_mode)) {
             close(fileFd);
             NSMutableDictionary *r = vp_make_response(@"err", reqId);
-            r[@"msg"] = @"not a regular file";
+            r[@"msg"] = @"Only files can be downloaded. This path is not a file.";
             return r;
         }
 
@@ -124,9 +122,7 @@ NSDictionary *vp_handle_file_command(int fd, NSDictionary *msg) {
         if (!path) {
             // Must still drain the raw bytes to keep protocol in sync
             if (size > 0) vp_drain(fd, size);
-            NSMutableDictionary *r = vp_make_response(@"err", reqId);
-            r[@"msg"] = @"missing path";
-            return r;
+            return vp_missing_path_error(reqId);
         }
 
         // Create parent directories if needed
@@ -143,7 +139,7 @@ NSDictionary *vp_handle_file_command(int fd, NSDictionary *msg) {
         if (tmp_fd < 0) {
             vp_drain(fd, size);
             NSMutableDictionary *r = vp_make_response(@"err", reqId);
-            r[@"msg"] = [NSString stringWithFormat:@"mkstemp failed: %s", strerror(errno)];
+            r[@"msg"] = [NSString stringWithFormat:@"Unable to create a temporary file (%s).", strerror(errno)];
             return r;
         }
 
@@ -161,7 +157,7 @@ NSDictionary *vp_handle_file_command(int fd, NSDictionary *msg) {
         if (!ok) {
             unlink(tmp_path);
             NSMutableDictionary *r = vp_make_response(@"err", reqId);
-            r[@"msg"] = @"file transfer failed";
+            r[@"msg"] = @"The file transfer was interrupted. Try again.";
             return r;
         }
 
@@ -176,7 +172,7 @@ NSDictionary *vp_handle_file_command(int fd, NSDictionary *msg) {
         if (rename(tmp_path, [path fileSystemRepresentation]) != 0) {
             unlink(tmp_path);
             NSMutableDictionary *r = vp_make_response(@"err", reqId);
-            r[@"msg"] = [NSString stringWithFormat:@"rename failed: %s", strerror(errno)];
+            r[@"msg"] = [NSString stringWithFormat:@"Unable to save the file (%s).", strerror(errno)];
             return r;
         }
 
@@ -187,11 +183,7 @@ NSDictionary *vp_handle_file_command(int fd, NSDictionary *msg) {
     // -- file_mkdir --
     if ([type isEqualToString:@"file_mkdir"]) {
         NSString *path = msg[@"path"];
-        if (!path) {
-            NSMutableDictionary *r = vp_make_response(@"err", reqId);
-            r[@"msg"] = @"missing path";
-            return r;
-        }
+        if (!path) return vp_missing_path_error(reqId);
         NSError *err = nil;
         if (![[NSFileManager defaultManager] createDirectoryAtPath:path
                                        withIntermediateDirectories:YES
@@ -207,11 +199,7 @@ NSDictionary *vp_handle_file_command(int fd, NSDictionary *msg) {
     // -- file_delete --
     if ([type isEqualToString:@"file_delete"]) {
         NSString *path = msg[@"path"];
-        if (!path) {
-            NSMutableDictionary *r = vp_make_response(@"err", reqId);
-            r[@"msg"] = @"missing path";
-            return r;
-        }
+        if (!path) return vp_missing_path_error(reqId);
         NSError *err = nil;
         if (![[NSFileManager defaultManager] removeItemAtPath:path error:&err]) {
             NSMutableDictionary *r = vp_make_response(@"err", reqId);

@@ -132,7 +132,7 @@ class VPhoneHostControl {
         }
 
         // Reuse the existing private-API capture
-        guard let cgImage = await captureStillImage(recorder: recorder, view: view) else {
+        guard let cgImage = try? await recorder.captureStillImage(from: view) else {
             return nil
         }
 
@@ -164,55 +164,6 @@ class VPhoneHostControl {
         guard CGImageDestinationFinalize(dest) else { return nil }
 
         return (data as Data).base64EncodedString()
-    }
-
-    /// Access the recorder's private capture method via the existing async wrapper.
-    private func captureStillImage(recorder: VPhoneScreenRecorder, view: NSView) async -> CGImage? {
-        // Use the public saveScreenshot path but intercept before encoding.
-        // We call the recorder's internal captureStillImage indirectly by
-        // going through saveScreenshot to a temp file, then reading back.
-        // This is suboptimal but avoids exposing internal API.
-        //
-        // Better: use the same private API directly.
-        guard let vmView = view as? VPhoneVirtualMachineView,
-              let display = vmView.recordingGraphicsDisplay
-        else { return nil }
-
-        return await withCheckedContinuation { continuation in
-            let selector = NSSelectorFromString("_takeScreenshotWithCompletionHandler:")
-            guard display.responds(to: selector),
-                  let cls = object_getClass(display),
-                  let method = class_getInstanceMethod(cls, selector)
-            else {
-                continuation.resume(returning: nil)
-                return
-            }
-
-            typealias CompletionBlock = @convention(block) (AnyObject?) -> Void
-            typealias IMP = @convention(c) (AnyObject, Selector, AnyObject) -> Void
-
-            let impl = method_getImplementation(method)
-            let fn = unsafeBitCast(impl, to: IMP.self)
-
-            let block: CompletionBlock = { imageObject in
-                guard let imageObject else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                if let nsImage = imageObject as? NSImage {
-                    continuation.resume(returning: nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil))
-                    return
-                }
-                let cf = imageObject as CFTypeRef
-                if CFGetTypeID(cf) == CGImage.typeID {
-                    continuation.resume(returning: (cf as! CGImage))
-                    return
-                }
-                continuation.resume(returning: nil)
-            }
-            let blockObj = unsafeBitCast(block, to: AnyObject.self)
-            fn(display, selector, blockObj)
-        }
     }
 
     // MARK: - Accept Loop

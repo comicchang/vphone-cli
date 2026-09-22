@@ -93,8 +93,7 @@ class VPhoneVirtualMachineView: VZVirtualMachineView {
         return .copy
     }
 
-    override func draggingExited(_ sender: (any NSDraggingInfo)?) {
-        _ = sender
+    override func draggingExited(_: (any NSDraggingInfo)?) {
         updateDragHighlight(false)
     }
 
@@ -107,11 +106,7 @@ class VPhoneVirtualMachineView: VZVirtualMachineView {
         guard let url = droppedInstallPackageURL(from: sender) else { return false }
 
         Task { @MainActor in
-            guard let control else {
-                showAlert(title: "Install App Package", message: "Guest is not connected.", style: .warning)
-                return
-            }
-            guard control.isConnected else {
+            guard let control, control.isConnected else {
                 showAlert(title: "Install App Package", message: "Guest is not connected.", style: .warning)
                 return
             }

@@ -26,12 +26,10 @@ struct ResourcesTests {
             .appendingPathComponent("scripts/resources").path)
     }
 
-    @Test func cacheDirsAreHomeRelativeAndToolsBinIsBaseRelative() {
+    @Test func cacheDirsAreHomeRelative() {
         // The VPHONE_ROOT override would relocate the cache; only assert the default.
         if ProcessInfo.processInfo.environment["VPHONE_ROOT"] != nil { return }
-        let r = VPhoneResources(base: URL(fileURLWithPath: "/Applications/vphone-cli.app/Contents/Resources"))
-        #expect(r.userCacheDir.path.hasSuffix("/.vphone"))
-        #expect(r.toolsBinDir.path == r.base.appendingPathComponent(".tools/bin").path)
+        #expect(VPhoneResources.userDataRoot().path.hasSuffix("/.vphone"))
     }
 
     /// These all shell out; a missing interpreter must return false, not throw.
@@ -52,12 +50,12 @@ struct ResourcesTests {
         #expect(r.managedVenvDir.path.hasSuffix("/.vphone/venv"))
     }
 
-    @Test func userCacheDirHonorsVPHONERoot() {
+    @Test func userDataRootHonorsVPHONERoot() {
         unsetenv("VPHONE_VENV_DIR")
         setenv("VPHONE_ROOT", "/tmp/vphone-test-root", 1)
         defer { unsetenv("VPHONE_ROOT") }
         let r = VPhoneResources(base: URL(fileURLWithPath: "/x"))
-        #expect(r.userCacheDir.path == "/tmp/vphone-test-root")
+        #expect(VPhoneResources.userDataRoot().path == "/tmp/vphone-test-root")
         #expect(r.ipswCacheDir.path == "/tmp/vphone-test-root/ipsws")
         #expect(r.sealVolumeCacheDir.path == "/tmp/vphone-test-root/tools")
         #expect(r.debsCacheDir.path == "/tmp/vphone-test-root/debs")

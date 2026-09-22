@@ -9,12 +9,7 @@ public struct VPhoneLaunchLayout: Sendable {
     public init(projectRoot: URL) { self.init(resources: VPhoneResources(base: projectRoot)) }
 
     public var preflightScript: URL { resources.preflightScript }
-    public var fwPrepareScript: URL { resources.fwPrepareScript }
-    public var cfwInstallHostScript: URL { resources.cfwInstallHostScript }
-    public var pmd3Bridge: URL { resources.pmd3Bridge }
     public var vphoned: URL { resources.vphoned }
-
-    public func python() throws -> URL { try resources.pythonExecutable() }
 
     /// Copy the built vphoned into the bundle if present and different.
     @discardableResult

@@ -40,7 +40,7 @@ extension KernelJBPatcher {
             // Collect BL targets within the caller.
             var blTargets = Set<Int>()
             for scan in stride(from: callerStart, to: callerEnd, by: 4) {
-                if let target = jbDecodeBL(at: scan) {
+                if let target = decodeBL(at: scan) {
                     blTargets.insert(target)
                 }
             }
@@ -66,7 +66,7 @@ extension KernelJBPatcher {
                     // Must be preceded by a BL within 3 instructions.
                     var hasBlBefore = false
                     for back in stride(from: off - 4, through: max(off - 12, target), by: -4) {
-                        if jbDecodeBL(at: back) != nil {
+                        if decodeBL(at: back) != nil {
                             hasBlBefore = true
                             break
                         }

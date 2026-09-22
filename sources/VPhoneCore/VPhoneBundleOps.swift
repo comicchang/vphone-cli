@@ -8,12 +8,12 @@ public enum VPhoneBundleOpsError: Error, Equatable {
 
 public enum VPhoneBundleOps {
     public struct NewBundleSpec: Sendable {
-        public var name: String
-        public var cpuCount: UInt
-        public var memoryMB: UInt64
-        public var diskSizeGB: UInt64
-        public var romSource: URL
-        public var sepromSource: URL
+        public let name: String
+        public let cpuCount: UInt
+        public let memoryMB: UInt64
+        public let diskSizeGB: UInt64
+        public let romSource: URL
+        public let sepromSource: URL
 
         public init(name: String, cpuCount: UInt, memoryMB: UInt64, diskSizeGB: UInt64,
                     romSource: URL, sepromSource: URL) {
@@ -102,7 +102,6 @@ public enum VPhoneBundleOps {
         let updated = bundle.manifest.updating(
             cpuCount: cpuCount,
             memorySize: memoryMB.map { $0 * 1024 * 1024 },
-            screenConfig: nil,
             networkConfig: network)
         try updated.write(to: bundle.configURL)
         return VPhoneBundle(url: bundle.url, manifest: updated)
@@ -289,7 +288,7 @@ public enum VPhoneBundleOps {
         let entries = try fm.contentsOfDirectory(atPath: staging.path)
         guard entries.count == 1, let archived = entries.first else {
             throw VPhoneBundleOpsError.badArchive(
-                "expected a single top-level bundle directory, found \(entries.sorted())")
+                "This archive is not a VM export. Choose an archive created by 'vphone-cli vm export'.")
         }
         let finalName = name ?? archived
         try requireValidName(finalName)
@@ -298,7 +297,7 @@ public enum VPhoneBundleOps {
         let extracted = staging.appendingPathComponent(archived)
         guard fm.fileExists(atPath: extracted.appendingPathComponent("config.plist").path) else {
             throw VPhoneBundleOpsError.badArchive(
-                "archive did not contain a valid bundle (\(archived)/config.plist)")
+                "This archive does not contain a valid VM. Choose an archive created by 'vphone-cli vm export'.")
         }
         let bundle = try VPhoneBundle.load(at: extracted)
         try fm.moveItem(at: extracted, to: dst)

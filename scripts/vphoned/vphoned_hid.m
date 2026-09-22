@@ -28,7 +28,6 @@ static IOHIDEventSystemClientRef gClient;
 static dispatch_queue_t gHIDQueue;
 
 // Digitizer event-mask bits and transducer types (IOHIDEventTypes.h).
-#define VP_DIG_RANGE     0x00000001u
 #define VP_DIG_TOUCH     0x00000002u
 #define VP_DIG_POSITION  0x00000004u
 #define VP_DIG_IDENTITY  0x00000020u
@@ -120,12 +119,7 @@ static void dispatch_digitizer(double x, double y, boolean_t range,
         CFRelease(finger);
     }
 
-    IOHIDEventRef strong = (IOHIDEventRef)CFRetain(parent);
-    dispatch_async(gHIDQueue, ^{
-        pSetSender(strong, 0x8000000817319372);
-        pDispatch(gClient, strong);
-        CFRelease(strong);
-    });
+    send_hid_event(parent);
     CFRelease(parent);
 }
 

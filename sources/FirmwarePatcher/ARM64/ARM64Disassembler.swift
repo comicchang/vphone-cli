@@ -4,9 +4,6 @@ import Capstone
 import Foundation
 
 public final class ARM64Disassembler: Sendable {
-    /// Shared singleton instance with detail mode enabled.
-    public static let shared: ARM64Disassembler = .init()
-
     private let cs: Disassembler
 
     public init() {

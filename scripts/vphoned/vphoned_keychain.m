@@ -11,55 +11,15 @@
 #import <Security/Security.h>
 #import <sqlite3.h>
 
-// MARK: - Helpers
-
-/// Convert a CFType keychain attribute value to a JSON-safe NSObject.
-static id safe_value(id val) {
-    if (!val || val == (id)kCFNull) return [NSNull null];
-    if ([val isKindOfClass:[NSString class]]) return val;
-    if ([val isKindOfClass:[NSNumber class]]) return val;
-    if ([val isKindOfClass:[NSDate class]]) {
-        return @([(NSDate *)val timeIntervalSince1970]);
-    }
-    if ([val isKindOfClass:[NSData class]]) {
-        NSString *str = [[NSString alloc] initWithData:val encoding:NSUTF8StringEncoding];
-        if (str) return str;
-        return [(NSData *)val base64EncodedStringWithOptions:0];
-    }
-    return [val description];
-}
-
 // MARK: - SQLite-based keychain reader
 
 static NSString *KEYCHAIN_DB_PATH = @"/var/Keychains/keychain-2.db";
-
-/// Map sqlite table name to our class abbreviation.
-static NSDictionary *tableToClass(void) {
-    return @{
-        @"genp": @"genp",
-        @"inet": @"inet",
-        @"cert": @"cert",
-        @"keys": @"keys",
-    };
-}
 
 /// Read a text column, returning @"" if NULL.
 static NSString *col_text(sqlite3_stmt *stmt, int col) {
     const unsigned char *val = sqlite3_column_text(stmt, col);
     if (!val) return @"";
     return [NSString stringWithUTF8String:(const char *)val];
-}
-
-/// Read a blob column as base64 string.
-static NSString *col_blob_base64(sqlite3_stmt *stmt, int col) {
-    const void *blob = sqlite3_column_blob(stmt, col);
-    int size = sqlite3_column_bytes(stmt, col);
-    if (!blob || size <= 0) return @"";
-    NSData *data = [NSData dataWithBytes:blob length:size];
-    // Try UTF-8 first
-    NSString *str = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-    if (str) return str;
-    return [data base64EncodedStringWithOptions:0];
 }
 
 /// Query one table from the keychain DB via sqlite3.
@@ -69,13 +29,12 @@ static NSArray *query_db_table(sqlite3 *db, NSString *table, NSString *className
     // inet also has: srvr, ptcl, port, path
     NSString *sql;
     BOOL isInet = [table isEqualToString:@"inet"];
-    BOOL isCert = [table isEqualToString:@"cert"];
-    BOOL isKeys = [table isEqualToString:@"keys"];
+    BOOL hasAccountColumns = !([table isEqualToString:@"cert"] || [table isEqualToString:@"keys"]);
 
     if (isInet) {
         sql = [NSString stringWithFormat:
             @"SELECT rowid, acct, svce, agrp, labl, data, cdat, mdat, pdmn, srvr, ptcl, port, path FROM %@", table];
-    } else if (isCert || isKeys) {
+    } else if (!hasAccountColumns) {
         sql = [NSString stringWithFormat:
             @"SELECT rowid, agrp, labl, data, cdat, mdat, pdmn FROM %@", table];
     } else {
@@ -98,7 +57,7 @@ static NSArray *query_db_table(sqlite3 *db, NSString *table, NSString *className
         int col = 0;
         int rowid = sqlite3_column_int(stmt, col++);
 
-        if (!isCert && !isKeys) {
+        if (hasAccountColumns) {
             entry[@"account"] = col_text(stmt, col++);
             entry[@"service"] = col_text(stmt, col++);
         }
@@ -161,34 +120,28 @@ static NSArray *query_db_table(sqlite3 *db, NSString *table, NSString *className
 }
 
 /// Read all keychain items directly from the sqlite database.
-static NSDictionary *query_keychain_db(NSString *filterClass, NSMutableArray *diag) {
+static NSArray *query_keychain_db(NSString *filterClass, NSMutableArray *diag) {
     sqlite3 *db = NULL;
     int rc = sqlite3_open_v2(KEYCHAIN_DB_PATH.UTF8String, &db, SQLITE_OPEN_READONLY, NULL);
     if (rc != SQLITE_OK) {
         [diag addObject:[NSString stringWithFormat:@"db open failed: %d", rc]];
         NSLog(@"vphoned: sqlite3_open(%@) failed: %d", KEYCHAIN_DB_PATH, rc);
-        return @{@"items": @[], @"diag": diag};
+        return @[];
     }
 
     [diag addObject:[NSString stringWithFormat:@"opened %@", KEYCHAIN_DB_PATH]];
 
     NSMutableArray *allItems = [NSMutableArray array];
 
-    struct { NSString *table; NSString *name; } tables[] = {
-        { @"genp", @"genp" },
-        { @"inet", @"inet" },
-        { @"cert", @"cert" },
-        { @"keys", @"keys" },
-    };
+    NSArray<NSString *> *tables = @[ @"genp", @"inet", @"cert", @"keys" ];
 
-    for (size_t i = 0; i < sizeof(tables) / sizeof(tables[0]); i++) {
-        if (filterClass && ![filterClass isEqualToString:tables[i].name]) continue;
-        NSArray *items = query_db_table(db, tables[i].table, tables[i].name, diag);
-        [allItems addObjectsFromArray:items];
+    for (NSString *table in tables) {
+        if (filterClass && ![filterClass isEqualToString:table]) continue;
+        [allItems addObjectsFromArray:query_db_table(db, table, table, diag)];
     }
 
     sqlite3_close(db);
-    return @{@"items": allItems};
+    return allItems;
 }
 
 // MARK: - Command Handler
@@ -225,7 +178,7 @@ NSDictionary *vp_handle_keychain_command(NSDictionary *msg) {
         resp[@"status"] = @(status);
         resp[@"ok"] = @(status == errSecSuccess);
         if (status != errSecSuccess) {
-            resp[@"msg"] = [NSString stringWithFormat:@"SecItemAdd failed: %d", (int)status];
+            resp[@"msg"] = [NSString stringWithFormat:@"Unable to add the keychain item (status %d).", (int)status];
         }
         return resp;
     }
@@ -235,8 +188,7 @@ NSDictionary *vp_handle_keychain_command(NSDictionary *msg) {
         NSMutableArray *diag = [NSMutableArray array];
 
         // Primary: read directly from sqlite DB (bypasses entitlement checks)
-        NSDictionary *dbResult = query_keychain_db(filterClass, diag);
-        NSArray *dbItems = dbResult[@"items"];
+        NSArray *dbItems = query_keychain_db(filterClass, diag);
 
         NSLog(@"vphoned: keychain_list: %lu items (sqlite), diag: %@",
               (unsigned long)dbItems.count, diag);

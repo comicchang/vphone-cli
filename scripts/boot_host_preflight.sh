@@ -9,7 +9,6 @@ PROJECT_ROOT="${SCRIPT_DIR:h}"
 
 ASSERT_BOOTABLE=0
 QUIET=0
-LESS=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -22,7 +21,8 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --less)
-      LESS=1
+      # Accepted for `make boot_binary_check_less` (Makefile), which passes it
+      # alongside --assert-bootable; this script's checks do not differ.
       shift
       ;;
     *)
@@ -145,13 +145,11 @@ if [[ -f "$RELEASE_BIN" ]]; then
 fi
 
 print_section "Unsigned Debug Binary"
-DEBUG_HELP_RC=0
 if [[ ! -f "$DEBUG_BIN" ]]; then
   echo "(skipped — debug binary not built; run 'make patcher_build' to include)"
 else
   set +e
   run_capture "debug_help" "$DEBUG_BIN" --help
-  DEBUG_HELP_RC=$?
   set -e
 fi
 
@@ -166,7 +164,6 @@ RELEASE_HELP_RC=$?
 set -e
 
 print_section "Signed Debug Control"
-SIGNED_DEBUG_HELP_RC=0
 if [[ ! -f "$DEBUG_BIN" ]]; then
   echo "(skipped — debug binary not built)"
 else
@@ -174,7 +171,6 @@ else
   codesign --force --sign - --entitlements "$ENTITLEMENTS" "$TMP_SIGNED_DEBUG" >/dev/null
   set +e
   run_capture "signed_debug_help" "$TMP_SIGNED_DEBUG" --help
-  SIGNED_DEBUG_HELP_RC=$?
   set -e
 fi
 

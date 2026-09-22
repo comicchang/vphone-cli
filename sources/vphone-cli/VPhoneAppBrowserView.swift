@@ -14,7 +14,11 @@ struct VPhoneAppBrowserView: View {
                 ContentUnavailableView(
                     "No Apps",
                     systemImage: "app.dashed",
-                    description: Text(model.searchText.isEmpty ? "No apps found." : "No matching apps.")
+                    description: Text(
+                        model.searchText.isEmpty
+                            ? "No apps are installed on the guest."
+                            : "No apps match your search."
+                    )
                 )
             } else {
                 appTable
@@ -54,7 +58,7 @@ struct VPhoneAppBrowserView: View {
 
             Spacer()
 
-            Text("\(model.filteredApps.count) apps")
+            Text(model.filteredApps.count == 1 ? "1 app" : "\(model.filteredApps.count) apps")
                 .font(.system(.body, design: .monospaced))
                 .foregroundStyle(.secondary)
 

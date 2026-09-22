@@ -8,8 +8,7 @@ import Foundation
 /// Base class for JB kernel patching, extending KernelPatcherBase with:
 /// - Symbol table parsing (nlist64 from LC_SYMTAB + fileset entries)
 /// - Code cave finder (zeros/0xFF/UDF in executable segments)
-/// - Branch encoding helpers (encodeB, encodeBL)
-/// - Function boundary finders (findFuncEnd, findBLToPanicInRange)
+/// - Function boundary finders (findFuncEnd)
 /// - String-anchored function finders
 /// - proc_info anchor cache
 public class KernelJBPatcherBase: KernelPatcherBase {
@@ -175,18 +174,6 @@ public class KernelJBPatcherBase: KernelPatcherBase {
         return nil
     }
 
-    // MARK: - Branch Encoding
-
-    /// Encode an unconditional B instruction.
-    func encodeB(from fromOff: Int, to toOff: Int) -> Data? {
-        ARM64Encoder.encodeB(from: fromOff, to: toOff)
-    }
-
-    /// Encode a BL instruction.
-    func encodeBL(from fromOff: Int, to toOff: Int) -> Data? {
-        ARM64Encoder.encodeBL(from: fromOff, to: toOff)
-    }
-
     // MARK: - Function Finders
 
     /// Find the end of a function by scanning forward for the next PACIBSP boundary.
@@ -205,27 +192,6 @@ public class KernelJBPatcherBase: KernelPatcherBase {
         return limit
     }
 
-    /// Find the first BL to `_panic` in `range`. Returns the file offset or nil.
-    ///
-    /// Reads from `buffer.original` (Python: `_rd32(self.raw, off)` via `_is_bl`).
-    /// Mirrors Python `_find_bl_to_panic_in_range(start, end)`.
-    func findBLToPanic(in range: Range<Int>) -> Int? {
-        guard let panicOff = panicOffset else { return nil }
-        let raw = buffer.original
-        var off = range.lowerBound
-        while off + 4 <= range.upperBound {
-            guard off + 4 <= raw.count else { break }
-            let insn = raw.loadLE(UInt32.self, at: off)
-            if insn >> 26 == 0b100101 { // BL
-                let imm26 = insn & 0x03FF_FFFF
-                let signedImm = Int32(bitPattern: imm26 << 6) >> 6
-                if off + Int(signedImm) * 4 == panicOff { return off }
-            }
-            off += 4
-        }
-        return nil
-    }
-
     /// Find a function that references a given string constant.
     /// Returns the function-start file offset, or nil.
     /// Mirrors Python `_find_func_by_string(string, code_range)`.
@@ -238,25 +204,6 @@ public class KernelJBPatcherBase: KernelPatcherBase {
         }
         guard let firstRef = refs.first else { return nil }
         return findFunctionStart(firstRef.adrpOff)
-    }
-
-    /// Find a function containing a string reference.
-    /// Returns (funcStart, funcEnd, refs) or nil.
-    /// Mirrors Python `_find_func_containing_string(string, code_range)`.
-    func findFuncContainingString(
-        _ string: String,
-        codeRange: (Int, Int)? = nil
-    ) -> (Int, Int, [(adrpOff: Int, addOff: Int)])? {
-        guard let strOff = buffer.findString(string) else { return nil }
-        let refs: [(adrpOff: Int, addOff: Int)] = if let (cs, ce) = codeRange {
-            findStringRefs(strOff, in: (start: cs, end: ce))
-        } else {
-            findStringRefs(strOff)
-        }
-        guard let firstRef = refs.first else { return nil }
-        guard let funcStart = findFunctionStart(firstRef.adrpOff) else { return nil }
-        let funcEnd = findFuncEnd(funcStart)
-        return (funcStart, funcEnd, refs)
     }
 
     // MARK: - proc_info Family Anchors (B6/B7)
@@ -319,17 +266,7 @@ public class KernelJBPatcherBase: KernelPatcherBase {
         return disasm.disassembleOne(in: buffer.data, at: off)
     }
 
-    // MARK: - BL Decode Helper
-
-    /// Decode the BL target at `offset`, or nil if not a BL.
-    func jbDecodeBL(at offset: Int) -> Int? {
-        guard offset + 4 <= buffer.count else { return nil }
-        let insn = buffer.readU32(at: offset)
-        guard insn >> 26 == 0b100101 else { return nil }
-        let imm26 = insn & 0x03FF_FFFF
-        let signedImm = Int32(bitPattern: imm26 << 6) >> 6
-        return offset + Int(signedImm) * 4
-    }
+    // MARK: - Branch Decode Helper
 
     /// Decode unconditional B target at `offset`, or nil if not a B.
     func jbDecodeBBranch(at offset: Int) -> Int? {

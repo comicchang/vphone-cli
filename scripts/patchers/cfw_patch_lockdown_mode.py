@@ -26,15 +26,13 @@ is re-attested (`cfw_dsc_codesign.py`).
 from capstone.arm64_const import ARM64_OP_IMM
 
 try:
-    from .cfw_asm import asm, _cs
-    from .cfw_dsc_chunks import DSCChunks
+    from .cfw_asm import asm
+    from .cfw_dsc_chunks import DSCChunks, resolve_local_symbol, _disasm_function
     from .cfw_dsc_codesign import reattest_modified_pages
-    from .cfw_patch_xpc_lwcr import _resolve_local_symbol
 except ImportError:
-    from cfw_asm import asm, _cs
-    from cfw_dsc_chunks import DSCChunks
+    from cfw_asm import asm
+    from cfw_dsc_chunks import DSCChunks, resolve_local_symbol, _disasm_function
     from cfw_dsc_codesign import reattest_modified_pages
-    from cfw_patch_xpc_lwcr import _resolve_local_symbol
 
 SYMBOL_CANDIDATES = (
     "___os_lockdown_mode_enabled_block_invoke",
@@ -45,16 +43,6 @@ SYMBOL_CANDIDATES = (
 def _imm(insn, idx):
     ops = insn.operands
     return ops[idx].imm if idx < len(ops) and ops[idx].type == ARM64_OP_IMM else None
-
-
-def _disasm(chunks, vma, n=60):
-    buf = chunks.bytes_at_vma(vma, n * 4)
-    out = []
-    for insn in _cs.disasm(buf, vma):
-        out.append(insn)
-        if insn.mnemonic in ("ret", "retab"):
-            break
-    return out
 
 
 def _find_error_gate(insns):
@@ -79,7 +67,7 @@ def patch_lockdown_mode(chunks_dir, *, dry_run=False):
     fn_vma = None
     for name in SYMBOL_CANDIDATES:
         try:
-            fn_vma = _resolve_local_symbol(chunks_dir, name)
+            fn_vma = resolve_local_symbol(chunks_dir, name)
             break
         except RuntimeError:
             continue
@@ -88,7 +76,7 @@ def patch_lockdown_mode(chunks_dir, *, dry_run=False):
         return 0
     print(f"  [.] {name} @ 0x{fn_vma:X}")
 
-    gate = _find_error_gate(_disasm(chunks, fn_vma))
+    gate = _find_error_gate(_disasm_function(chunks, fn_vma, 60))
     if gate is None:
         raise ValueError("lockdown_mode: `cmn wR,#1; b.eq <crash>` sysctl-error gate not found")
     print(f"      [.] gate @ 0x{gate.address:X}: {gate.mnemonic} {gate.op_str}")

@@ -1,8 +1,9 @@
 """Daemon injection and cryptex path helpers."""
 
-from .cfw_asm import *
 import os
 import plistlib
+import subprocess
+import sys
 
 
 DROPBEAR_KEY_ARGS = [
@@ -102,8 +103,3 @@ def patch_dropbear_plist(plist_path):
     patch_dropbear_daemon(daemon)
     with open(plist_path, "wb") as f:
         plistlib.dump(daemon, f, sort_keys=False)
-
-
-# ══════════════════════════════════════════════════════════════════
-# CLI
-# ══════════════════════════════════════════════════════════════════

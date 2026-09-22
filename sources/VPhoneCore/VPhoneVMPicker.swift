@@ -9,13 +9,13 @@ public enum VPhoneVMPickerError: Error, CustomStringConvertible, Equatable {
     public var description: String {
         switch self {
         case .emptyLibrary(let root):
-            "no VMs found in \(root) — create one with 'vphone-cli vm create <name>'"
+            "No VMs found in \(root). Create one with 'vphone-cli vm create <name>'."
         case .notInteractive:
-            "no VM name given and stdin is not a terminal — pass the name explicitly"
+            "No VM name given, and this is not an interactive terminal. Pass the VM name as an argument."
         case .aborted:
-            "selection aborted"
+            "Selection cancelled."
         case .invalidSelection:
-            "no valid selection made"
+            "No valid selection. Enter a number from the list, or the exact VM name."
         }
     }
 }

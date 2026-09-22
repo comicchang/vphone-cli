@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-from __future__ import annotations
 """
 vm_manifest.py — Generate VM manifest plist for vphone-cli.
 
 Compatible with security-pcc's VMBundle.Config format.
 """
+
+from __future__ import annotations
 
 import argparse
 import plistlib
@@ -16,7 +17,6 @@ def create_manifest(
     vm_dir: Path,
     cpu_count: int,
     memory_mb: int,
-    disk_size_gb: int,
     platform_fusing: str | None = None,
 ):
     """
@@ -26,7 +26,6 @@ def create_manifest(
         vm_dir: Path to VM directory
         cpu_count: Number of CPU cores
         memory_mb: Memory size in MB
-        disk_size_gb: Disk size in GB
         platform_fusing: Platform fusing mode (prod/dev) or None for auto-detect
     """
     # Convert to manifest units
@@ -38,7 +37,6 @@ def create_manifest(
 
     manifest = {
         "platformType": "vresearch101",
-        # "platformFusing": platform_fusing,  # None = auto-detect from host OS
         "machineIdentifier": b"",  # Generated on first boot, then persisted to manifest
         "cpuCount": cpu_count,
         "memorySize": memory_bytes,
@@ -69,7 +67,7 @@ def create_manifest(
     with open(config_path, "wb") as f:
         plistlib.dump(manifest, f)
 
-    print(f"[5/4] Created VM manifest: {config_path}")
+    print(f"Created VM manifest: {config_path}")
     return config_path
 
 
@@ -96,12 +94,6 @@ def main():
         help="Memory size in MB (default: 8192)",
     )
     parser.add_argument(
-        "--disk-size",
-        type=int,
-        default=64,
-        help="Disk size in GB (default: 64)",
-    )
-    parser.add_argument(
         "--platform-fusing",
         type=str,
         choices=["prod", "dev"],
@@ -120,7 +112,6 @@ def main():
             vm_dir=args.vm_dir,
             cpu_count=args.cpu,
             memory_mb=args.memory,
-            disk_size_gb=args.disk_size,
             platform_fusing=args.platform_fusing,
         )
     except Exception as e:

@@ -48,7 +48,7 @@ def merge(path):
 
 def main(argv):
     if len(argv) != 2:
-        print("usage: campo_mach_lookup_exceptions.py <entitlements.plist>",
+        print("Usage: campo_mach_lookup_exceptions.py <entitlements.plist>",
               file=sys.stderr)
         return 2
     merge(argv[1])

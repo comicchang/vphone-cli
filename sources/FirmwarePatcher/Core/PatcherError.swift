@@ -7,8 +7,6 @@ public enum PatcherError: Error, CustomStringConvertible, Sendable {
     case invalidFormat(String)
     case patchSiteNotFound(String)
     case patchVerificationFailed(String)
-    case encodingFailed(String)
-    case multipleMatchesFound(String, count: Int)
 
     public var description: String {
         switch self {
@@ -20,10 +18,6 @@ public enum PatcherError: Error, CustomStringConvertible, Sendable {
             "Patch site not found: \(msg)"
         case let .patchVerificationFailed(msg):
             "Patch verification failed: \(msg)"
-        case let .encodingFailed(msg):
-            "Instruction encoding failed: \(msg)"
-        case let .multipleMatchesFound(msg, count):
-            "Expected 1 match for \(msg), found \(count)"
         }
     }
 }

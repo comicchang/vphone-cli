@@ -38,7 +38,7 @@ extension KernelJBPatcher {
         var candidates: [Int: (Int, Int)] = [:] // caller → (flagGate, stateGate)
         var off = searchStart
         while off < searchEnd {
-            guard let blTarget = jbDecodeBL(at: off), blTarget == mountCommon else { off += 4; continue }
+            guard let blTarget = decodeBL(at: off), blTarget == mountCommon else { off += 4; continue }
             guard let caller = findFunctionStart(off), caller != mountCommon,
                   candidates[caller] == nil
             else { off += 4; continue }
@@ -82,7 +82,7 @@ extension KernelJBPatcher {
         // Require the wrapper to actually call mount_common.
         var callsMountCommon = false
         for off in stride(from: start, to: end, by: 4) {
-            if jbDecodeBL(at: off) == mountCommon { callsMountCommon = true; break }
+            if decodeBL(at: off) == mountCommon { callsMountCommon = true; break }
         }
         guard callsMountCommon else { return nil }
 

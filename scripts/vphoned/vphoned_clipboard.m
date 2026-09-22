@@ -53,7 +53,7 @@ NSDictionary *vp_handle_clipboard_command(int fd, NSDictionary *msg) {
 
   if (!gClipboardLoaded) {
     NSMutableDictionary *r = vp_make_response(@"err", reqId);
-    r[@"msg"] = @"clipboard not available (UIKit not loaded)";
+    r[@"msg"] = @"The clipboard is unavailable on the guest.";
     return r;
   }
 
@@ -62,7 +62,7 @@ NSDictionary *vp_handle_clipboard_command(int fd, NSDictionary *msg) {
     id pb = get_general_pasteboard();
     if (!pb) {
       NSMutableDictionary *r = vp_make_response(@"err", reqId);
-      r[@"msg"] = @"failed to get general pasteboard";
+      r[@"msg"] = @"The clipboard is unavailable on the guest. Try again.";
       return r;
     }
 
@@ -111,7 +111,7 @@ NSDictionary *vp_handle_clipboard_command(int fd, NSDictionary *msg) {
     id pb = get_general_pasteboard();
     if (!pb) {
       NSMutableDictionary *r = vp_make_response(@"err", reqId);
-      r[@"msg"] = @"failed to get general pasteboard";
+      r[@"msg"] = @"The clipboard is unavailable on the guest. Try again.";
       return r;
     }
 
@@ -123,14 +123,14 @@ NSDictionary *vp_handle_clipboard_command(int fd, NSDictionary *msg) {
         if (size > 0)
           vp_drain(fd, size);
         NSMutableDictionary *r = vp_make_response(@"err", reqId);
-        r[@"msg"] = @"invalid image size";
+        r[@"msg"] = @"This image cannot be copied to the clipboard.";
         return r;
       }
 
       NSMutableData *imgData = [NSMutableData dataWithLength:size];
       if (!vp_read_fully(fd, imgData.mutableBytes, size)) {
         NSMutableDictionary *r = vp_make_response(@"err", reqId);
-        r[@"msg"] = @"failed to read image data";
+        r[@"msg"] = @"Unable to read the image. Try again.";
         return r;
       }
 

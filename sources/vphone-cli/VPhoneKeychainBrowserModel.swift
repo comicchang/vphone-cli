@@ -50,7 +50,7 @@ class VPhoneKeychainBrowserModel {
             return "\(count)/\(total) \(suffix)"
         }
         if count == 0, !diagnostics.isEmpty {
-            return diagnostics.joined(separator: " | ")
+            return "No items"
         }
         return "\(count) \(suffix)"
     }
@@ -68,11 +68,11 @@ class VPhoneKeychainBrowserModel {
 
     func addTestItem() async {
         do {
-            _ = try await control.addKeychainItem()
+            try await control.addKeychainItem()
             print("[keychain] test item added, refreshing...")
             await refresh()
         } catch {
-            self.error = "Add failed: \(error)"
+            self.error = "Unable to add the keychain item. Try again."
             print("[keychain] add failed: \(error)")
         }
     }
@@ -81,7 +81,7 @@ class VPhoneKeychainBrowserModel {
 
     func refresh() async {
         guard control.isConnected else {
-            error = "Waiting for vphoned connection..."
+            error = "The guest agent is not connected. Wait for it to connect, then try again."
             return
         }
         isLoading = true
@@ -94,7 +94,7 @@ class VPhoneKeychainBrowserModel {
                 print("[keychain] 0 items, diag: \(diagnostics)")
             }
         } catch {
-            self.error = "\(error)"
+            self.error = "Unable to load keychain items. Check that the guest agent is connected, then try again."
             items = []
         }
         isLoading = false

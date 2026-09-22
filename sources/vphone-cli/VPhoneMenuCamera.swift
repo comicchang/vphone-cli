@@ -45,7 +45,7 @@ extension VPhoneMenuController {
 
     func updateCameraConnectionState(connected: Bool) {
         cameraStatusItem?.title = connected
-            ? "Camera server: connected (vsock 1338)"
+            ? "Camera server: connected"
             : "Camera server: disconnected"
         cameraStartStopItem?.isEnabled = connected &&
             (cameraServer?.sourceKind ?? .off) != .off
@@ -88,7 +88,7 @@ extension VPhoneMenuController {
             UTType(filenameExtension: "m4v") ?? .movie,
         ]
         panel.prompt = "Use as Camera Source"
-        panel.title = "Pick a video file"
+        panel.title = "Choose Video File"
         panel.runModal()
         guard let url = panel.url else { return }
         cameraServer?.setSource(.videoFile, videoURL: url)

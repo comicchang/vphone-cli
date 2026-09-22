@@ -48,19 +48,19 @@ def patch_plist(path: str, target: str, *, dry_run: bool = False) -> bool:
     try:
         plist = plistlib.loads(data)
     except Exception as e:
-        raise ValueError(f"{path}: cannot parse as plist: {e}")
+        raise ValueError(f"cannot parse as plist: {e}")
 
     if not isinstance(plist, dict):
         raise ValueError(
-            f"{path}: top-level plist is {type(plist).__name__}, expected dict"
+            f"top-level plist is {type(plist).__name__}, expected dict"
         )
 
     current = plist.get(KEY)
     if current is None:
-        raise ValueError(f"{path}: no {KEY!r} key present")
+        raise ValueError(f"no {KEY!r} key present")
     if not isinstance(current, str):
         raise ValueError(
-            f"{path}: {KEY!r} is {type(current).__name__}, expected str"
+            f"{KEY!r} is {type(current).__name__}, expected str"
         )
 
     if current == target:
@@ -92,7 +92,7 @@ def _main(argv):
     try:
         patch_plist(path, target, dry_run=dry_run)
     except Exception as e:
-        print(f"[-] {type(e).__name__}: {e}", file=sys.stderr)
+        print(f"[-] {type(e).__name__}: Unable to patch {path}: {e}", file=sys.stderr)
         return 1
     return 0
 

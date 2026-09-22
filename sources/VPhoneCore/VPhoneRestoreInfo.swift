@@ -28,8 +28,8 @@ public struct VPhoneRestoreInfo: Codable, Equatable, Sendable {
 
     static let fileName = "restore-info.json"
 
-    public static let baseDevice = "iPhone99,11"
-    public static let experimentalDevice = "iPhone17,3"
+    private static let baseDevice = "iPhone99,11"
+    private static let experimentalDevice = "iPhone17,3"
 
     /// Only `exp` rewrites the DeviceTree identity; others keep the base type.
     public static func device(forVariant variant: String) -> String {

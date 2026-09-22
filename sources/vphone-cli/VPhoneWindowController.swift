@@ -46,7 +46,7 @@ class VPhoneWindowController: NSObject, NSToolbarDelegate {
 
         window.isReleasedWhenClosed = false
         window.contentAspectRatio = windowSize
-        window.title = "VPHONE [loading]"
+        window.title = "vphone — Starting…"
         window.subtitle = makeSubtitle(ip: nil)
         window.contentView = vmView
         if let ecid {
@@ -82,7 +82,7 @@ class VPhoneWindowController: NSObject, NSToolbarDelegate {
             [weak self, weak window] _ in
             Task { @MainActor in
                 guard let self, let window, let control = self.control else { return }
-                window.title = control.isConnected ? "VPHONE [connected]" : "VPHONE [disconnected]"
+                window.title = control.isConnected ? "vphone — Connected" : "vphone — Disconnected"
                 window.subtitle = self.makeSubtitle(ip: control.isConnected ? control.guestIP : nil)
             }
         }

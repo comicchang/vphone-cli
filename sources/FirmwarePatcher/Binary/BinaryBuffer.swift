@@ -90,16 +90,6 @@ public final class BinaryBuffer: @unchecked Sendable {
         return results
     }
 
-    /// Find a null-terminated C string at the given offset.
-    public func readCString(at offset: Int) -> String? {
-        data.withUnsafeBytes { buf in
-            guard offset < buf.count else { return nil }
-            let ptr = buf.baseAddress!.advanced(by: offset)
-                .assumingMemoryBound(to: CChar.self)
-            return String(cString: ptr)
-        }
-    }
-
     /// Find the first occurrence of a C string in the data.
     /// Matches Python `find_string()`: walks backward from the match to the
     /// preceding NUL byte so that the returned offset is the C-string start.
@@ -125,11 +115,5 @@ public final class BinaryBuffer: @unchecked Sendable {
             return cstr
         }
         return nil
-    }
-
-    /// Find all occurrences of a C string in the data.
-    public func findAllStrings(_ string: String) -> [Int] {
-        guard let encoded = string.data(using: .utf8) else { return [] }
-        return findAll(encoded)
     }
 }

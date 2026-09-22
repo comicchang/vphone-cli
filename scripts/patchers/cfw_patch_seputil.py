@@ -1,6 +1,5 @@
 """seputil patch module."""
 
-from .cfw_asm import *
 
 def patch_seputil(filepath):
     """Dynamically find and patch the gigalocker path format string in seputil.
@@ -40,10 +39,3 @@ def patch_seputil(filepath):
     print(f"  [+] Patched at 0x{pct_s_off:X}: %s -> AA")
     print(f"      /{anchor[1:-1].decode()} -> /AA.gl")
     return True
-
-
-# ══════════════════════════════════════════════════════════════════
-# 2. launchd_cache_loader — Unsecure cache bypass
-# ══════════════════════════════════════════════════════════════════
-
-

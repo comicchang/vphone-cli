@@ -73,7 +73,7 @@ extension KernelJBPatcher {
         }
         w[beqA] = beq(from: beqA)
         w[beqB] = beq(from: beqB)
-        guard let bData = encodeB(from: caveOff + enforce * 4, to: realHookOff) else { return nil }
+        guard let bData = ARM64Encoder.encodeB(from: caveOff + enforce * 4, to: realHookOff) else { return nil }
         w[enforce] = bData.withUnsafeBytes { $0.load(as: UInt32.self) }.littleEndian
 
         guard w.count == 20 else { log("  [-] cave length drifted: \(w.count)"); return nil }

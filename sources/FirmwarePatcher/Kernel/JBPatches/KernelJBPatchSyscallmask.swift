@@ -48,7 +48,7 @@ extension KernelJBPatcher {
         }
 
         // 4. Resolve the mutation helper (structural: next function after helper's containing func).
-        let helperTarget = jbDecodeBL(at: callOff) ?? -1
+        let helperTarget = decodeBL(at: callOff) ?? -1
         guard let mutatorOff = resolveSyscallmaskMutator(funcOff: funcOff, helperTarget: helperTarget) else {
             log("  [-] syscallmask mutation helper not resolved structurally")
             return false
@@ -72,7 +72,7 @@ extension KernelJBPatcher {
         }
 
         // 7. Patch: redirect tail branch to cave entry (code section, not blob).
-        guard let branchToCave = encodeB(from: branchOff, to: codeOff) else {
+        guard let branchToCave = ARM64Encoder.encodeB(from: branchOff, to: codeOff) else {
             log("  [-] tail branch cannot reach C22 cave")
             return false
         }
@@ -140,7 +140,7 @@ extension KernelJBPatcher {
         var targetCalls: [Int: [Int]] = [:]
         var off = managerOff
         while off < funcEnd {
-            if let target = jbDecodeBL(at: off) {
+            if let target = decodeBL(at: off) {
                 targetCalls[target, default: []].append(off)
             }
             off += 4
@@ -188,7 +188,7 @@ extension KernelJBPatcher {
             let op = insn.operandString.replacingOccurrences(of: " ", with: "")
             if insn.mnemonic == "cbz", op.hasPrefix("x2,") {
                 seenCbzX2 = true
-            } else if seenCbzX2, jbDecodeBL(at: off) != nil {
+            } else if seenCbzX2, decodeBL(at: off) != nil {
                 return off
             }
             off += 4
@@ -208,7 +208,7 @@ extension KernelJBPatcher {
                 let signedImm = Int32(bitPattern: imm26 << 6) >> 6
                 let target = off + Int(signedImm) * 4
                 let inText = kernTextRange.map { target >= $0.0 && target < $0.1 } ?? false
-                if inText, jbDecodeBL(at: off) == nil {
+                if inText, decodeBL(at: off) == nil {
                     return (off, target)
                 }
             }
@@ -331,7 +331,7 @@ extension KernelJBPatcher {
 
         // 18: bl mutatorOff
         let blOff = codeOff + code.count * 4
-        guard let blMutator = encodeBL(from: blOff, to: zallocOff) else { return nil }
+        guard let blMutator = ARM64Encoder.encodeBL(from: blOff, to: zallocOff) else { return nil }
         code.append(blMutator)
 
         // 19: mov x0, x19
@@ -353,7 +353,7 @@ extension KernelJBPatcher {
 
         // 27: b setterOff (tail-call)
         let branchBackOff = codeOff + code.count * 4
-        guard let branchBack = encodeB(from: branchBackOff, to: setterOff) else { return nil }
+        guard let branchBack = ARM64Encoder.encodeB(from: branchBackOff, to: setterOff) else { return nil }
         code.append(branchBack)
 
         let codeBytes = code.reduce(Data(), +)

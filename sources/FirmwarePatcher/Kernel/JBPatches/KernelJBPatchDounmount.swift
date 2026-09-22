@@ -35,14 +35,6 @@ extension KernelJBPatcher {
 
     // MARK: - Private helpers
 
-    /// Find a function that contains a reference to `string` (null-terminated).
-    private func findFuncByString(_ string: String) -> Int? {
-        guard let strOff = buffer.findString(string) else { return nil }
-        let refs = findStringRefs(strOff)
-        guard let firstRef = refs.first else { return nil }
-        return findFunctionStart(firstRef.adrpOff)
-    }
-
     /// Scan for the 8-instruction upstream cleanup call pattern and return
     /// the file offset of the first BL, or nil if not uniquely found.
     private func findUpstreamCleanupCall(_ start: Int, end: Int) -> Int? {

@@ -100,10 +100,8 @@ from .cfw_asm import (
     _cs,
     _log_asm,
     asm,
-    disasm_at,
     find_section,
     parse_macho_sections,
-    wr32,
 )
 from .cfw_macho_codesign import reattest_modified_offsets
 
@@ -157,7 +155,6 @@ def _find_adrp_add_xrefs(code, base_va, target_va):
     adrp_cache = {}  # dst_reg -> (adrp_va, page_value, idx)
 
     insns = list(_cs.disasm(code, base_va))
-    insn_by_idx = {i: ins for i, ins in enumerate(insns)}
 
     for idx, ins in enumerate(insns):
         if ins.mnemonic == "adrp" and len(ins.operands) >= 2:

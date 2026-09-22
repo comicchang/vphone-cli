@@ -66,7 +66,7 @@ extension KernelPatcher {
             if scan > graftStart + 8, buffer.readU32(at: scan) == ARM64.pacibspU32 {
                 break
             }
-            if let blTarget = decodeBLTarget(at: scan), blTarget == vrhFunc {
+            if let blTarget = decodeBL(at: scan), blTarget == vrhFunc {
                 let va = fileOffsetToVA(scan)
                 emit(scan, ARM64.movW0_0,
                      patchID: "apfs_graft",
@@ -103,19 +103,5 @@ extension KernelPatcher {
         guard let firstRef = refs.first else { return nil }
 
         return findFunctionStart(firstRef.adrpOff)
-    }
-
-    /// Decode a BL instruction at the given file offset and return the target file offset,
-    /// or nil if the instruction at that offset is not a BL.
-    ///
-    /// ARM64 BL encoding: bits [31:26] = 0b100101, bits [25:0] = signed imm26
-    /// Target = PC + SignExt(imm26) * 4   (all in file-offset space)
-    private func decodeBLTarget(at offset: Int) -> Int? {
-        guard offset + 4 <= buffer.count else { return nil }
-        let insn = buffer.readU32(at: offset)
-        guard insn >> 26 == 0b100101 else { return nil } // BL opcode
-        let imm26 = insn & 0x03FF_FFFF
-        let signedImm = Int32(bitPattern: imm26 << 6) >> 6
-        return offset + Int(signedImm) * 4
     }
 }

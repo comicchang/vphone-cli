@@ -69,7 +69,7 @@ done
 
 DISK_SIZE_BYTES=$((DISK_SIZE_GB * 1024 * 1024 * 1024))
 
-echo "=== vphone create_vm ==="
+echo "=== vphone vm_new ==="
 echo "Directory : ${VM_DIR}"
 echo "Disk size : ${DISK_SIZE_GB} GB"
 echo "AVPBooter : ${ROM_SRC}"
@@ -100,30 +100,30 @@ if [[ -d "${VM_DIR}" ]]; then
         echo "  Delete ${VM_DIR}/Disk.img manually to recreate"
     fi
 else
-    echo "[1/4] Creating ${VM_DIR}/"
+    echo "[1/5] Creating ${VM_DIR}/"
     mkdir -p "${VM_DIR}"
 fi
 
 # --- Create sparse disk image ---
 if [[ ! -f "${VM_DIR}/Disk.img" ]]; then
-    echo "[2/4] Creating sparse disk image (${DISK_SIZE_GB} GB)"
+    echo "[2/5] Creating sparse disk image (${DISK_SIZE_GB} GB)"
     # Use dd with seek to create a sparse file (same approach as vrevm)
     dd if=/dev/zero of="${VM_DIR}/Disk.img" bs=1 count=0 seek="${DISK_SIZE_BYTES}" 2>/dev/null
     echo "  -> ${VM_DIR}/Disk.img ($(du -h "${VM_DIR}/Disk.img" | cut -f1) on disk)"
 else
-    echo "[2/4] Disk.img exists — skipping"
+    echo "[2/5] Disk.img exists — skipping"
 fi
 
 # --- Create SEP storage ---
 if [[ ! -f "${VM_DIR}/SEPStorage" ]]; then
-    echo "[3/4] Creating SEP storage (512 KB)"
+    echo "[3/5] Creating SEP storage (512 KB)"
     dd if=/dev/zero of="${VM_DIR}/SEPStorage" bs=1 count="${SEP_STORAGE_SIZE}" 2>/dev/null
 else
-    echo "[3/4] SEPStorage exists — skipping"
+    echo "[3/5] SEPStorage exists — skipping"
 fi
 
 # --- Copy ROMs ---
-echo "[4/4] Copying ROMs"
+echo "[4/5] Copying ROMs"
 
 ROM_DST="${VM_DIR}/AVPBooter.vresearch1.bin"
 SEPROM_DST="${VM_DIR}/AVPSEPBooter.vresearch1.bin"
@@ -146,12 +146,11 @@ fi
 touch "${VM_DIR}/.gitkeep"
 
 # --- Generate VM manifest ---
-echo "[5/4] Generating VM manifest (config.plist)"
+echo "[5/5] Generating VM manifest (config.plist)"
 "${SCRIPT_DIR}/vm_manifest.py" \
     --vm-dir "${VM_DIR}" \
     --cpu "${CPU_COUNT}" \
-    --memory "${MEMORY_MB}" \
-    --disk-size "${DISK_SIZE_GB}" || {
+    --memory "${MEMORY_MB}" || {
     echo "ERROR: Failed to generate VM manifest"
     exit 1
 }
@@ -162,8 +161,8 @@ echo ""
 echo "Contents:"
 ls -lh "${VM_DIR}/"
 echo ""
-echo "Manifest (config.plist) saved with VM configuration."
-echo "Future boots will read configuration from this manifest."
+echo "Configuration saved to ${VM_DIR}/config.plist."
+echo "Future boots read the VM configuration from this file."
 echo ""
 echo "Next steps:"
 echo "  1. Prepare firmware:  make fw_prepare"
