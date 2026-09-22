@@ -844,7 +844,7 @@ cache rebuild.
   - `patch_sandbox_hooks_extended`
   - `patch_post_validation_additional`
 - 2026-03-07 host-side note:
-  - reviewed private Virtualization.framework display APIs against the recorder pipeline in `sources/vphone-cli/VPhoneScreenRecorder.swift`.
+  - reviewed private Virtualization.framework display APIs against the recorder pipeline in `sources/vphone-cli/Devices/VPhoneScreenRecorder.swift`.
   - replaced the old AppKit-first recorder path with a private-display-only implementation built around hidden `VZGraphicsDisplay._takeScreenshotWithCompletionHandler:` capture.
   - added still screenshot actions that can copy the captured image to the pasteboard or save a PNG to disk using the same private capture path.
   - `make build` is used as the sanity check path; live VM validation is still needed to confirm the exact screenshot object type returned on macOS 15.
