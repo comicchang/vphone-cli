@@ -1,4 +1,4 @@
-// MachOHelpers.swift — Mach-O parsing utilities for firmware patching.
+// MachOParser.swift — Mach-O parsing utilities for firmware patching.
 
 import Foundation
 
