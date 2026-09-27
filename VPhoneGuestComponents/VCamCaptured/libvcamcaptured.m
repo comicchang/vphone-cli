@@ -62,6 +62,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "VCamFrameProtocol.h"
+#include "vcam_dataplane.h"
 
 // MARK: - shared frame layout (matches vphoned_vcam.h)
 //

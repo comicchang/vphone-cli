@@ -5,6 +5,9 @@
 // declaration: the two must stay identical or the device lookup stops matching.
 static NSString *const kVccSynthDeviceID = @"vphone:vcam:device:0";
 
+// Opaque unique ID of the one realtime video stream this source publishes.
+static NSString *const kVccSynthStreamID = @"vphone:vcam:stream:video:0";
+
 static id vcc_build_backing(void) {
   Class backingClass = NSClassFromString(@"FigCaptureSourceBacking");
   if (!backingClass) {
@@ -100,10 +103,52 @@ static id vcc_build_backing(void) {
     // see one; clients that pick the canonical ISP pixel format (AVF's
     // _preferredFormatForPreset: matcher for AVCaptureSessionPresetHigh)
     // pick the 420v one. Same preset list + frame-rate range on both.
+    // Phase 3: AVCaptureDeviceFormat consistency. Key names below are
+    // grounded in Apple's shipped CMCapture/CMCaptureCore (extracted from
+    // the dyld shared cache — same Fig framework family the guest runs);
+    // semantics come from the public AVCaptureDeviceFormat API spec in
+    // the SDK headers. Every value tells the same story as the delivered
+    // samples (see vcam_dataplane.c):
+    //
+    //   AVF property                     <- published key            value
+    //   ---------------------------------------------------------------
+    //   videoFieldOfView                 <- VideoFieldOfView         63.0
+    //     (same constant derives the per-frame camera intrinsic matrix
+    //      focal length: fx = (w/2)/tan(FOV/2) — one knob, no drift)
+    //   videoSupportedFrameRateRanges    <- MinFrameRate/MaxFrameRate  1..60
+    //   videoMaxZoomFactor               <- VideoStabilizationTypeOverrideForStandard=3
+    //     (maxZoomFactor's dimension-table fast path; yields 16.0 for
+    //      1280-wide — keeps setVideoZoomFactor: in range for Camera.app)
+    //   videoHDRSupported                <- HDRSupported             NO (8-bit SDR)
+    //   isCameraIntrinsicMatrixDeliverySupported
+    //                                    <- CameraCalibrationDataDeliverySupported YES
+    //                                       IntrinsicMatrixReferenceWidth/Height
+    //     (we attach kCMSampleBufferAttachmentKey_CameraIntrinsicMatrix to
+    //      every delivered sample, so YES is truthful)
+    //   dimensions / formatDescription   <- Width/Height/PixelFormatType 1280x720 '420v'|'BGRA'
+    //
+    // Deliberately NOT published (encoding unknown without runtime ground
+    // truth; a wrong shape could break the FigCaptureSourceVideoFormat
+    // init): HighResStillImageDimensions, supportedColorSpaces
+    // ("ColorSpace"), stabilization mode lists, photo dimensions.
     NSDictionary *commonKeys = @{
       @"DefaultActiveFormat" : @NO,  // overridden on the active one
       figKeyN("kFigSupportedFormat_VideoMinFrameRate") : @(1),
       figKeyN("kFigSupportedFormat_VideoMaxFrameRate") : @(60),
+      // Horizontal field of view in degrees. Same constant that derives the
+      // per-frame camera intrinsic matrix focal length, so AVCaptureDevice
+      // format.fieldOfView and the CMSampleBuffer intrinsics tell one story.
+      // Calibration knob — measure on a physical device before trusting.
+      @"VideoFieldOfView" : @(VCC_VCAM_HFOV_DEG),
+      // 8-bit SDR delivery: advertising HDR would be a lie AVF clients
+      // would act on (tone mapping, EDR pipelines).
+      @"HDRSupported" : @NO,
+      // We attach kCMSampleBufferAttachmentKey_CameraIntrinsicMatrix to
+      // every delivered sample with the principal point at frame center —
+      // so intrinsic delivery is supported, referenced to the full frame.
+      @"CameraCalibrationDataDeliverySupported" : @YES,
+      @"IntrinsicMatrixReferenceWidth" : @1280,
+      @"IntrinsicMatrixReferenceHeight" : @720,
       // -[FigCaptureSourceVideoFormat maxZoomFactor] takes a fast path that
       // returns 1.0 for raw bayer formats; for BGRA (our case) it falls to
       // a fancy path that reads stabilizationTypeOverrideForCinematic / -ForStandard
@@ -177,6 +222,13 @@ static id vcc_build_backing(void) {
                                                     @selector(alloc));
   if (!alloced) return nil;
   uint32_t mediaTypeVideo = 0x76696465;  // 'vide'
+  // Advertise one realtime (unsynchronized) video stream. Without a stream
+  // uniqueID the client-side AVCaptureFigVideoDevice has no ports: sessions
+  // never ask the vendor for streams, no capture graph is built for
+  // third-party clients, and their AVCaptureVideoDataOutputs starve.
+  // Camera.app never noticed because its viewfinder path is driven
+  // independently.
+  NSArray *unsyncStreams = @[ kVccSynthStreamID ];
   id backing = ((id (*)(id, SEL, uint32_t, id, id, id, id, id, id))objc_msgSend)(
       alloced,
       initSel,
@@ -186,11 +238,12 @@ static id vcc_build_backing(void) {
       formats,
       @[],
       @[],
-      @[]);
-  vcc_log(@"  backing = %p (attrs.count=%lu formats.count=%lu)",
+      unsyncStreams);
+  vcc_log(@"  backing = %p (attrs.count=%lu formats.count=%lu streams=%@)",
           backing,
           (unsigned long)attrs.count,
-          (unsigned long)formats.count);
+          (unsigned long)formats.count,
+          unsyncStreams);
   return backing;
 }
 

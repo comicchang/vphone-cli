@@ -46,6 +46,7 @@
 #import <Foundation/Foundation.h>
 #import <ImageIO/ImageIO.h>
 #import <IOSurface/IOSurfaceRef.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -56,7 +57,8 @@
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
 #include <string.h>
-#include "../VCamCaptured/VCamFrameProtocol.h"
+#include "VCamFrameProtocol.h"
+#include "vcam_dataplane.h"
 
 #define VCAM_UID @"vphone:vcam:0"
 
@@ -101,29 +103,36 @@ static BOOL cfx_shm_open(void) {
 }
 
 // One owner for "map the frame and check it is usable": opens the shm,
-// rejects a zeroed header, and rejects a pixel plane that runs past the
-// mapping. On success returns the header — the pixels start
-// VPHONE_VCAM_SHM_HEADER_SIZE bytes after cfx_shm_base — and writes the pixel-plane
-// length to *outLen. Returns NULL when the frame cannot be read.
-static const vphone_vcam_shm_header_t *cfx_shm_frame(size_t *outLen) {
-  if (!cfx_shm_open()) return NULL;
+// rejects a zeroed header, and rejects pixel data that runs past the
+// mapping. Planar 4:2:0 frames carry a chroma plane after luma, and the
+// data plane reads it, so it counts toward the checked length. On success
+// fills *frame with the header fields and a pointer into the mapping.
+// Returns NO when the frame cannot be read.
+static BOOL cfx_shm_frame(vcc_frame_desc_t *frame) {
+  if (!cfx_shm_open()) return NO;
   const vphone_vcam_shm_header_t *hdr = (const vphone_vcam_shm_header_t *)cfx_shm_base;
-  if (!hdr->width || !hdr->height || !hdr->bytes_per_row) {
+  uint32_t w = hdr->width, h = hdr->height, bpr = hdr->bytes_per_row;
+  uint32_t fmt = hdr->pixel_format;
+  if (!w || !h || !bpr) {
     cfxlog(@"shm header zeros");
-    return NULL;
+    return NO;
   }
-  size_t len = (size_t)hdr->bytes_per_row * hdr->height;
+  size_t len = (size_t)bpr * h;
+  if (vcc_is_planar_yuv(fmt)) len += (size_t)(2u * (w / 2)) * (h / 2);
   if ((size_t)VPHONE_VCAM_SHM_HEADER_SIZE + len > cfx_shm_size) {
     cfxlog(@"shm: pixel range exceeds mapping");
-    return NULL;
+    return NO;
   }
-  *outLen = len;
-  return hdr;
-}
-
-static void cfx_release_bytes(void *refcon, const void *base) {
-  (void)refcon;
-  free((void *)base);
+  memset(frame, 0, sizeof(*frame));
+  frame->width = w;
+  frame->height = h;
+  frame->bytes_per_row = bpr;
+  frame->pixel_format = fmt;
+  frame->timestamp_ns = hdr->timestamp_ns;
+  frame->frame_index = hdr->frame_index;
+  frame->pixels = cfx_shm_base + VPHONE_VCAM_SHM_HEADER_SIZE;
+  frame->pixels_length = len;
+  return YES;
 }
 
 static void cfx_cg_release_data(void *info, const void *data, size_t size) {
@@ -131,52 +140,49 @@ static void cfx_cg_release_data(void *info, const void *data, size_t size) {
   free((void *)data);
 }
 
-static CMSampleBufferRef cfx_build_cmsb(void) {
-  size_t len = 0;
-  const vphone_vcam_shm_header_t *hdr = cfx_shm_frame(&len);
-  if (!hdr) return NULL;
-  uint32_t w = hdr->width, h = hdr->height, bpr = hdr->bytes_per_row;
-  void *pixels = malloc(len);
-  if (!pixels) return NULL;
-  memcpy(pixels, cfx_shm_base + VPHONE_VCAM_SHM_HEADER_SIZE, len);
+// Snapshot the shm frame and decode it to tightly packed BGRA. Every RGB
+// consumer (CGImage, JPEG, IOSurface) goes through here, so the wire pixel
+// format is honored instead of assumed. Returns a malloc'd buffer of
+// w * 4 * h bytes; the caller frees it.
+static uint8_t *cfx_bgra_from_shm(uint32_t *outW, uint32_t *outH) {
+  vcc_frame_desc_t frame;
+  if (!cfx_shm_frame(&frame)) return NULL;
+  uint8_t *bgra = NULL;
+  uint32_t bpr = 0;
+  if (vcc_bgra_bytes_from_frame(&frame, &bgra, &bpr) != 0) return NULL;
+  *outW = frame.width;
+  *outH = frame.height;
+  return bgra;
+}
 
-  CVPixelBufferRef pb = NULL;
-  CVReturn cvr = CVPixelBufferCreateWithBytes(
-      kCFAllocatorDefault,
-      w,
-      h,
-      kCVPixelFormatType_32BGRA,
-      pixels,
-      bpr,
-      cfx_release_bytes,
-      NULL,
-      NULL,
-      &pb);
-  if (cvr != kCVReturnSuccess || !pb) { free(pixels); return NULL; }
-  CMVideoFormatDescriptionRef desc = NULL;
-  OSStatus s = CMVideoFormatDescriptionCreateForImageBuffer(
-      kCFAllocatorDefault,
-      pb,
-      &desc);
-  if (s != noErr || !desc) { CVPixelBufferRelease(pb); return NULL; }
-  CMSampleTimingInfo timing = {
-      .duration = CMTimeMake(1, 30),
-      .presentationTimeStamp = CMTimeMake((int64_t)hdr->timestamp_ns, 1000000000),
-      .decodeTimeStamp = kCMTimeInvalid,
-  };
-  CMSampleBufferRef cmsb = NULL;
-  s = CMSampleBufferCreateForImageBuffer(
-      kCFAllocatorDefault,
-      pb,
-      true,
-      NULL,
-      NULL,
-      desc,
-      &timing,
-      &cmsb);
-  CFRelease(desc);
-  CVPixelBufferRelease(pb);
-  return (s == noErr) ? cmsb : NULL;
+// Photo and video delivery are BGRA. The shared data plane builds the
+// CVPixelBuffer, format description and camera attachments and converts
+// the wire format when needed. Timing is stream-local (host epoch-ns PTS
+// values lose precision past 2^53 in downstream float conversions) and
+// advances per buffer, so builds from the preview queue and the photo
+// paths serialize on one lock.
+static pthread_mutex_t cfx_cmsb_lock = PTHREAD_MUTEX_INITIALIZER;
+static vcc_timing_state_t cfx_cmsb_timing;
+static BOOL cfx_cmsb_timing_ready = NO;
+
+static CMSampleBufferRef cfx_build_cmsb(void) {
+  vcc_frame_desc_t frame;
+  if (!cfx_shm_frame(&frame)) return NULL;
+  uint8_t *pixels = malloc(frame.pixels_length);
+  if (!pixels) return NULL;
+  memcpy(pixels, frame.pixels, frame.pixels_length);
+  frame.pixels = pixels;
+
+  pthread_mutex_lock(&cfx_cmsb_lock);
+  if (!cfx_cmsb_timing_ready) {
+    vcc_timing_init(&cfx_cmsb_timing);
+    cfx_cmsb_timing_ready = YES;
+  }
+  CMSampleBufferRef sb = vcc_cmsb_from_frame(&frame, VCC_FMT_BGRA, &cfx_cmsb_timing);
+  pthread_mutex_unlock(&cfx_cmsb_lock);
+  free(pixels);
+  if (!sb) cfxlog(@"build_cmsb: shared data plane returned NULL");
+  return sb;
 }
 
 // MARK: - _setActiveFormat: nil-format guard
@@ -363,12 +369,92 @@ static void cfx_install_capturePhoto_hook(void) {
 
 static NSHashTable *cfx_preview_layers = nil;
 static dispatch_source_t cfx_preview_timer = NULL;
+
+// MARK: - preview fed from the client's capture graph
+//
+// A real camera has one path: capture graph -> sample buffer -> preview
+// surface. While a vcam preview layer is live, tap the client-side sink node
+// that receives the capture graph's sample buffers and feed the preview from
+// that sample — the same frame, timestamp, pixel format and camera metadata
+// every other consumer sees. The shm reader is the bootstrap fallback for
+// the window before the daemon builds the graph (preview-only sessions).
+
+static pthread_mutex_t cfx_tap_lock = PTHREAD_MUTEX_INITIALIZER;
+static CMSampleBufferRef cfx_tap_latest = NULL;  // retained, guarded
+static CFAbsoluteTime cfx_tap_latest_at = 0;     // guarded
+#define CFX_TAP_STALE_SECONDS 0.5
+
+static void cfx_tap_store(CMSampleBufferRef sb) {
+  CFRetain(sb);
+  pthread_mutex_lock(&cfx_tap_lock);
+  CMSampleBufferRef old = cfx_tap_latest;
+  cfx_tap_latest = sb;
+  cfx_tap_latest_at = CFAbsoluteTimeGetCurrent();
+  pthread_mutex_unlock(&cfx_tap_lock);
+  if (old) CFRelease(old);
+}
+
+// Returns a retained latest sample, or NULL if none is fresh.
+static CMSampleBufferRef cfx_tap_fetch_fresh(void) {
+  CMSampleBufferRef out = NULL;
+  pthread_mutex_lock(&cfx_tap_lock);
+  if (cfx_tap_latest &&
+      CFAbsoluteTimeGetCurrent() - cfx_tap_latest_at < CFX_TAP_STALE_SECONDS) {
+    out = (CMSampleBufferRef)CFRetain(cfx_tap_latest);
+  }
+  pthread_mutex_unlock(&cfx_tap_lock);
+  return out;
+}
+
+// When the capture graph last delivered a sample to this process. Video
+// delivery below is the fallback for sessions whose graph never runs; once
+// the graph delivers, the data outputs are fed natively and the fallback
+// must stop, or delegates would see two interleaved streams.
+static _Atomic double cfx_graph_last_at = 0;
+
+static BOOL cfx_graph_is_delivering(void) {
+  return CFAbsoluteTimeGetCurrent() - cfx_graph_last_at < CFX_TAP_STALE_SECONDS;
+}
+
+static IMP cfx_orig_rqsn_render = NULL;
+
+static void cfx_rqsn_render_tap(id self, SEL _cmd, CMSampleBufferRef sb, id input) {
+  if (sb) cfx_graph_last_at = CFAbsoluteTimeGetCurrent();
+  // Hold buffers only while a vcam preview is being pumped — never retain
+  // graph buffers in clients without preview layers.
+  if (sb && cfx_preview_layers.count > 0) cfx_tap_store(sb);
+  typedef void (*Fn)(id, SEL, CMSampleBufferRef, id);
+  ((Fn)cfx_orig_rqsn_render)(self, _cmd, sb, input);
+}
+
+static void cfx_install_remote_queue_tap(void) {
+  // Client-side tail of the capture graph. In this VM the synthetic source
+  // is the only camera, so samples arriving here while a vcam preview is
+  // tracked are ours by construction.
+  Class cls = NSClassFromString(@"BWRemoteQueueSinkNode");
+  if (!cls) { cfxlog(@"[tap] BWRemoteQueueSinkNode missing"); return; }
+  SEL sel = @selector(renderSampleBuffer:forInput:);
+  Method m = class_getInstanceMethod(cls, sel);
+  if (!m) { cfxlog(@"[tap] renderSampleBuffer:forInput: missing"); return; }
+  cfx_orig_rqsn_render = method_setImplementation(m, (IMP)cfx_rqsn_render_tap);
+  cfxlog(@"[tap] installed BWRemoteQueueSinkNode tap (orig=%p)", cfx_orig_rqsn_render);
+}
+
 static IMP cfx_orig_pv_initWithSession = NULL;
 static IMP cfx_orig_pv_initWithSessionMakeConnection = NULL;
 
 static void cfx_pump_preview_once(void) {
   if (!cfx_preview_layers || cfx_preview_layers.count == 0) return;
-  CGImageRef img = cfx_build_cgimage_from_shm();
+  CGImageRef img = NULL;
+  // Preferred: the sample the capture graph just delivered.
+  CMSampleBufferRef sb = cfx_tap_fetch_fresh();
+  if (sb) {
+    CVPixelBufferRef pb = CMSampleBufferGetImageBuffer(sb);
+    if (pb) img = vcc_cgimage_from_pixel_buffer(pb);
+    CFRelease(sb);
+  }
+  // Bootstrap fallback: no graph yet, straight from the shm frame.
+  if (!img) img = cfx_build_cgimage_from_shm();
   if (!img) return;
   dispatch_async(dispatch_get_main_queue(), ^{
     for (CALayer *layer in cfx_preview_layers) {
@@ -377,6 +463,95 @@ static void cfx_pump_preview_once(void) {
     }
     CGImageRelease(img);
   });
+}
+
+// MARK: - client-side video delivery for vcam sessions
+//
+// When a session's capture graph never runs, its AVCaptureVideoDataOutput
+// delegates starve. Deliver the shared-layer sample directly to the
+// delegate on the output's own callback queue — the same pattern as the
+// photo delivery path. In this VM the synthetic source is the only camera,
+// so any vcam session's data output is ours. Stops while the graph
+// delivers (see cfx_graph_is_delivering).
+
+static NSHashTable *cfx_vcam_sessions = nil;  // weak, guarded
+static pthread_mutex_t cfx_vcam_sessions_lock = PTHREAD_MUTEX_INITIALIZER;
+static uint64_t cfx_video_deliver_count = 0;
+static _Atomic uint64_t cfx_video_deliver_ok = 0;
+static _Atomic int cfx_video_deliver_logged = 0;
+
+static void cfx_preview_start_timer(void);
+
+// Also arms the 30 Hz pump: a session with a data output and no preview
+// layer would otherwise never start it.
+static void cfx_track_vcam_session(id session) {
+  if (!session) return;
+  BOOL added = NO;
+  pthread_mutex_lock(&cfx_vcam_sessions_lock);
+  if (!cfx_vcam_sessions) cfx_vcam_sessions = [NSHashTable weakObjectsHashTable];
+  if (![cfx_vcam_sessions containsObject:session]) {
+    [cfx_vcam_sessions addObject:session];
+    added = YES;
+  }
+  pthread_mutex_unlock(&cfx_vcam_sessions_lock);
+  if (!added) return;
+  cfxlog(@"[video delivery] tracking session %p", session);
+  dispatch_async(dispatch_get_main_queue(), ^{ cfx_preview_start_timer(); });
+}
+
+static void cfx_deliver_video_frames_once(void) {
+  pthread_mutex_lock(&cfx_vcam_sessions_lock);
+  NSArray *sessions = cfx_vcam_sessions.allObjects;
+  pthread_mutex_unlock(&cfx_vcam_sessions_lock);
+  if (sessions.count == 0 || cfx_graph_is_delivering()) return;
+  Class dataOutCls = NSClassFromString(@"AVCaptureVideoDataOutput");
+  if (!dataOutCls) return;
+
+  for (id sess in sessions) {
+    NSArray *outputs = nil;
+    @try { outputs = [sess valueForKey:@"outputs"]; } @catch (NSException *e) { continue; }
+    for (id out in outputs) {
+      if (![out isKindOfClass:dataOutCls]) continue;
+      id delegate = nil;
+      dispatch_queue_t q = nil;
+      @try { delegate = [out valueForKey:@"sampleBufferDelegate"]; } @catch (NSException *e) {}
+      @try { q = [out valueForKey:@"sampleBufferCallbackQueue"]; } @catch (NSException *e) {}
+      if (!delegate) continue;
+      NSArray *conns = nil;
+      @try { conns = [out valueForKey:@"connections"]; } @catch (NSException *e) {}
+      for (id conn in conns) {
+        BOOL enabled = NO;
+        @try { enabled = [[conn valueForKey:@"enabled"] boolValue]; } @catch (NSException *e) {}
+        if (!enabled) continue;
+        CMSampleBufferRef sb = cfx_build_cmsb();
+        if (!sb) continue;
+        cfx_video_deliver_count++;
+        dispatch_async(q ?: dispatch_get_main_queue(), ^{
+          @autoreleasepool {
+            @try {
+              ((void (*)(id, SEL, id, CMSampleBufferRef, id))objc_msgSend)(
+                  delegate,
+                  @selector(captureOutput:didOutputSampleBuffer:fromConnection:),
+                  out,
+                  sb,
+                  conn);
+              cfx_video_deliver_ok++;
+            } @catch (NSException *e) {
+              if (cfx_video_deliver_logged++ < 8) {
+                cfxlog(@"[video delivery] delegate exception: %@", e);
+              }
+            }
+            CFRelease(sb);
+          }
+        });
+      }
+    }
+  }
+  if (cfx_video_deliver_count && (cfx_video_deliver_count % 90) == 1) {
+    cfxlog(@"[video delivery] attempted=%llu ok=%llu",
+           (unsigned long long)cfx_video_deliver_count,
+           (unsigned long long)cfx_video_deliver_ok);
+  }
 }
 
 static void cfx_preview_start_timer(void) {
@@ -389,7 +564,10 @@ static void cfx_preview_start_timer(void) {
       33333333ull,
       2000000ull);
   dispatch_source_set_event_handler(cfx_preview_timer, ^{
-    @autoreleasepool { cfx_pump_preview_once(); }
+    @autoreleasepool {
+      cfx_pump_preview_once();
+      cfx_deliver_video_frames_once();
+    }
   });
   dispatch_resume(cfx_preview_timer);
   cfxlog(@"preview pump armed (30 Hz)");
@@ -713,35 +891,7 @@ static BOOL cfx_output_is_for_vcam(id self) {
 // MARK: - JPEG + IOSurface builders
 
 static NSData *cfx_build_jpeg_from_shm(void) {
-  size_t len = 0;
-  const vphone_vcam_shm_header_t *hdr = cfx_shm_frame(&len);
-  if (!hdr) return nil;
-  uint32_t w = hdr->width, h = hdr->height, bpr = hdr->bytes_per_row;
-
-  void *copy = malloc(len);
-  if (!copy) return nil;
-  memcpy(copy, cfx_shm_base + VPHONE_VCAM_SHM_HEADER_SIZE, len);
-
-  CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
-  CGDataProviderRef dp = CGDataProviderCreateWithData(
-      NULL,
-      copy,
-      len,
-      cfx_cg_release_data);
-  CGImageRef img = CGImageCreate(
-      w,
-      h,
-      8,
-      32,
-      bpr,
-      cs,
-      (CGBitmapInfo)(kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst),
-      dp,
-      NULL,
-      false,
-      kCGRenderingIntentDefault);
-  CGDataProviderRelease(dp);
-  CGColorSpaceRelease(cs);
+  CGImageRef img = cfx_build_cgimage_from_shm();
   if (!img) return nil;
 
   NSMutableData *data = [NSMutableData data];
@@ -760,17 +910,14 @@ static NSData *cfx_build_jpeg_from_shm(void) {
 }
 
 static CGImageRef cfx_build_cgimage_from_shm(void) CF_RETURNS_RETAINED {
-  size_t len = 0;
-  const vphone_vcam_shm_header_t *hdr = cfx_shm_frame(&len);
-  if (!hdr) return NULL;
-  uint32_t w = hdr->width, h = hdr->height, bpr = hdr->bytes_per_row;
-  void *copy = malloc(len);
-  if (!copy) return NULL;
-  memcpy(copy, cfx_shm_base + VPHONE_VCAM_SHM_HEADER_SIZE, len);
+  uint32_t w = 0, h = 0;
+  uint8_t *bgra = cfx_bgra_from_shm(&w, &h);
+  if (!bgra) return NULL;
+  size_t len = (size_t)w * 4 * h;
   CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
   CGDataProviderRef dp = CGDataProviderCreateWithData(
       NULL,
-      copy,
+      bgra,
       len,
       cfx_cg_release_data);
   CGImageRef img = CGImageCreate(
@@ -778,7 +925,7 @@ static CGImageRef cfx_build_cgimage_from_shm(void) CF_RETURNS_RETAINED {
       h,
       8,
       32,
-      bpr,
+      w * 4,
       cs,
       (CGBitmapInfo)(kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst),
       dp,
@@ -791,24 +938,25 @@ static CGImageRef cfx_build_cgimage_from_shm(void) CF_RETURNS_RETAINED {
 }
 
 static IOSurfaceRef cfx_build_iosurface_from_shm(uint32_t *outW, uint32_t *outH) CF_RETURNS_RETAINED {
-  size_t len = 0;
-  const vphone_vcam_shm_header_t *hdr = cfx_shm_frame(&len);
-  if (!hdr) return NULL;
-  uint32_t w = hdr->width, h = hdr->height, bpr = hdr->bytes_per_row;
+  uint32_t w = 0, h = 0;
+  uint8_t *bgra = cfx_bgra_from_shm(&w, &h);
+  if (!bgra) return NULL;
+  size_t len = (size_t)w * 4 * h;
   NSDictionary *props = @{
     (NSString *)kIOSurfaceWidth: @(w),
     (NSString *)kIOSurfaceHeight: @(h),
     (NSString *)kIOSurfacePixelFormat: @(kCVPixelFormatType_32BGRA),
     (NSString *)kIOSurfaceBytesPerElement: @(4),
-    (NSString *)kIOSurfaceBytesPerRow: @(bpr),
+    (NSString *)kIOSurfaceBytesPerRow: @(w * 4),
     (NSString *)kIOSurfaceAllocSize: @(len),
   };
   IOSurfaceRef surf = IOSurfaceCreate((CFDictionaryRef)props);
-  if (!surf) return NULL;
+  if (!surf) { free(bgra); return NULL; }
   IOSurfaceLock(surf, 0, NULL);
   void *base = IOSurfaceGetBaseAddress(surf);
-  if (base) memcpy(base, cfx_shm_base + VPHONE_VCAM_SHM_HEADER_SIZE, len);
+  if (base) memcpy(base, bgra, len);
   IOSurfaceUnlock(surf, 0, NULL);
+  free(bgra);
   if (outW) *outW = w;
   if (outH) *outH = h;
   return surf;
@@ -1280,7 +1428,52 @@ static void cfx_install_moment_capture_hooks(void) {
 static IMP cfx_orig_setRunning = NULL;
 static IMP cfx_orig_setInterrupted = NULL;
 
+// Diagnoses why a vcam session never reaches the daemon's graph builder:
+// logs what the client thinks its session looks like at start time.
+static void cfx_log_session_start(AVCaptureSession *session) {
+  @try {
+    NSMutableArray *lines = [NSMutableArray array];
+    [lines addObject:[NSString stringWithFormat:@"inputs=%lu",
+                      (unsigned long)session.inputs.count]];
+    for (AVCaptureInput *inp in session.inputs) {
+      NSString *uid = nil;
+      if ([inp isKindOfClass:[AVCaptureDeviceInput class]]) {
+        uid = ((AVCaptureDeviceInput *)inp).device.uniqueID;
+      }
+      [lines addObject:[NSString stringWithFormat:@"input %@ cls=%@ ports=%lu",
+                        uid ?: @"?",
+                        NSStringFromClass([inp class]),
+                        (unsigned long)inp.ports.count]];
+    }
+    for (AVCaptureOutput *outp in session.outputs) {
+      BOOL anyEnabled = NO;
+      NSUInteger videoConns = 0;
+      for (AVCaptureConnection *c in outp.connections) {
+        if (c.enabled || c.active) anyEnabled = YES;
+        for (AVCaptureInputPort *port in c.inputPorts) {
+          if ([port.mediaType isEqualToString:AVMediaTypeVideo]) {
+            videoConns++;
+            break;
+          }
+        }
+      }
+      [lines addObject:[NSString stringWithFormat:@"output %@ conns=%lu video=%lu anyEnabled/Active=%d",
+                        NSStringFromClass([outp class]),
+                        (unsigned long)outp.connections.count,
+                        (unsigned long)videoConns,
+                        anyEnabled]];
+    }
+    cfxlog(@"[session start] %p %@", session, [lines componentsJoinedByString:@" | "]);
+  } @catch (NSException *e) {
+    cfxlog(@"[session start] dump exception: %@", e);
+  }
+}
+
 static void cfx_session_setRunning_hook(id self, SEL _cmd, BOOL running) {
+  if (running && cfx_session_is_for_vcam(self)) {
+    cfx_log_session_start(self);
+    cfx_track_vcam_session(self);
+  }
   if (!running && cfx_session_is_for_vcam(self)) {
     cfxlog(@"[session _setRunning:NO] suppressed for vcam session %p", self);
     return;
@@ -1300,6 +1493,54 @@ static void cfx_session_setInterrupted_hook(id self, SEL _cmd,
   }
   typedef void (*OrigFn)(id, SEL, BOOL, long, id);
   ((OrigFn)cfx_orig_setInterrupted)(self, _cmd, interrupted, reason, interruptor);
+}
+
+// MARK: - device input / port diagnostics
+//
+// A vcam session that never reaches startRunning usually dies at addInput:
+// because the client-side device object has no ports (streams missing from
+// the remote source copy). Log the port count at input creation and the
+// app's own canAddInput: checks.
+
+static IMP cfx_orig_dvinput_init = NULL;
+static IMP cfx_orig_canAddInput = NULL;
+
+__attribute__((ns_returns_retained))
+static id cfx_dvinput_init_hook(id self, SEL _cmd, AVCaptureDevice *device, NSError **err) {
+  typedef id (*Fn)(id, SEL, AVCaptureDevice *, NSError **);
+  id ret = ((Fn)cfx_orig_dvinput_init)(self, _cmd, device, err);
+  if ([device.uniqueID isEqualToString:VCAM_UID]) {
+    cfxlog(@"[DeviceInput init] device=%@ ports=%lu err=%@",
+           device.uniqueID,
+           (unsigned long)((AVCaptureDeviceInput *)ret).ports.count,
+           err && *err ? *err : nil);
+  }
+  return ret;
+}
+
+static BOOL cfx_canAddInput_hook(id self, SEL _cmd, AVCaptureInput *input) {
+  typedef BOOL (*Fn)(id, SEL, AVCaptureInput *);
+  BOOL ret = ((Fn)cfx_orig_canAddInput)(self, _cmd, input);
+  if ([input isKindOfClass:[AVCaptureDeviceInput class]] &&
+      [((AVCaptureDeviceInput *)input).device.uniqueID isEqualToString:VCAM_UID]) {
+    cfxlog(@"[canAddInput:%@] -> %d", VCAM_UID, ret);
+  }
+  return ret;
+}
+
+static void cfx_install_input_diagnostics(void) {
+  Class cls = NSClassFromString(@"AVCaptureDeviceInput");
+  Method m = cls ? class_getInstanceMethod(cls, @selector(initWithDevice:error:)) : NULL;
+  if (m) {
+    cfx_orig_dvinput_init = method_setImplementation(m, (IMP)cfx_dvinput_init_hook);
+    cfxlog(@"installed DeviceInput init diag");
+  }
+  Class sessCls = NSClassFromString(@"AVCaptureSession");
+  Method m2 = sessCls ? class_getInstanceMethod(sessCls, @selector(canAddInput:)) : NULL;
+  if (m2) {
+    cfx_orig_canAddInput = method_setImplementation(m2, (IMP)cfx_canAddInput_hook);
+    cfxlog(@"installed canAddInput diag");
+  }
 }
 
 static void cfx_install_session_guards(void) {
@@ -1338,6 +1579,7 @@ static BOOL cfx_session_isRunning_hook(id self, SEL _cmd) {
   typedef BOOL (*Fn)(id, SEL);
   BOOL real = ((Fn)cfx_orig_isRunning)(self, _cmd);
   if (cfx_session_is_for_vcam(self)) {
+    cfx_track_vcam_session(self);
     if (cfx_isRunning_logged < 3) {
       cfxlog(@"[isRunning] real=%d -> forcing YES (session=%p)", real, self);
       cfx_isRunning_logged++;
@@ -1393,10 +1635,12 @@ static void cfx_install_all_hooks(void) {
     cfx_install_capturePhoto_hook();
     cfx_install_moment_capture_hooks();
     cfx_install_session_guards();
+    cfx_install_input_diagnostics();
     cfx_install_session_state_lies();
     cfx_install_preview_layer_hooks();
     cfx_install_photo_representation_hooks();
     cfx_install_capturerequest_stubs();
+    cfx_install_remote_queue_tap();
     cfx_start_scan_timer();
   });
 }

@@ -137,7 +137,9 @@ static void vcc_construct_still_sink(void) {
 // proven the synthetic-handler approach works at the API level.
 static void vcc_drive_still_sink_once(void) {
   if (!vcc_synth_still_sink) return;
-  CMSampleBufferRef sbuf = vcc_build_cmsb_from_shm();
+  // Photo sinks receive BGRA (the still pipeline JPEG-encodes directly);
+  // delivered format matches the BGRA FigCaptureSourceVideoFormat.
+  CMSampleBufferRef sbuf = vcc_build_cmsb_from_shm_fmt(VCC_FMT_BGRA);
   if (!sbuf) {
     vcc_log(@"  still-drive: no shm frame yet");
     return;
@@ -205,6 +207,22 @@ static id vcc_parsed_cfg_init_hook(id self,
         && [cameraCfgs count] > 0) {
       vcc_log(@"  [ParsedCfg] cameraCfgs[0] class=%@",
               NSStringFromClass([[cameraCfgs firstObject] class]));
+      // Always dump the camera source config's identity — the graph builder
+      // routes on these values; a nil/empty captureDeviceID here means it
+      // will never reach the device vendor.
+      id cameraCfg = [cameraCfgs firstObject];
+      id sourceID = nil, deviceType = nil, captureDeviceID = nil, source = nil;
+      @try { sourceID = [cameraCfg valueForKey:@"sourceID"]; } @catch (NSException *e) {}
+      @try { deviceType = [cameraCfg valueForKey:@"sourceDeviceType"]; } @catch (NSException *e) {}
+      @try { captureDeviceID = [cameraCfg valueForKey:@"captureDeviceID"]; } @catch (NSException *e) {}
+      @try { source = [cameraCfg valueForKey:@"source"]; } @catch (NSException *e) {}
+      vcc_log(@"  [ParsedCfg] cameraCfg sourceID=%@ deviceType=%@ captureDeviceID=%@ source=%@",
+              sourceID ?: @"(nil)", deviceType ?: @"(nil)",
+              captureDeviceID ?: @"(nil)",
+              source ? NSStringFromClass([source class]) : @"(nil)");
+      NSString *desc = [cameraCfg description];
+      if (desc.length > 800) desc = [desc substringToIndex:800];
+      vcc_log(@"  [ParsedCfg] cameraCfg desc=%@", desc);
     }
     if (stillCfgs && [stillCfgs respondsToSelector:@selector(count)]
         && [stillCfgs count] > 0) {

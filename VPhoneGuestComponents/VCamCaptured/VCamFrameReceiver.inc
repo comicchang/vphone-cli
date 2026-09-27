@@ -55,11 +55,19 @@ static int vcc_shm_read_latest(void) {
   uint32_t h   = hdr->height;
   uint32_t bpr = hdr->bytes_per_row;
   uint32_t fmt = hdr->pixel_format;
+  uint64_t ts  = hdr->timestamp_ns;
   uint64_t idx = hdr->frame_index;
   uint32_t pix_len = hdr->pixels_length;
 
   if (pix_len == 0 || pix_len > VPHONE_VCAM_SHM_MAX_PIXELS) return 0;
   if (w == 0 || h == 0 || bpr == 0 || pix_len < (size_t)bpr * h) return 0;
+  // Planar 4:2:0 wire data also carries the chroma plane after luma; refuse
+  // truncated frames instead of reading garbage chroma.
+  if (vcc_is_planar_yuv(fmt)) {
+    size_t luma = (size_t)bpr * h;
+    size_t chroma = (size_t)(2u * (w / 2)) * (h / 2);
+    if (pix_len < luma + chroma) return 0;
+  }
 
   if (vcc_staging_capacity < pix_len) {
     uint8_t *larger = (uint8_t *)realloc(vcc_staging_pixels, pix_len);
@@ -85,6 +93,9 @@ static int vcc_shm_read_latest(void) {
   vcc_latest_frame.width = w;
   vcc_latest_frame.height = h;
   vcc_latest_frame.bytes_per_row = bpr;
+  vcc_latest_frame.pixel_format = fmt;
+  vcc_latest_frame.timestamp_ns = ts;
+  vcc_latest_frame.frame_index = idx;
   vcc_staging_pixels = old_pixels;
   vcc_staging_capacity = old_capacity;
   pthread_mutex_unlock(&vcc_latest_frame.lock);

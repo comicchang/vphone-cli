@@ -156,6 +156,30 @@ static void vcc_dump_sink_node_methods(void) {
 //      we know the pipeline runs and we just need to substitute the
 //      sample-buffer contents.
 
+// Video sink nodes (BWImageQueueSinkNode / BWRemoteQueueSinkNode) created
+// for any client session. Strong refs: they keep each node valid and its
+// client transport pinned for the lifetime of the daemon — one leak per
+// session start, the same tradeoff the synth streams already make. The
+// viewfinder queue drives them (vcc_drive_sinks_once) while the init hooks
+// append from graph-build threads, so every access holds the array's lock.
+static NSMutableArray *vcc_driven_sinks = nil;
+static pthread_mutex_t vcc_driven_sinks_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static void vcc_track_driven_sink(id sink) {
+  if (!sink) return;
+  pthread_mutex_lock(&vcc_driven_sinks_lock);
+  if (!vcc_driven_sinks) vcc_driven_sinks = [NSMutableArray array];
+  if (![vcc_driven_sinks containsObject:sink]) [vcc_driven_sinks addObject:sink];
+  pthread_mutex_unlock(&vcc_driven_sinks_lock);
+}
+
+static NSArray *vcc_driven_sinks_snapshot(void) {
+  pthread_mutex_lock(&vcc_driven_sinks_lock);
+  NSArray *snapshot = vcc_driven_sinks ? [vcc_driven_sinks copy] : @[];
+  pthread_mutex_unlock(&vcc_driven_sinks_lock);
+  return snapshot;
+}
+
 static unsigned long vcc_render_call_count = 0;
 static unsigned long vcc_iqsn_init_count = 0;
 static unsigned long vcc_rqsn_init_count = 0;
@@ -200,6 +224,7 @@ static id vcc_iqsn_init_hook(
   vcc_iqsn_init_count++;
   vcc_log(@"  [IQSN init] -> %p sinkID=%@ count=%lu",
           ret, sinkID, vcc_iqsn_init_count);
+  vcc_track_driven_sink(ret);
   return ret;
 }
 
@@ -216,6 +241,7 @@ static id vcc_rqsn_init_hook(
   vcc_rqsn_init_count++;
   vcc_log(@"  [RQSN init] -> %p mediaType=0x%x sinkID=%@ count=%lu",
           ret, mediaType, sinkID, vcc_rqsn_init_count);
+  vcc_track_driven_sink(ret);
   return ret;
 }
 
