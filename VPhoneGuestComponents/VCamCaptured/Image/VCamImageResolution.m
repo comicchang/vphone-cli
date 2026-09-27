@@ -1,27 +1,13 @@
+#include <mach-o/dyld.h>
+#include <mach-o/getsect.h>
+#include <malloc/malloc.h>
+#include <ptrauth.h>
+
+#include "VCamImage.h"
+
 // MARK: - runtime image resolution
 
-#define VCC_MAX_DATA_RANGES 8
-
-typedef struct {
-  uintptr_t start;
-  uintptr_t end;
-} vcc_range_t;
-
-typedef struct {
-  const struct mach_header_64 *mh;
-  intptr_t slide;
-  const uint32_t *text;
-  size_t text_words;  // count of 4-byte instructions
-  vcc_range_t data_ranges[VCC_MAX_DATA_RANGES];
-  unsigned data_range_count;
-  // LC_SYMTAB pointers (may be 0 on DSC dylibs that strip private symbols
-  // from the per-image symtab; callers must handle gracefully).
-  const struct nlist_64 *symtab;
-  const char *strtab;
-  uint32_t nsyms;
-} vcc_image_t;
-
-static int vcc_image_resolve(vcc_image_t *out, const char *anchor_sym) {
+int vcc_image_resolve(vcc_image_t *out, const char *anchor_sym) {
   memset(out, 0, sizeof(*out));
   void *anchor = dlsym(RTLD_DEFAULT, anchor_sym);
   if (!anchor) return -1;
@@ -96,8 +82,7 @@ static int vcc_image_resolve(vcc_image_t *out, const char *anchor_sym) {
 // Walk CMCapture's LC_SYMTAB for `name`. Returns slid VMA on match, or 0.
 // On DSC dylibs the per-image symtab may be stripped of private symbols, in
 // which case this returns 0 even for symbols that exist statically.
-static uintptr_t vcc_lookup_lc_symtab(const vcc_image_t *img,
-                                       const char *name) {
+uintptr_t vcc_lookup_lc_symtab(const vcc_image_t *img, const char *name) {
   if (!img->symtab || !img->strtab || img->nsyms == 0) return 0;
   for (uint32_t i = 0; i < img->nsyms; i++) {
     if (img->symtab[i].n_un.n_strx == 0) continue;
@@ -134,7 +119,7 @@ static uintptr_t vcc_bl_target(uintptr_t bl_pc, uint32_t bl) {
 // Both cbz branch targets are identical (same SKIP label). We patch both
 // to NOP so every source survives the per-client ownership + prewarming-
 // enabled filter and reaches the response serializer.
-static uintptr_t vcc_find_per_source_filter(const vcc_image_t *img) {
+uintptr_t vcc_find_per_source_filter(const vcc_image_t *img) {
   if (!img->text || img->text_words < 6) return 0;
   for (size_t i = 0; i + 5 < img->text_words; i++) {
     if (img->text[i]     != 0xAA0003F9u) continue;          // mov x25, x0
@@ -163,182 +148,6 @@ static uintptr_t vcc_find_per_source_filter(const vcc_image_t *img) {
   return 0;
 }
 
-// Patch two consecutive instructions starting at `pc` to NOP. iOS __TEXT
-// is W^X-enforced + TXM-validated. Try in order:
-//  (a) vm_protect with VM_PROT_COPY: kernel COWs the page into an anon
-//      mapping and grants RW. Standard iOS-hooker recipe (libhooker etc).
-//  (b) vm_allocate scratch + memcpy + vm_remap(OVERWRITE|FIXED) overlay.
-// Either way, scratch_writable -> patch -> set RX -> icache flush.
-static int vcc_patch_two_nops(uintptr_t pc) {
-  uintptr_t page_size = (uintptr_t)getpagesize();
-  uintptr_t page_start = pc & ~(page_size - 1);
-  uintptr_t end = pc + 8;
-  uintptr_t page_end =
-      ((end + page_size - 1) & ~(page_size - 1));
-  vm_size_t span = (vm_size_t)(page_end - page_start);
-  mach_port_t self_task = mach_task_self();
-
-  // (a) vm_protect with VM_PROT_COPY (= 0x10) to force COW.
-  kern_return_t kr = vm_protect(
-      self_task,
-      (vm_address_t)page_start,
-      span,
-      FALSE,
-      VM_PROT_READ | VM_PROT_WRITE | VM_PROT_COPY);
-  if (kr == KERN_SUCCESS) {
-    uint32_t nop = 0xD503201Fu;
-    ((uint32_t *)pc)[0] = nop;
-    ((uint32_t *)pc)[1] = nop;
-    kr = vm_protect(
-        self_task,
-        (vm_address_t)page_start,
-        span,
-        FALSE,
-        VM_PROT_READ | VM_PROT_EXECUTE);
-    if (kr == KERN_SUCCESS) {
-      sys_icache_invalidate((void *)pc, 8);
-      vcc_log(@"  vm_protect+COPY patch OK @ 0x%lx",
-              (unsigned long)pc);
-      return 1;
-    }
-    vcc_log(@"  vm_protect restore RX failed: %d (page=0x%lx)",
-            kr,
-            (unsigned long)page_start);
-    // Continue to try (b).
-  } else {
-    vcc_log(@"  vm_protect+COPY failed: %d", kr);
-  }
-
-  // (b) Scratch allocation + vm_remap with FIXED|OVERWRITE.
-  vm_address_t scratch = 0;
-  kr = vm_allocate(self_task, &scratch, span, VM_FLAGS_ANYWHERE);
-  if (kr != KERN_SUCCESS) {
-    vcc_log(@"  vm_allocate failed: %d", kr);
-    return 0;
-  }
-  memcpy((void *)scratch, (const void *)page_start, span);
-  uint32_t nop = 0xD503201Fu;
-  uintptr_t scratch_pc = scratch + (pc - page_start);
-  ((uint32_t *)scratch_pc)[0] = nop;
-  ((uint32_t *)scratch_pc)[1] = nop;
-  kr = vm_protect(
-      self_task,
-      scratch,
-      span,
-      FALSE,
-      VM_PROT_READ | VM_PROT_EXECUTE);
-  if (kr != KERN_SUCCESS) {
-    vcc_log(@"  vm_protect RX scratch failed: %d", kr);
-    vm_deallocate(self_task, scratch, span);
-    return 0;
-  }
-  vm_address_t target = (vm_address_t)page_start;
-  vm_prot_t cur_prot = 0, max_prot = 0;
-  kr = vm_remap(
-      self_task,
-      &target,
-      span,
-      0,
-      VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE,
-      self_task,
-      scratch,
-      FALSE,
-      &cur_prot,
-      &max_prot,
-      VM_INHERIT_NONE);
-  if (kr != KERN_SUCCESS) {
-    vcc_log(@"  vm_remap FIXED|OVERWRITE failed: %d (cur=0x%x max=0x%x)",
-            kr,
-            cur_prot,
-            max_prot);
-    vm_deallocate(self_task, scratch, span);
-    return 0;
-  }
-  sys_icache_invalidate((void *)pc, 8);
-  vcc_log(@"  vm_remap OK: page=0x%lx span=%zu (cur=0x%x max=0x%x)",
-          (unsigned long)page_start,
-          (size_t)span,
-          cur_prot,
-          max_prot);
-  return 1;
-}
-
-// Patch a single 32-bit ARM64 instruction word at `pc` to `new_word`.
-// Uses the same vm_protect(VM_PROT_COPY) → write → vm_protect(RX) →
-// icache flush dance as vcc_patch_two_nops. Verifies the original word
-// matches `expected_word` before writing so an iOS version skew doesn't
-// silently corrupt the wrong code. Returns 1 on success.
-static int vcc_patch_word(uintptr_t pc,
-                          uint32_t expected_word,
-                          uint32_t new_word) {
-  uint32_t cur = ((const uint32_t *)pc)[0];
-  if (cur != expected_word) {
-    vcc_log(@"  patch_word @ 0x%lx: expected 0x%08x, found 0x%08x — skip",
-            (unsigned long)pc,
-            expected_word,
-            cur);
-    return 0;
-  }
-  uintptr_t page_size = (uintptr_t)getpagesize();
-  uintptr_t page_start = pc & ~(page_size - 1);
-  uintptr_t end = pc + 4;
-  uintptr_t page_end = ((end + page_size - 1) & ~(page_size - 1));
-  vm_size_t span = (vm_size_t)(page_end - page_start);
-  mach_port_t self_task = mach_task_self();
-
-  kern_return_t kr = vm_protect(
-      self_task,
-      (vm_address_t)page_start,
-      span,
-      FALSE,
-      VM_PROT_READ | VM_PROT_WRITE | VM_PROT_COPY);
-  if (kr != KERN_SUCCESS) {
-    vcc_log(@"  patch_word vm_protect+COPY failed: %d", kr);
-    return 0;
-  }
-  ((uint32_t *)pc)[0] = new_word;
-  kr = vm_protect(
-      self_task,
-      (vm_address_t)page_start,
-      span,
-      FALSE,
-      VM_PROT_READ | VM_PROT_EXECUTE);
-  if (kr != KERN_SUCCESS) {
-    vcc_log(@"  patch_word restore RX failed: %d", kr);
-    return 0;
-  }
-  sys_icache_invalidate((void *)pc, 4);
-  vcc_log(@"  patch_word OK @ 0x%lx: 0x%08x -> 0x%08x",
-          (unsigned long)pc,
-          expected_word,
-          new_word);
-  return 1;
-}
-
-// Scan the image's __text for every occurrence of `needle` and rewrite
-// each to `replacement` via vcc_patch_word. Replaces hardcoded image
-// VMAs for patches whose addresses we don't know per-build but whose
-// instruction encoding is a stable fingerprint (e.g. `mov w20, #-12783`
-// MOVN encodings used for error-prep). Returns the count patched.
-static unsigned vcc_scan_and_patch(const vcc_image_t *img,
-                                   uint32_t needle,
-                                   uint32_t replacement,
-                                   const char *what) {
-  if (!img->text || !img->text_words) return 0;
-  unsigned hits = 0;
-  for (size_t i = 0; i < img->text_words; i++) {
-    if (img->text[i] != needle) continue;
-    uintptr_t pc = (uintptr_t)&img->text[i];
-    if (vcc_patch_word(pc, needle, replacement)) hits++;
-  }
-  vcc_log(@"  scan_and_patch %s (0x%08x -> 0x%08x): %u hit(s)",
-          what ? what : "?",
-          needle,
-          replacement,
-          hits);
-  return hits;
-}
-
 // Scan __text for the daemon's client-allowlist filter sequence:
 //   bl  <FigCaptureCopyClientCodeSigningIdentifier>   ; X
 //   bl  <objc_autorelease_stub>                       ; (don't care about target)
@@ -351,9 +160,9 @@ static unsigned vcc_scan_and_patch(const vcc_image_t *img,
 //
 // On a hit, writes the absolute (slid) target of the 1st and 4th BL into
 // `*si_fn_out` and `*prewarm_fn_out`. Returns the PC of the first BL.
-static uintptr_t vcc_find_filter_chain(const vcc_image_t *img,
-                                        uintptr_t *si_fn_out,
-                                        uintptr_t *prewarm_fn_out) {
+uintptr_t vcc_find_filter_chain(const vcc_image_t *img,
+                                uintptr_t *si_fn_out,
+                                uintptr_t *prewarm_fn_out) {
   if (!img->text || img->text_words < 8) return 0;
   *si_fn_out = 0;
   *prewarm_fn_out = 0;
@@ -402,7 +211,7 @@ static int vcc_addr_in_data(const vcc_image_t *img, uintptr_t addr) {
 
 // Decode ARM64 ADRP immediate from the instruction word.
 // Returns the absolute page-aligned target of `adrp Xn, <page>`.
-static uintptr_t vcc_adrp_target(uintptr_t adrp_pc, uint32_t adrp) {
+uintptr_t vcc_adrp_target(uintptr_t adrp_pc, uint32_t adrp) {
   int64_t immlo = (adrp >> 29) & 0x3;
   int64_t immhi = (adrp >> 5) & 0x7ffff;
   int64_t imm = (immhi << 2) | immlo;
@@ -492,7 +301,7 @@ static uintptr_t vcc_find_data_xref(const vcc_image_t *img, unsigned offset) {
 // 64-bit value; never dereferences) before reading its isa. CFArray
 // instances are always heap allocations from the default malloc zone,
 // so a non-heap value can't be _sSourceList.
-static BOOL vcc_slot_value_is_cfarray(uintptr_t slot_addr) {
+BOOL vcc_slot_value_is_cfarray(uintptr_t slot_addr) {
   if (!slot_addr) return NO;
   // The slot addresses read here are always in CMCapture's __DATA /
   // __DATA_CONST segments (filtered upstream by vcc_addr_in_data) so the read
@@ -537,7 +346,7 @@ static BOOL vcc_slot_value_is_cfarray(uintptr_t slot_addr) {
 // a static global" site. The init block for CMCapture's source-list
 // statics emits one such pair per global it initializes; the first
 // one is `_sSourceList`.
-static unsigned vcc_collect_call_then_store_globals(
+unsigned vcc_collect_call_then_store_globals(
     uintptr_t func,
     unsigned maxInsns,
     unsigned lookahead,
@@ -576,7 +385,7 @@ static unsigned vcc_collect_call_then_store_globals(
 }
 
 // Resolve a CFString constant by symbol name.
-static CFStringRef vcc_cfconst(const char *symname) {
+CFStringRef vcc_cfconst(const char *symname) {
   void **slot = dlsym(RTLD_DEFAULT, symname);
   if (!slot) {
     vcc_log(@"  dlsym FAIL: %s", symname);
@@ -588,7 +397,7 @@ static CFStringRef vcc_cfconst(const char *symname) {
 // Resolve a function symbol by name. On arm64e dlsym returns a PAC-signed
 // pointer signed with key IA + discriminator 0 (the standard C ABI signing
 // schema) — callable directly as a C function pointer. Returns NULL on miss.
-static void *vcc_dlsym_fn(const char *name) {
+void *vcc_dlsym_fn(const char *name) {
   void *p = dlsym(RTLD_DEFAULT, name);
   if (!p) vcc_log(@"  dlsym FAIL: %s", name);
   return p;

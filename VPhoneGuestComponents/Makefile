@@ -96,8 +96,9 @@ test-loader-links:
 test-vcam-dataplane:
 	@mkdir -p $(OUT)
 	xcrun --sdk macosx clang -O1 -Wall -Wextra -Werror -Wno-unused-parameter \
+		$(addprefix -I,$(VCAM_SHARED_DIRS)) \
 		-o $(OUT)/VCamDataPlaneTests \
-		Tests/VCamDataPlaneTests.c VCamDataPlane/vcam_dataplane.c \
+		Tests/VCamDataPlaneTests.c $(call find_sources,$(VCAM_SHARED_DIRS)) \
 		-framework CoreMedia -framework CoreVideo -framework CoreFoundation \
 		-framework CoreGraphics
 	@$(OUT)/VCamDataPlaneTests

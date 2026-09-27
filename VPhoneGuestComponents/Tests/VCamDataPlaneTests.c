@@ -24,7 +24,7 @@
  * Build/run:  make -C VPhoneGuestComponents test-vcam-dataplane
  */
 
-#include "../VCamDataPlane/vcam_dataplane.h"
+#include "vcam_dataplane.h"
 
 #include <math.h>
 #include <stdio.h>

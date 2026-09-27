@@ -1,3 +1,7 @@
+#include "VCamFrames.h"
+#include "VCamHooks.h"
+#include "vcam_dataplane.h"
+
 // MARK: - Sink node injection — manually-constructed BWStillImageSampleBufferSinkNode
 //
 // The daemon's session graph for our synth source builds without a still-image
@@ -11,7 +15,7 @@
 
 static id vcc_synth_still_sink = nil;
 
-static void vcc_construct_still_sink(void) {
+void vcc_construct_still_sink(void) {
   Class cls = NSClassFromString(@"BWStillImageSampleBufferSinkNode");
   if (!cls) {
     vcc_log(@"  manual still-sink: class missing");
@@ -135,7 +139,7 @@ static void vcc_construct_still_sink(void) {
 // synth sink directly with a synthetic CMSampleBuffer built from
 // vcc_latest_frame. If our manually-installed handler fires, we have
 // proven the synthetic-handler approach works at the API level.
-static void vcc_drive_still_sink_once(void) {
+void vcc_drive_still_sink_once(void) {
   if (!vcc_synth_still_sink) return;
   // Photo sinks receive BGRA (the still pipeline JPEG-encodes directly);
   // delivered format matches the BGRA FigCaptureSourceVideoFormat.
@@ -254,7 +258,7 @@ static id vcc_parsed_cfg_init_hook(id self,
   return ret;
 }
 
-static void vcc_install_parsed_cfg_observation(void) {
+void vcc_install_parsed_cfg_observation(void) {
   Class cls = NSClassFromString(@"FigCaptureSessionParsedConfiguration");
   if (!cls) {
     vcc_log(@"  parsed-cfg obs: class missing");

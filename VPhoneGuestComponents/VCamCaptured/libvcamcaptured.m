@@ -33,48 +33,21 @@
  *       matches; we accept only when all matches agree).
  */
 
-#import <CoreFoundation/CoreFoundation.h>
-#import <CoreMedia/CoreMedia.h>
-#import <CoreVideo/CoreVideo.h>
-#import <Foundation/Foundation.h>
-#import <objc/message.h>
-#import <objc/runtime.h>
-#include <dlfcn.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <libkern/OSCacheControl.h>
-#include <mach-o/dyld.h>
-#include <mach-o/getsect.h>
-#include <mach-o/loader.h>
-#include <mach-o/nlist.h>
-#include <mach/mach.h>
-#include <malloc/malloc.h>
-#include <notify.h>
-#include <ptrauth.h>
-#include <pthread.h>
 #include <stdarg.h>
-#include <stdatomic.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include "VCamFrameProtocol.h"
-#include "vcam_dataplane.h"
 
-// MARK: - shared frame layout (matches vphoned_vcam.h)
-//
-// cameracaptured's sandbox blocks AF_VSOCK socket creation, so the frame
-// receiver lives in vphoned (root, has vsock perms). vphoned writes
-// frames into a shared mmap and posts a Darwin notification; we map the
-// file read-only, subscribe to the notification, and copy out the latest
-// frame on each fire.
+#include "VCamCapturedPrivate.h"
+
+// Each subsystem lives in its own folder and translation unit:
+//   Image/      CMCapture image resolution, structural scans, code patches
+//   Synthetic/  the synthetic source, device and stream classes
+//   Frames/     the shm frame reader and viewfinder / sink delivery
+//   Hooks/      observation and delivery hooks on the capture graph
+// Cross-file symbols are declared in each folder's header with hidden
+// visibility, so none becomes a public dylib interface.
 
 // MARK: - sentinel logging
 
-static void vcc_log(NSString *fmt, ...) {
+void vcc_log(NSString *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   NSString *msg = [[NSString alloc] initWithFormat:fmt arguments:args];
@@ -95,19 +68,19 @@ static void vcc_log(NSString *fmt, ...) {
   NSLog(@"vcamcaptured: %@", msg);
 }
 
+// MARK: - method swizzling
 
-// The implementation remains one translation unit because these hooks share
-// private runtime state and order-sensitive symbol declarations. Each include
-// owns one capture subsystem; none becomes a public dylib interface.
-#include "VCamImageResolution.inc"
-#include "VCamSourceInstallation.inc"
-#include "VCamCaptureObservation.inc"
-#include "VCamSyntheticDevice.inc"
-#include "VCamSyntheticStreams.inc"
-#include "VCamViewfinderHooks.inc"
-#include "VCamSessionHooks.inc"
-#include "VCamStillSink.inc"
-#include "VCamFrameReceiver.inc"
+void vcc_swizzle_method(Class cls, SEL sel, IMP newImp, IMP *outOrig) {
+  Method m = class_getInstanceMethod(cls, sel);
+  if (!m) {
+    vcc_log(@"  swizzle: -[%s %@] missing", class_getName(cls),
+            NSStringFromSelector(sel));
+    return;
+  }
+  *outOrig = method_setImplementation(m, newImp);
+  vcc_log(@"  swizzled -[%s %@] (orig imp=%p)", class_getName(cls),
+          NSStringFromSelector(sel), *outOrig);
+}
 
 // MARK: - constructor
 

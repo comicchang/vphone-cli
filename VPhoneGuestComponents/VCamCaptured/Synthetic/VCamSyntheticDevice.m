@@ -1,3 +1,6 @@
+#include "VCamImage.h"
+#include "VCamSynthetic.h"
+
 // MARK: - synthetic FigCaptureDevice subclass
 //
 // Subclass `BWFigCaptureDevice` at runtime via objc_allocateClassPair, then
@@ -18,15 +21,17 @@
 // Resolved at synth-class init. -1 until populated; vcc_init_synth_device_class
 // refuses to register the synth class if resolution fails so we never write
 // to a stale offset.
-static ptrdiff_t kBWFigCaptureDevice_deviceID_Offset = -1;
+ptrdiff_t kBWFigCaptureDevice_deviceID_Offset = -1;
+
+Class vcc_synth_device_class = Nil;
 
 // Resolve an instance-variable offset by name on `cls`, trying each
 // candidate in `names` (NULL-terminated) until one matches. Returns -1
 // if none match. Logs the outcome so a future iOS rename surfaces in
 // the install log instead of silently writing to a wrong slot.
-static ptrdiff_t vcc_resolve_ivar(Class cls,
-                                  const char *what,
-                                  const char *const *names) {
+ptrdiff_t vcc_resolve_ivar(Class cls,
+                           const char *what,
+                           const char *const *names) {
   if (!cls) {
     vcc_log(@"  ivar %s: class missing", what ? what : "?");
     return -1;
@@ -175,4 +180,102 @@ static void vcc_init_synth_device_class(void) {
   objc_registerClassPair(cls);
   vcc_synth_device_class = cls;
   vcc_log(@"  registered VccSynthDevice : BWFigCaptureDevice (cls=%p)", cls);
+}
+
+__attribute__((ns_returns_retained))
+static id vcc_make_synth_device(NSString *deviceID) {
+  if (!vcc_synth_device_class) vcc_init_synth_device_class();
+  if (!vcc_synth_device_class) return nil;
+
+  // Use +alloc via runtime — ARC-safe. Function attributed
+  // ns_returns_retained so ARC treats the alloc'd +1 correctly.
+  id d = ((id (*)(Class, SEL))objc_msgSend)(vcc_synth_device_class,
+                                              @selector(alloc));
+  if (!d) {
+    vcc_log(@"  synth-dev: class_createInstance failed");
+    return nil;
+  }
+  // Write deviceID at the runtime-resolved ivar offset via
+  // CFBridgingRetain so our -dealloc override CFRelease's it.
+  NSString *idCopy = [deviceID copy];
+  void *slotBase  = (__bridge void *)d;
+  void **slot     = (void **)((char *)slotBase + kBWFigCaptureDevice_deviceID_Offset);
+  *slot = (void *)CFBridgingRetain(idCopy);
+
+  // Pin so dealloc never runs — diagnostic to isolate the autorelease
+  // pool drain crash. Each session start leaks one synth device.
+  static NSMutableArray *vcc_synth_devs_strong_refs = nil;
+  if (!vcc_synth_devs_strong_refs) {
+    vcc_synth_devs_strong_refs = [NSMutableArray new];
+  }
+  [vcc_synth_devs_strong_refs addObject:d];
+
+  vcc_log(@"  synth-dev: %p deviceID=%@ (slot@+0x%lx=%p)",
+          d, idCopy, (long)kBWFigCaptureDevice_deviceID_Offset, *slot);
+  return d;
+}
+
+// MARK: - hook BWFigCaptureDeviceVendor copyDeviceWithID:
+//
+// Hook -[BWFigCaptureDeviceVendor copyDeviceWithID:forClient:informClientWhenDeviceAvailableAgain:error:]
+// to see when an AVF client asks for our device, and hand out a
+// VccSynthDevice for our synth's CaptureDeviceID. If this never fires, the
+// client never reached the device-vendor stage (gated upstream).
+
+static IMP vcc_copy_device_orig = NULL;
+
+// Type encoding observed on iOS 26.5 cameracaptured:
+//   @40@0:8@16i24B28^i32
+// => id (*)(id self, SEL _cmd, NSString *deviceID, int clientPID,
+//            BOOL informClient, int *err)
+// The earlier disabled stub mis-typed clientPID as `id`, causing ARC to
+// emit objc_retain on an integer register and crash inside the hook
+// prologue.
+//
+// The selector starts with "copy", so the caller owns the result. Both the
+// original and the hook are declared ns_returns_retained: without it ARC
+// autoreleases the returned device, and the caller's release then drops
+// one reference too many.
+
+typedef id (*VccCopyDeviceFn)(id self,
+                              SEL _cmd,
+                              NSString *deviceID,
+                              int clientPID,
+                              BOOL informClient,
+                              int *err) __attribute__((ns_returns_retained));
+
+__attribute__((ns_returns_retained))
+static id vcc_copy_device_hook(id self,
+                               SEL _cmd,
+                               NSString *deviceID,
+                               int clientPID,
+                               BOOL informClient,
+                               int *err) {
+  vcc_log(@"  [copyDeviceWithID] deviceID=%@ clientPID=%d inform=%d",
+          deviceID, clientPID, informClient);
+
+  if ([deviceID isEqualToString:kVccSynthDeviceID]) {
+    id synth = vcc_make_synth_device(deviceID);
+    if (err) *err = 0;
+    vcc_log(@"  [copyDeviceWithID] -> synth %p (class=%s err=0)",
+            synth, object_getClassName(synth));
+    return synth;
+  }
+
+  VccCopyDeviceFn orig = (VccCopyDeviceFn)vcc_copy_device_orig;
+  id ret = orig(self, _cmd, deviceID, clientPID, informClient, err);
+  int errval = err ? *err : 0;
+  vcc_log(@"  [copyDeviceWithID] returned %p (err=%d)", ret, errval);
+  return ret;
+}
+
+void vcc_install_device_vendor_hook(void) {
+  Class cls = NSClassFromString(@"BWFigCaptureDeviceVendor");
+  if (!cls) {
+    vcc_log(@"  device-vendor hook: class missing");
+    return;
+  }
+  SEL sel = NSSelectorFromString(
+      @"copyDeviceWithID:forClient:informClientWhenDeviceAvailableAgain:error:");
+  vcc_swizzle_method(cls, sel, (IMP)vcc_copy_device_hook, &vcc_copy_device_orig);
 }

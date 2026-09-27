@@ -1,3 +1,5 @@
+#include "VCamHooks.h"
+
 // MARK: - frame-sender endpoint observation
 //
 // AVF capture clients (Camera.app, AVCaptureSession-using apps) tell the
@@ -54,7 +56,7 @@ static BOOL vcc_add_endpoint_hook(id self,
   return ok;
 }
 
-static void vcc_install_endpoint_hook(void) {
+void vcc_install_endpoint_hook(void) {
   Class cls = NSClassFromString(
       @"CMCaptureFrameSenderEndpointsServerSideSingleton");
   if (!cls) {
@@ -122,7 +124,7 @@ static void vcc_dump_class(const char *name) {
   free(clist);
 }
 
-static void vcc_dump_sink_node_methods(void) {
+void vcc_dump_sink_node_methods(void) {
   vcc_log(@"---- sink-node method dump ----");
   vcc_dump_class("BWSinkNode");
   vcc_dump_class("BWImageQueueSinkNode");
@@ -157,25 +159,26 @@ static void vcc_dump_sink_node_methods(void) {
 //      sample-buffer contents.
 
 // Video sink nodes (BWImageQueueSinkNode / BWRemoteQueueSinkNode) created
-// for any client session. Strong refs: they keep each node valid and its
-// client transport pinned for the lifetime of the daemon — one leak per
-// session start, the same tradeoff the synth streams already make. The
-// viewfinder queue drives them (vcc_drive_sinks_once) while the init hooks
-// append from graph-build threads, so every access holds the array's lock.
-static NSMutableArray *vcc_driven_sinks = nil;
+// for any client session. Weak refs: the capture graph owns each node, so a
+// node drops out of the table when its session tears down, and the drive
+// loop never feeds a dead graph or keeps one alive. The snapshot holds
+// strong refs for the length of one drive tick. The viewfinder queue drives
+// them (vcc_drive_sinks_once) while the init hooks add from graph-build
+// threads, so every access holds the lock.
+static NSHashTable *vcc_driven_sinks = nil;
 static pthread_mutex_t vcc_driven_sinks_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void vcc_track_driven_sink(id sink) {
   if (!sink) return;
   pthread_mutex_lock(&vcc_driven_sinks_lock);
-  if (!vcc_driven_sinks) vcc_driven_sinks = [NSMutableArray array];
-  if (![vcc_driven_sinks containsObject:sink]) [vcc_driven_sinks addObject:sink];
+  if (!vcc_driven_sinks) vcc_driven_sinks = [NSHashTable weakObjectsHashTable];
+  [vcc_driven_sinks addObject:sink];
   pthread_mutex_unlock(&vcc_driven_sinks_lock);
 }
 
-static NSArray *vcc_driven_sinks_snapshot(void) {
+NSArray *vcc_driven_sinks_snapshot(void) {
   pthread_mutex_lock(&vcc_driven_sinks_lock);
-  NSArray *snapshot = vcc_driven_sinks ? [vcc_driven_sinks copy] : @[];
+  NSArray *snapshot = vcc_driven_sinks.allObjects ?: @[];
   pthread_mutex_unlock(&vcc_driven_sinks_lock);
   return snapshot;
 }
@@ -275,67 +278,27 @@ static void vcc_rqsn_render_hook(
   orig(self, _cmd, cmsb, input);
 }
 
-static void vcc_swizzle_method(Class cls, SEL sel, IMP newImp, IMP *outOrig) {
-  Method m = class_getInstanceMethod(cls, sel);
-  if (!m) {
-    vcc_log(@"  swizzle: -[%s %@] missing", class_getName(cls),
-            NSStringFromSelector(sel));
+void vcc_install_sink_observation(void) {
+  Class iqsn = NSClassFromString(@"BWImageQueueSinkNode");
+  Class rqsn = NSClassFromString(@"BWRemoteQueueSinkNode");
+  if (!iqsn || !rqsn) {
+    vcc_log(@"  sink obs: classes missing iqsn=%p rqsn=%p", iqsn, rqsn);
     return;
   }
-  *outOrig = method_setImplementation(m, newImp);
-  vcc_log(@"  swizzled -[%s %@] (orig imp=%p)", class_getName(cls),
-          NSStringFromSelector(sel), *outOrig);
-}
 
-// Extra observation: hook -[BWFigCaptureDeviceVendor copyDeviceWithID:forClient:informClientWhenDeviceAvailableAgain:error:]
-// to see when an AVF client asks for our device. If this fires, we know the
-// session is at least requesting a device for our synth. If it doesn't fire,
-// the client never even reached the device-vendor stage (gated upstream).
+  SEL iqsnInit = NSSelectorFromString(
+      @"initWithHFRSupport:ispJitterCompensationEnabled:"
+      @"clientAuditToken:sinkID:");
+  SEL rqsnInit = NSSelectorFromString(
+      @"initWithMediaType:clientAuditToken:sinkID:cameraInfoByPortType:");
+  SEL renderSel = @selector(renderSampleBuffer:forInput:);
 
-static IMP vcc_copy_device_orig = NULL;
-
-// Type encoding observed on iOS 26.5 cameracaptured:
-//   @40@0:8@16i24B28^i32
-// => id (*)(id self, SEL _cmd, NSString *deviceID, int clientPID,
-//            BOOL informClient, int *err)
-// The earlier disabled stub mis-typed clientPID as `id`, causing ARC to
-// emit objc_retain on an integer register and crash inside the hook
-// prologue.
-
-typedef id (*VccCopyDeviceFn)(id self,
-                              SEL _cmd,
-                              NSString *deviceID,
-                              int clientPID,
-                              BOOL informClient,
-                              int *err);
-
-static Class vcc_synth_device_class = Nil;
-
-// Forward decls.
-static void vcc_init_synth_device_class(void);
-__attribute__((ns_returns_retained))
-static id   vcc_make_synth_device(NSString *deviceID);
-
-static id vcc_copy_device_hook(id self,
-                               SEL _cmd,
-                               NSString *deviceID,
-                               int clientPID,
-                               BOOL informClient,
-                               int *err) {
-  vcc_log(@"  [copyDeviceWithID] deviceID=%@ clientPID=%d inform=%d",
-          deviceID, clientPID, informClient);
-
-  if ([deviceID isEqualToString:kVccSynthDeviceID]) {
-    id synth = vcc_make_synth_device(deviceID);
-    if (err) *err = 0;
-    vcc_log(@"  [copyDeviceWithID] -> synth %p (class=%s err=0)",
-            synth, object_getClassName(synth));
-    return synth;
-  }
-
-  VccCopyDeviceFn orig = (VccCopyDeviceFn)vcc_copy_device_orig;
-  id ret = orig(self, _cmd, deviceID, clientPID, informClient, err);
-  int errval = err ? *err : 0;
-  vcc_log(@"  [copyDeviceWithID] returned %p (err=%d)", ret, errval);
-  return ret;
+  vcc_swizzle_method(iqsn, iqsnInit, (IMP)vcc_iqsn_init_hook,
+                      &vcc_iqsn_init_orig);
+  vcc_swizzle_method(rqsn, rqsnInit, (IMP)vcc_rqsn_init_hook,
+                      &vcc_rqsn_init_orig);
+  vcc_swizzle_method(iqsn, renderSel, (IMP)vcc_iqsn_render_hook,
+                      &vcc_iqsn_render_orig);
+  vcc_swizzle_method(rqsn, renderSel, (IMP)vcc_rqsn_render_hook,
+                      &vcc_rqsn_render_orig);
 }

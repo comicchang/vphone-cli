@@ -1,10 +1,19 @@
-// MARK: - shared-frame reader
+#include <notify.h>
+#include <stdatomic.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
-// The latest frame copied out of the vphoned-published shm. Mutated only
-// from the reader callback thread; readers (AVF stream production, next
-// stage) take the lock for the brief duration of a copy.
-// (struct vcc_latest_frame_s is forward-declared above as vcc_latest_frame_t
-//  for use by the viewfinder injection code.)
+#include "VCamFrames.h"
+#include "vcam_dataplane.h"
+
+// MARK: - shared-frame reader
+//
+// cameracaptured's sandbox blocks AF_VSOCK socket creation, so the frame
+// receiver lives in vphoned (root, has vsock perms). vphoned writes
+// frames into a shared mmap and posts a Darwin notification; we map the
+// file read-only, subscribe to the notification, and copy out the latest
+// frame on each fire. The layout is VCamFrameProtocol.h, shared with
+// vphoned_vcam.h.
 
 vcc_latest_frame_t vcc_latest_frame = {
     .lock = PTHREAD_MUTEX_INITIALIZER,
@@ -110,7 +119,7 @@ static int vcc_shm_read_latest(void) {
   return 1;
 }
 
-static void vcc_start_frame_receiver(void) {
+void vcc_start_frame_receiver(void) {
   // Subscribe before mapping: cameracaptured may start before vphoned has
   // created the file. The first frame notification retries the map.
   int token = -1;
