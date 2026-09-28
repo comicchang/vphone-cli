@@ -8,6 +8,15 @@ import ImageIO
 /// local processes (e.g. Claude Code via `nc -U`).  One JSON line in, one JSON
 /// line out, then the connection closes.
 ///
+/// Each connection is served on its own, so a slow request (a screenshot, a
+/// long `rpc`) does not hold up other clients. Requests from different
+/// clients may interleave; input events sent by one client stay in order.
+///
+/// The socket exists in both windowed and headless launches. With a window,
+/// taps and swipes go through the VM view and the compact image is captured
+/// from the display. Headless, taps and swipes go to vphoned's `input.touch`
+/// and the image comes from the guest's `screen.screenshot`.
+///
 /// Every response includes an `"image"` field with a compact base64-encoded
 /// grayscale JPEG of the current screen (unless `"screen":false` is sent).
 ///
@@ -29,22 +38,29 @@ import ImageIO
 /// `"screen":true`.
 @MainActor
 class VPhoneHostAutomationServer {
+    private enum HostControlError: Error, CustomStringConvertible {
+        case guestNotConnected
+        case guestTouchUnavailable
+
+        var description: String {
+            switch self {
+            case .guestNotConnected: "guest not connected"
+            case .guestTouchUnavailable: "no VM window, and the guest does not support touch input"
+            }
+        }
+    }
+
     private let socketPath: String
     private var listenFD: Int32 = -1
     private let acceptQueue = DispatchQueue(label: "vphone.hostcontrol.accept")
+    private nonisolated static let clientQueue = DispatchQueue(
+        label: "vphone.hostcontrol.client",
+        attributes: .concurrent,
+    )
 
     private weak var captureView: VPhoneVirtualMachineView?
-    private var screenRecorder: VPhoneScreenRecorder?
+    private var screenRecorder = VPhoneScreenRecorder()
     private weak var control: VPhoneGuestControl?
-
-    /// Thread-safe box for passing results between main actor and accept queue.
-    private final class ResultBox: @unchecked Sendable {
-        var path: String?
-        var error: String?
-        var ok = false
-        var imageBase64: String?
-        var result: [String: Any]?
-    }
 
     /// Matches vphoned's JSON body limit, so an `rpc` line is never refused
     /// here that the guest would accept.
@@ -61,8 +77,9 @@ class VPhoneHostAutomationServer {
         self.socketPath = socketPath
     }
 
+    /// `captureView` is nil for a headless launch.
     func start(
-        captureView: VPhoneVirtualMachineView,
+        captureView: VPhoneVirtualMachineView?,
         screenRecorder: VPhoneScreenRecorder,
         control: VPhoneGuestControl,
         screenWidth: Int,
@@ -110,7 +127,7 @@ class VPhoneHostAutomationServer {
             return
         }
 
-        guard listen(fd, 4) == 0 else {
+        guard listen(fd, SOMAXCONN) == 0 else {
             print("[hostctl] listen failed: \(String(cString: strerror(errno)))")
             close(fd)
             return
@@ -133,19 +150,196 @@ class VPhoneHostAutomationServer {
         unlink(socketPath)
     }
 
+    // MARK: - Commands
+
+    private func respond(to line: String) async -> Data {
+        guard let data = line.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let type = json["t"] as? String
+        else {
+            return Self.reply(ok: false, error: "invalid JSON")
+        }
+
+        // Whether to include a compact screenshot in the response (default: true)
+        let wantScreen = json["screen"] as? Bool ?? true
+        // Delay before screenshot (ms) — lets animations settle
+        let screenDelay = json["delay"] as? Int ?? 500
+
+        do {
+            switch type {
+            case "ping":
+                try await connectedControl().sendPing()
+                return Self.reply(ok: true)
+
+            case "screenshot":
+                let image = try await connectedControl().screenshotJPEG()
+                let url = if let outputPath = json["path"] as? String {
+                    try screenRecorder.saveScreenshot(jpegData: image, to: URL(fileURLWithPath: outputPath))
+                } else {
+                    try screenRecorder.saveScreenshot(jpegData: image)
+                }
+                // Always include compact image for screenshot command, from the same capture
+                let compact = CGImageSourceCreateWithData(image as CFData, nil)
+                    .flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }
+                    .flatMap(compactJPEG)
+                return Self.reply(ok: true, path: url.path, image: compact)
+
+            case "tap":
+                guard let x = json["x"] as? Double, let y = json["y"] as? Double else {
+                    return Self.reply(ok: false, error: "tap requires x and y (pixel coordinates)")
+                }
+                try await tap(x: x, y: y)
+
+            case "swipe":
+                guard let x1 = json["x1"] as? Double, let y1 = json["y1"] as? Double,
+                      let x2 = json["x2"] as? Double, let y2 = json["y2"] as? Double
+                else {
+                    return Self.reply(ok: false, error: "swipe requires x1, y1, x2, y2")
+                }
+                try await swipe(x1: x1, y1: y1, x2: x2, y2: y2, durationMs: json["ms"] as? Int ?? 300)
+
+            case "key":
+                guard let name = json["name"] as? String else {
+                    return Self.reply(
+                        ok: false,
+                        error: "key requires name (home/power/volup/voldown, or a keyboard key such as return or cmd+v)",
+                    )
+                }
+                try await pressKey(name)
+
+            case "type":
+                guard let text = json["text"] as? String else {
+                    return Self.reply(ok: false, error: "type requires text")
+                }
+                try await connectedControl().clipboardSet(text: text)
+
+            case "rpc":
+                guard let method = json["method"] as? String, !method.isEmpty else {
+                    return Self.reply(ok: false, error: "rpc requires method (a vphoned method such as input.key)")
+                }
+                guard let params = (json["params"] ?? [String: Any]()) as? [String: Any] else {
+                    return Self.reply(ok: false, error: "rpc params must be an object")
+                }
+                let result = try await connectedControl().callAfterQueuedInput(method, params: params)
+                let wantRPCScreen = json["screen"] as? Bool ?? false
+                let image = wantRPCScreen ? await settledCompactScreenshot(delayMs: screenDelay) : nil
+                return Self.reply(ok: true, image: image, result: result)
+
+            default:
+                return Self.reply(ok: false, error: "unknown command: \(type)")
+            }
+        } catch {
+            return Self.reply(ok: false, error: "\(error)")
+        }
+
+        let image = wantScreen ? await settledCompactScreenshot(delayMs: screenDelay) : nil
+        return Self.reply(ok: true, image: image)
+    }
+
+    private func connectedControl() throws -> VPhoneGuestControl {
+        guard let control, control.isConnected else { throw HostControlError.guestNotConnected }
+        return control
+    }
+
+    /// The VM view, when this launch has a window to inject events into.
+    private var windowedView: VPhoneVirtualMachineView? {
+        guard let captureView, captureView.window != nil else { return nil }
+        return captureView
+    }
+
+    private func pressKey(_ name: String) async throws {
+        let control = try connectedControl()
+        let hidKey: (page: UInt32, usage: UInt32)? = switch name {
+        case "home": (0x0C, 0x40)
+        case "power": (0x0C, 0x30)
+        case "volup": (0x0C, 0xE9)
+        case "voldown": (0x0C, 0xEA)
+        default: nil
+        }
+        if let hidKey {
+            control.sendHIDPress(page: hidKey.page, usage: hidKey.usage)
+        } else {
+            // vphoned's `input.key` owns keyboard names and
+            // modifier combinations such as "cmd+v".
+            _ = try await control.callAfterQueuedInput("input.key", params: ["name": name])
+        }
+    }
+
+    // MARK: - Touch
+
+    private func tap(x: Double, y: Double) async throws {
+        if let view = windowedView {
+            view.injectTap(pixelX: x, pixelY: y, screenWidth: screenWidth, screenHeight: screenHeight)
+            return
+        }
+        let control = try touchControl()
+        let point = normalizedPoint(pixelX: x, pixelY: y)
+        control.sendTouch(phase: 0, x: point.x, y: point.y)
+        try? await Task.sleep(for: .milliseconds(80))
+        control.sendTouch(phase: 3, x: point.x, y: point.y)
+    }
+
+    /// Returns once the swipe has finished, in either mode.
+    private func swipe(x1: Double, y1: Double, x2: Double, y2: Double, durationMs: Int) async throws {
+        if let view = windowedView {
+            view.injectSwipe(
+                fromX: x1,
+                fromY: y1,
+                toX: x2,
+                toY: y2,
+                screenWidth: screenWidth,
+                screenHeight: screenHeight,
+                durationMs: durationMs,
+            )
+            try? await Task.sleep(for: .milliseconds(durationMs))
+            return
+        }
+        let control = try touchControl()
+        let start = normalizedPoint(pixelX: x1, pixelY: y1)
+        let end = normalizedPoint(pixelX: x2, pixelY: y2)
+        // Same step count and spacing as `injectSwipe`.
+        let steps = max(10, durationMs / 16)
+        let stepInterval = Double(durationMs) / Double(steps)
+
+        control.sendTouch(phase: 0, x: start.x, y: start.y)
+        for i in 1 ... steps {
+            try? await Task.sleep(for: .milliseconds(stepInterval))
+            let t = Double(i) / Double(steps)
+            let x = start.x + (end.x - start.x) * t
+            let y = start.y + (end.y - start.y) * t
+            control.sendTouch(phase: i < steps ? 1 : 3, x: x, y: y)
+        }
+    }
+
+    /// Headless touches go through vphoned's `input.touch`.
+    private func touchControl() throws -> VPhoneGuestControl {
+        let control = try connectedControl()
+        guard control.guestCapabilities.contains("touch") else { throw HostControlError.guestTouchUnavailable }
+        return control
+    }
+
+    /// Screenshot pixel coordinates to the 0...1 range `input.touch` takes.
+    private func normalizedPoint(pixelX: Double, pixelY: Double) -> (x: Double, y: Double) {
+        (
+            max(0, min(1, pixelX / Double(screenWidth))),
+            max(0, min(1, pixelY / Double(screenHeight))),
+        )
+    }
+
     // MARK: - Compact Screenshot
+
+    private func settledCompactScreenshot(delayMs: Int) async -> String? {
+        try? await Task.sleep(for: .milliseconds(delayMs))
+        return await captureCompactScreenshot()
+    }
 
     /// Capture current screen as a small grayscale JPEG, returned as base64.
     private func captureCompactScreenshot() async -> String? {
-        guard let recorder = screenRecorder, let view = captureView, view.window != nil else {
-            return nil
-        }
+        guard let cgImage = await captureScreenImage() else { return nil }
+        return compactJPEG(cgImage)
+    }
 
-        // Reuse the existing private-API capture
-        guard let cgImage = try? await recorder.captureStillImage(from: view) else {
-            return nil
-        }
-
+    private func compactJPEG(_ cgImage: CGImage) -> String? {
         let dstW = cgImage.width / Self.compactScale
         let dstH = cgImage.height / Self.compactScale
 
@@ -180,12 +374,30 @@ class VPhoneHostAutomationServer {
         return (data as Data).base64EncodedString()
     }
 
+    /// The display capture with a window; the guest's own screenshot headless.
+    private func captureScreenImage() async -> CGImage? {
+        if let view = windowedView {
+            return try? await screenRecorder.captureStillImage(from: view)
+        }
+        guard let control, control.isConnected,
+              let jpeg = try? await control.screenshotJPEG(),
+              let source = CGImageSourceCreateWithData(jpeg as CFData, nil)
+        else { return nil }
+        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+    }
+
     // MARK: - Accept Loop
 
     private nonisolated static func acceptLoop(listenFD: Int32, controller: VPhoneHostAutomationServer?) {
         while true {
             let clientFD = accept(listenFD, nil, nil)
-            guard clientFD >= 0 else { break }
+            guard clientFD >= 0 else {
+                // A client that gives up before accept must not end the loop.
+                if errno == EINTR || errno == ECONNABORTED {
+                    continue
+                }
+                break
+            }
             guard fcntl(clientFD, F_SETNOSIGPIPE, 1) != -1 else {
                 close(clientFD)
                 continue
@@ -199,264 +411,27 @@ class VPhoneHostAutomationServer {
                 close(clientFD)
                 continue
             }
-            handleClient(clientFD, controller: controller)
+            clientQueue.async {
+                serveClient(clientFD, controller: controller)
+            }
         }
     }
 
-    private nonisolated static func handleClient(_ fd: Int32, controller: VPhoneHostAutomationServer?) {
-        defer { close(fd) }
-
-        guard let line = readLine(from: fd) else { return }
-
-        guard let data = line.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let type = json["t"] as? String
-        else {
-            writeResponse(fd, ok: false, error: "invalid JSON")
+    /// Socket reads and writes block, so they stay on `clientQueue`; only the
+    /// command itself runs on the main actor, where it awaits without
+    /// holding a thread.
+    private nonisolated static func serveClient(_ fd: Int32, controller: VPhoneHostAutomationServer?) {
+        guard let line = readLine(from: fd) else {
+            close(fd)
             return
         }
-
-        // Whether to include a compact screenshot in the response (default: true)
-        let wantScreen = json["screen"] as? Bool ?? true
-        // Delay before screenshot (ms) — lets animations settle
-        let screenDelay = json["delay"] as? Int ?? 500
-
-        switch type {
-        case "ping":
-            let semaphore = DispatchSemaphore(value: 0)
-            let result = ResultBox()
-            Task { @MainActor in
-                defer { semaphore.signal() }
-                guard let controller, let control = controller.control, control.isConnected else {
-                    result.error = "guest not connected"
-                    return
-                }
-                do {
-                    try await control.sendPing()
-                    result.ok = true
-                } catch {
-                    result.error = "\(error)"
-                }
+        Task { @MainActor in
+            let response = await controller?.respond(to: line)
+                ?? reply(ok: false, error: "host control stopped")
+            clientQueue.async {
+                write(response, to: fd)
+                close(fd)
             }
-            semaphore.wait()
-            writeResponse(fd, ok: result.ok, error: result.error)
-
-        case "screenshot":
-            let outputPath = json["path"] as? String
-            let semaphore = DispatchSemaphore(value: 0)
-            let result = ResultBox()
-
-            Task { @MainActor in
-                defer { semaphore.signal() }
-                guard let controller,
-                      let recorder = controller.screenRecorder,
-                      let control = controller.control,
-                      let view = controller.captureView,
-                      view.window != nil
-                else {
-                    result.error = "no active VM view"
-                    return
-                }
-                do {
-                    let image = try await control.screenshotJPEG()
-                    let url = if let outputPath {
-                        try recorder.saveScreenshot(jpegData: image, to: URL(fileURLWithPath: outputPath))
-                    } else {
-                        try recorder.saveScreenshot(jpegData: image)
-                    }
-                    result.path = url.path
-                    // Always include compact image for screenshot command
-                    result.imageBase64 = await controller.captureCompactScreenshot()
-                    result.ok = true
-                } catch {
-                    result.error = "\(error)"
-                }
-            }
-
-            semaphore.wait()
-            if result.ok {
-                writeResponse(fd, ok: true, path: result.path, image: result.imageBase64)
-            } else {
-                writeResponse(fd, ok: false, error: result.error ?? "unknown error")
-            }
-
-        case "tap":
-            guard let x = json["x"] as? Double, let y = json["y"] as? Double else {
-                writeResponse(fd, ok: false, error: "tap requires x and y (pixel coordinates)")
-                return
-            }
-            let semaphore = DispatchSemaphore(value: 0)
-            let result = ResultBox()
-
-            Task { @MainActor in
-                defer { semaphore.signal() }
-                guard let controller, let view = controller.captureView, view.window != nil else {
-                    result.error = "no active VM view"
-                    return
-                }
-                view.injectTap(
-                    pixelX: x,
-                    pixelY: y,
-                    screenWidth: controller.screenWidth,
-                    screenHeight: controller.screenHeight,
-                )
-                result.ok = true
-                if wantScreen {
-                    try? await Task.sleep(nanoseconds: UInt64(screenDelay) * 1_000_000)
-                    result.imageBase64 = await controller.captureCompactScreenshot()
-                }
-            }
-
-            semaphore.wait()
-            writeResponse(fd, ok: result.ok, error: result.error, image: result.imageBase64)
-
-        case "swipe":
-            guard let x1 = json["x1"] as? Double, let y1 = json["y1"] as? Double,
-                  let x2 = json["x2"] as? Double, let y2 = json["y2"] as? Double
-            else {
-                writeResponse(fd, ok: false, error: "swipe requires x1, y1, x2, y2")
-                return
-            }
-            let durationMs = json["ms"] as? Int ?? 300
-            let semaphore = DispatchSemaphore(value: 0)
-            let result = ResultBox()
-
-            Task { @MainActor in
-                defer { semaphore.signal() }
-                guard let controller, let view = controller.captureView, view.window != nil else {
-                    result.error = "no active VM view"
-                    return
-                }
-                view.injectSwipe(
-                    fromX: x1,
-                    fromY: y1,
-                    toX: x2,
-                    toY: y2,
-                    screenWidth: controller.screenWidth,
-                    screenHeight: controller.screenHeight,
-                    durationMs: durationMs,
-                )
-                result.ok = true
-                if wantScreen {
-                    // Wait for swipe to finish + settle
-                    let totalDelay = durationMs + screenDelay
-                    try? await Task.sleep(nanoseconds: UInt64(totalDelay) * 1_000_000)
-                    result.imageBase64 = await controller.captureCompactScreenshot()
-                }
-            }
-
-            semaphore.wait()
-            writeResponse(fd, ok: result.ok, error: result.error, image: result.imageBase64)
-
-        case "key":
-            guard let name = json["name"] as? String else {
-                writeResponse(fd, ok: false, error: "key requires name (home/power/volup/voldown, or a keyboard key such as return or cmd+v)")
-                return
-            }
-            let hidKey: (page: UInt32, usage: UInt32)? = switch name {
-            case "home": (0x0C, 0x40)
-            case "power": (0x0C, 0x30)
-            case "volup": (0x0C, 0xE9)
-            case "voldown": (0x0C, 0xEA)
-            default: nil
-            }
-            let semaphore = DispatchSemaphore(value: 0)
-            let result = ResultBox()
-
-            Task { @MainActor in
-                defer { semaphore.signal() }
-                guard let controller, let ctl = controller.control, ctl.isConnected else {
-                    result.error = "guest not connected"
-                    return
-                }
-                if let hidKey {
-                    ctl.sendHIDPress(page: hidKey.page, usage: hidKey.usage)
-                } else {
-                    // vphoned's `input.key` owns keyboard names and
-                    // modifier combinations such as "cmd+v".
-                    do {
-                        _ = try await ctl.callAfterQueuedInput("input.key", params: ["name": name])
-                    } catch {
-                        result.error = "\(error)"
-                        return
-                    }
-                }
-                result.ok = true
-                if wantScreen {
-                    try? await Task.sleep(nanoseconds: UInt64(screenDelay) * 1_000_000)
-                    result.imageBase64 = await controller.captureCompactScreenshot()
-                }
-            }
-
-            semaphore.wait()
-            writeResponse(fd, ok: result.ok, error: result.error, image: result.imageBase64)
-
-        case "type":
-            guard let text = json["text"] as? String else {
-                writeResponse(fd, ok: false, error: "type requires text")
-                return
-            }
-            let semaphore = DispatchSemaphore(value: 0)
-            let result = ResultBox()
-
-            Task { @MainActor in
-                defer { semaphore.signal() }
-                guard let controller, let ctl = controller.control, ctl.isConnected else {
-                    result.error = "guest not connected"
-                    return
-                }
-                do {
-                    try await ctl.clipboardSet(text: text)
-                    result.ok = true
-                    if wantScreen {
-                        try? await Task.sleep(nanoseconds: UInt64(screenDelay) * 1_000_000)
-                        result.imageBase64 = await controller.captureCompactScreenshot()
-                    }
-                } catch {
-                    result.error = "\(error)"
-                }
-            }
-
-            semaphore.wait()
-            writeResponse(fd, ok: result.ok, error: result.error, image: result.imageBase64)
-
-        case "rpc":
-            guard let method = json["method"] as? String, !method.isEmpty else {
-                writeResponse(fd, ok: false, error: "rpc requires method (a vphoned method such as input.key)")
-                return
-            }
-            let params = json["params"] ?? [String: Any]()
-            guard let params = params as? [String: Any] else {
-                writeResponse(fd, ok: false, error: "rpc params must be an object")
-                return
-            }
-            let wantRPCScreen = json["screen"] as? Bool ?? false
-            let semaphore = DispatchSemaphore(value: 0)
-            let result = ResultBox()
-
-            Task { @MainActor in
-                defer { semaphore.signal() }
-                guard let controller, let ctl = controller.control, ctl.isConnected else {
-                    result.error = "guest not connected"
-                    return
-                }
-                do {
-                    result.result = try await ctl.callAfterQueuedInput(method, params: params)
-                    result.ok = true
-                    if wantRPCScreen {
-                        try? await Task.sleep(nanoseconds: UInt64(screenDelay) * 1_000_000)
-                        result.imageBase64 = await controller.captureCompactScreenshot()
-                    }
-                } catch {
-                    result.error = "\(error)"
-                }
-            }
-
-            semaphore.wait()
-            writeResponse(fd, ok: result.ok, error: result.error, image: result.imageBase64, result: result.result)
-
-        default:
-            writeResponse(fd, ok: false, error: "unknown command: \(type)")
         }
     }
 
@@ -481,14 +456,14 @@ class VPhoneHostAutomationServer {
         return accumulated.isEmpty ? nil : String(data: accumulated, encoding: .utf8)
     }
 
-    private nonisolated static func writeResponse(
-        _ fd: Int32,
+    /// One JSON line, ready to write.
+    private nonisolated static func reply(
         ok: Bool,
         path: String? = nil,
         error: String? = nil,
         image: String? = nil,
         result: [String: Any]? = nil,
-    ) {
+    ) -> Data {
         var dict: [String: Any] = ["ok": ok]
         if let result {
             dict["result"] = result
@@ -503,16 +478,19 @@ class VPhoneHostAutomationServer {
             dict["image"] = image
         }
 
-        guard let data = try? JSONSerialization.data(withJSONObject: dict),
-              var json = String(data: data, encoding: .utf8)
-        else { return }
+        guard var data = try? JSONSerialization.data(withJSONObject: dict) else {
+            return Data(#"{"ok":false,"error":"response is not JSON"}"#.utf8) + [0x0A]
+        }
+        data.append(0x0A)
+        return data
+    }
 
-        json += "\n"
-        json.withCString { ptr in
-            var remaining = strlen(ptr)
+    private nonisolated static func write(_ data: Data, to fd: Int32) {
+        data.withUnsafeBytes { raw in
+            guard let base = raw.baseAddress else { return }
             var offset = 0
-            while remaining > 0 {
-                let written = write(fd, ptr.advanced(by: offset), remaining)
+            while offset < raw.count {
+                let written = Darwin.write(fd, base.advanced(by: offset), raw.count - offset)
                 if written < 0, errno == EINTR {
                     continue
                 }
@@ -520,7 +498,6 @@ class VPhoneHostAutomationServer {
                     break
                 }
                 offset += written
-                remaining -= written
             }
         }
     }

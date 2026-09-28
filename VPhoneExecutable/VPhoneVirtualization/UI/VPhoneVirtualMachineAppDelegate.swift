@@ -110,6 +110,7 @@ class VPhoneVirtualMachineAppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        let screenRecorder = VPhoneScreenRecorder()
         if !command.noGraphics {
             let keySender = VPhoneVirtualMachineKeySender(vm: vm, control: control)
             let wc = VPhoneVirtualMachineWindowController()
@@ -187,22 +188,8 @@ class VPhoneVirtualMachineAppDelegate: NSObject, NSApplicationDelegate {
                 }
                 mc.updateCameraConnectionState(connected: camServer.isConnected)
             }
-            let recorder = VPhoneScreenRecorder()
-            mc.screenRecorder = recorder
+            mc.screenRecorder = screenRecorder
             menuController = mc
-
-            let socketPath = options.configURL
-                .deletingLastPathComponent()
-                .appendingPathComponent("vphone.sock").path
-            let server = VPhoneHostAutomationServer(socketPath: socketPath)
-            server.start(
-                captureView: wc.captureView!,
-                screenRecorder: recorder,
-                control: control,
-                screenWidth: options.screenWidth,
-                screenHeight: options.screenHeight,
-            )
-            hostAutomationServer = server
 
             // Wire location toggle through onConnect/onDisconnect
             control.onConnect = { [weak self, weak mc, weak provider = locationProvider] caps in
@@ -263,6 +250,20 @@ class VPhoneVirtualMachineAppDelegate: NSObject, NSApplicationDelegate {
                 provider?.stopForwarding()
             }
         }
+
+        // Headless launches serve the socket too, over guest-side input and screenshots.
+        let socketPath = options.configURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("vphone.sock").path
+        let server = VPhoneHostAutomationServer(socketPath: socketPath)
+        server.start(
+            captureView: windowController?.captureView,
+            screenRecorder: screenRecorder,
+            control: control,
+            screenWidth: options.screenWidth,
+            screenHeight: options.screenHeight,
+        )
+        hostAutomationServer = server
     }
 
     @MainActor
