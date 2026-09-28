@@ -167,12 +167,11 @@ struct VPhoneLaunchpadExportView: View {
         let panel = NSSavePanel()
         panel.title = String(localized: "Export \(name)")
         panel.nameFieldStringValue = "\(name).\(densest ? "txz" : "tzst")"
-        guard panel.runModal() == .OK, let url = panel.url else {
-            return
-        }
         let densest = densest
         let includeIPSW = includeIPSW
-        Task { await model.machines.export(machine, to: url, densest: densest, includeIPSW: includeIPSW) }
-        dismiss()
+        panel.present { url in
+            Task { await model.machines.export(machine, to: url, densest: densest, includeIPSW: includeIPSW) }
+            dismiss()
+        }
     }
 }

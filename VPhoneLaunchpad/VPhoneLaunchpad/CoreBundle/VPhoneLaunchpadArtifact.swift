@@ -139,7 +139,7 @@ nonisolated struct VPhoneLaunchpadArtifact: Identifiable, Hashable, Codable, Sen
         guard process.terminationStatus == 0,
               let name = names.first(where: { $0.range(of: "^VPhone-.+\\.zip$", options: .regularExpression) != nil })
         else {
-            throw VPhoneLaunchpadError(String(localized: "The artifact does not contain a VPhone bundle zip."))
+            throw VPhoneLaunchpadError(String(localized: "This build does not contain VPhone.bundle. Choose another build."))
         }
         return directory.appendingPathComponent(name)
     }

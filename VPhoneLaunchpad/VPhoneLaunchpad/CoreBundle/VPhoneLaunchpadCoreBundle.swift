@@ -45,7 +45,7 @@ final class VPhoneLaunchpadCoreBundle {
             case .download: String(localized: "Download")
             case .verify: String(localized: "Verify SHA-256")
             case .install: String(localized: "Install as root")
-            case .policy: String(localized: "Add execution policy exception")
+            case .policy: String(localized: "Allow bundle to run")
             case .preflight: String(localized: "Host preflight")
             }
         }
@@ -149,7 +149,11 @@ final class VPhoneLaunchpadCoreBundle {
     private let history: VPhoneLaunchpadCommandHistory
     private static let activeVersionKey = "VPhoneLaunchpadActiveBundleVersion"
     private static let acceptedVersionsKey = "VPhoneLaunchpadAcceptedBundleVersions"
+    /// Version → receipt SHA-256 of bundles whose last check passed.
+    private static let passedVersionsKey = "VPhoneLaunchpadPassedBundleVersions"
 
+    /// Lists the store at once, showing each bundle as its last check left
+    /// it, so the window opens ready. The launch check confirms it later.
     init(helper: VPhoneLaunchpadHelperClient, history: VPhoneLaunchpadCommandHistory) {
         self.helper = helper
         self.history = history
@@ -159,6 +163,28 @@ final class VPhoneLaunchpadCoreBundle {
             }
         #endif
         progress = Self.loadProgress()
+        loadInstalled()
+        let passed = UserDefaults.standard.dictionary(forKey: Self.passedVersionsKey) as? [String: String] ?? [:]
+        for index in installed.indices
+            where VPhoneLaunchpadNames.isCompatibleBundleVersion(installed[index].version)
+            && passed[installed[index].version] == installed[index].receipt.sha256
+        {
+            installed[index].policy = .passed
+            installed[index].policyDetail = "exception"
+            installed[index].preflight = .passed
+            installed[index].preflightDetail = String(localized: "Passed")
+        }
+    }
+
+    private func recordCheck(_ version: String) {
+        var passed = UserDefaults.standard.dictionary(forKey: Self.passedVersionsKey) as? [String: String] ?? [:]
+        let item = installed.first { $0.version == version }
+        if let item, item.policy == .passed, item.preflight == .passed {
+            passed[version] = item.receipt.sha256
+        } else {
+            passed[version] = nil
+        }
+        UserDefaults.standard.set(passed, forKey: Self.passedVersionsKey)
     }
 
     // MARK: - Active version
@@ -248,12 +274,18 @@ final class VPhoneLaunchpadCoreBundle {
     // MARK: - Refresh
 
     func refresh() async {
-        loadInstalled()
-        if let version = activeVersion {
-            await verify(version)
-        }
+        await checkActive()
         await fetchReleases()
         await fetchArtifacts()
+    }
+
+    /// Rereads the store and checks the active bundle again. A bundle that
+    /// passed keeps showing so while the check runs.
+    func checkActive() async {
+        loadInstalled()
+        if let version = activeVersion {
+            await verify(version, showsProgress: false)
+        }
     }
 
     func fetchReleases() async {
@@ -310,7 +342,9 @@ final class VPhoneLaunchpadCoreBundle {
 
     /// Adds the execution policy exception, allows an AMFI-refused VM through
     /// the root helper, and runs host preflight again for confirmation.
-    func verify(_ version: String) async {
+    /// Without `showsProgress`, a bundle that passed before is not marked
+    /// running meanwhile.
+    func verify(_ version: String, showsProgress: Bool = true) async {
         guard VPhoneLaunchpadNames.isCompatibleBundleVersion(version) else {
             update(version) {
                 $0.policy = .failed
@@ -319,9 +353,12 @@ final class VPhoneLaunchpadCoreBundle {
             }
             return
         }
+        defer { recordCheck(version) }
         update(version) {
-            $0.policy = .running
-            $0.preflight = .running
+            if showsProgress || $0.policy != .passed || $0.preflight != .passed {
+                $0.policy = .running
+                $0.preflight = .running
+            }
         }
         let bundle = VPhoneLaunchpadBundleStore.bundle(version: version)
         do {

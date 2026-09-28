@@ -64,6 +64,7 @@ final class VPhoneLaunchpadHostSetup {
     init(helper: VPhoneLaunchpadHelperClient, libraryRoot: URL) {
         self.helper = helper
         self.libraryRoot = libraryRoot
+        checkLocally()
     }
 
     var required: [VPhoneLaunchpadHostCheck] {
@@ -145,19 +146,28 @@ final class VPhoneLaunchpadHostSetup {
         isChecking = true
         defer { isChecking = false }
 
+        checkLocally()
+        if checks.first(where: { $0.kind == .network })?.status == .pending {
+            update(.network, (.running, String(localized: "Checking…")))
+        }
+        // The helper and network rows keep their last result until these
+        // answer, so a recheck does not blank them.
+        await helper.refresh()
+        update(.helper, helperStatus())
+        await update(.network, Self.network())
+    }
+
+    /// The checks that need no helper or network. They run at init, so the
+    /// first frame already shows them.
+    private func checkLocally() {
         update(.appleSilicon, Self.appleSilicon())
         update(.macOS, Self.macOSVersion())
         update(.physicalMac, Self.physicalMac())
         update(.libraryVolume, Self.libraryVolume(libraryRoot))
         update(.developerTools, developerTools())
-        update(.helper, (.running, String(localized: "Checking…")))
+        update(.helper, helperStatus())
         update(.diskSpace, Self.diskSpace(libraryRoot))
         update(.resources, Self.resources())
-        update(.network, (.running, String(localized: "Checking…")))
-
-        await helper.refresh()
-        update(.helper, helperStatus())
-        await update(.network, Self.network())
     }
 
     /// Re-reads Developer Tools access alone, for when the app comes back
@@ -251,7 +261,7 @@ final class VPhoneLaunchpadHostSetup {
         case let .ready(version):
             (.passed, String(localized: "Version \(version)"))
         case .unconfigured:
-            (.failed, String(localized: "No signing team in this build"))
+            (.failed, String(localized: "Not available in this build"))
         }
     }
 
@@ -292,7 +302,7 @@ final class VPhoneLaunchpadHostSetup {
         let type = withUnsafeBytes(of: info.f_fstypename) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) }
         return type == "apfs"
             ? (.passed, abbreviated(root))
-            : (.failed, String(localized: "\(abbreviated(root)) is on \(type)"))
+            : (.failed, String(localized: "\(abbreviated(root)) is on \(type), not APFS"))
     }
 
     private nonisolated static func diskSpace(_ root: URL) -> (VPhoneLaunchpadStatus, String) {

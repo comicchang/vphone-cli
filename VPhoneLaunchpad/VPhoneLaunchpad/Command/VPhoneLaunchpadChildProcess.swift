@@ -10,11 +10,18 @@ import Foundation
 ///   pipe, quitting the app would close the read end and the next line of
 ///   guest serial output would kill the VM with SIGPIPE. The file is tailed
 ///   while the app runs and stays behind as the machine's console log.
+///   The guest is also detached: it gets its own session and is responsible
+///   for itself, so macOS does not keep Launchpad listed as running in the
+///   background, or attribute the guest's privacy prompts to it, after the
+///   app quits.
 final nonisolated class VPhoneLaunchpadChildProcess: @unchecked Sendable {
     private let process = Process()
+    /// Set instead of `process` for a detached child.
+    private var detachedPID: pid_t?
     private let lock = NSLock()
     private var exitStatus: Int32?
     private var hasExited = false
+    private var exitCode: Int32 = 0
     private var waiters: [CheckedContinuation<Int32, Never>] = []
 
     init(
@@ -37,14 +44,21 @@ final nonisolated class VPhoneLaunchpadChildProcess: @unchecked Sendable {
                 withIntermediateDirectories: true,
             )
             FileManager.default.createFile(atPath: logFile.path, contents: nil)
-            let writer = try FileHandle(forWritingTo: logFile)
-            process.standardOutput = writer
-            process.standardError = writer
-            process.terminationHandler = { [self] _ in
-                lock.withLock { hasExited = true }
+            let pid = try Self.spawnDetached(
+                executable: executable,
+                arguments: arguments,
+                currentDirectory: currentDirectory,
+                logFile: logFile,
+            )
+            detachedPID = pid
+            Thread.detachNewThread { [self] in
+                var status: Int32 = 0
+                while waitpid(pid, &status, 0) == -1, errno == EINTR {}
+                lock.withLock {
+                    exitCode = Self.exitCode(status)
+                    hasExited = true
+                }
             }
-            try process.run()
-            try writer.close()
             let reader = try FileHandle(forReadingFrom: logFile)
             Thread.detachNewThread { [self] in
                 tail(reader, onLine)
@@ -83,14 +97,22 @@ final nonisolated class VPhoneLaunchpadChildProcess: @unchecked Sendable {
 
     /// SIGINT, which `vphone-cli` treats as a graceful stop.
     func interrupt() {
-        if process.isRunning {
-            process.interrupt()
-        }
+        signal(SIGINT)
     }
 
     func terminate() {
-        if process.isRunning {
-            process.terminate()
+        signal(SIGTERM)
+    }
+
+    private func signal(_ signal: Int32) {
+        if let detachedPID {
+            // Until waitpid reaps it the PID cannot be reused, so this only
+            // ever reaches our own child.
+            if lock.withLock({ !hasExited }) {
+                kill(detachedPID, signal)
+            }
+        } else if process.isRunning {
+            kill(process.processIdentifier, signal)
         }
     }
 
@@ -108,7 +130,61 @@ final nonisolated class VPhoneLaunchpadChildProcess: @unchecked Sendable {
         }
         splitter.flush(onLine)
         try? reader.close()
-        finish(process.terminationStatus)
+        finish(lock.withLock { exitCode })
+    }
+
+    // MARK: - Detached spawn
+
+    private typealias SetDisclaim = @convention(c) (UnsafeMutablePointer<posix_spawnattr_t?>, Int32) -> Int32
+
+    /// Starts `executable` in a new session, responsible for itself, with
+    /// stdin on /dev/null and stdout and stderr appended to `logFile`. No other
+    /// descriptor of Launchpad's is inherited.
+    private static func spawnDetached(
+        executable: URL,
+        arguments: [String],
+        currentDirectory: URL?,
+        logFile: URL,
+    ) throws -> pid_t {
+        var attributes: posix_spawnattr_t?
+        posix_spawnattr_init(&attributes)
+        defer { posix_spawnattr_destroy(&attributes) }
+        posix_spawnattr_setflags(&attributes, Int16(POSIX_SPAWN_SETSID | POSIX_SPAWN_CLOEXEC_DEFAULT))
+        // Private libSystem call that Chromium and LLDB use for the same
+        // reason. Without it the child still runs, just attributed to us.
+        if let symbol = dlsym(dlopen(nil, RTLD_NOW), "responsibility_spawnattrs_setdisclaim") {
+            _ = unsafeBitCast(symbol, to: SetDisclaim.self)(&attributes, 1)
+        }
+
+        var actions: posix_spawn_file_actions_t?
+        posix_spawn_file_actions_init(&actions)
+        defer { posix_spawn_file_actions_destroy(&actions) }
+        posix_spawn_file_actions_addopen(&actions, 0, "/dev/null", O_RDONLY, 0)
+        posix_spawn_file_actions_addopen(&actions, 1, logFile.path, O_WRONLY | O_APPEND, 0)
+        posix_spawn_file_actions_adddup2(&actions, 1, 2)
+        if let currentDirectory {
+            if #available(macOS 26, *) {
+                posix_spawn_file_actions_addchdir(&actions, currentDirectory.path)
+            } else {
+                posix_spawn_file_actions_addchdir_np(&actions, currentDirectory.path)
+            }
+        }
+
+        let argv = ([executable.path] + arguments).map { strdup($0) } + [nil]
+        defer { argv.forEach { free($0) } }
+        var pid: pid_t = 0
+        let result = posix_spawn(&pid, executable.path, &actions, &attributes, argv, environ)
+        guard result == 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: result) ?? .EINVAL)
+        }
+        return pid
+    }
+
+    /// The same number `Process.terminationStatus` reports: the exit code, or
+    /// the signal that ended the process.
+    private static func exitCode(_ status: Int32) -> Int32 {
+        let signal = status & 0x7F
+        return signal == 0 ? (status >> 8) & 0xFF : signal
     }
 
     private func finish(_ status: Int32) {

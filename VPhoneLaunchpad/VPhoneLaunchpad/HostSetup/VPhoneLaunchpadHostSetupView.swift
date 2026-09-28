@@ -3,6 +3,7 @@ import SwiftUI
 struct VPhoneLaunchpadHostSetupView: View {
     @Environment(VPhoneLaunchpadModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(VPhoneLaunchpadMenuBar.key) private var showsInMenuBar = false
 
     private var host: VPhoneLaunchpadHostSetup {
         model.host
@@ -42,6 +43,13 @@ struct VPhoneLaunchpadHostSetupView: View {
                 Text("Advisory")
             } footer: {
                 Text("Advisory checks do not block setup.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle("Keep in Menu Bar", isOn: $showsInMenuBar)
+            } footer: {
+                Text("Closing the window keeps Launchpad in the menu bar, where you can start and stop machines. The Dock icon appears only while a window or the menu is open.")
                     .foregroundStyle(.secondary)
             }
         }
@@ -120,7 +128,7 @@ struct VPhoneLaunchpadHostSetupView: View {
                 Button("Don’t Skip") { host.setSkipped(check.kind, false) }
             } else if host.canSkip(check) {
                 Button("Skip") { host.setSkipped(check.kind, true) }
-                    .help("Continue without this check. The bundle’s own preflight still runs.")
+                    .help("Continue without this check. The Core Bundle still runs its own checks.")
             }
         }
     }

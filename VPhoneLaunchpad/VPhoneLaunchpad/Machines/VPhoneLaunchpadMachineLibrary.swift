@@ -20,6 +20,9 @@ final class VPhoneLaunchpadMachineLibrary {
 
     private(set) var machines: [VPhoneLaunchpadMachine] = []
     private(set) var listError: String?
+    /// False until the first `vm list` answers, so the window does not show
+    /// "No Machines" before it knows.
+    private(set) var hasListed = false
     private(set) var startedAt: [Path: Date] = [:]
     /// Machines whose console printed a panic since Launchpad last started
     /// them. The console text itself stays in the log file.
@@ -183,6 +186,7 @@ final class VPhoneLaunchpadMachineLibrary {
         }
         machines = found
         listError = errors.first
+        hasListed = true
         forgetEmptyLocations(listed: listed)
         if selection == nil || !machines.contains(where: { $0.id == selection }) {
             selection = machines.first?.id
@@ -407,6 +411,7 @@ final class VPhoneLaunchpadMachineLibrary {
     extension VPhoneLaunchpadMachineLibrary {
         func applyPreview(creation: VPhoneLaunchpadCreationPipeline) {
             machines = VPhoneLaunchpadPreview.machines
+            hasListed = true
             externallyRunning = [VPhoneLaunchpadPreview.path("research-01")]
             startedAt = [VPhoneLaunchpadPreview.path("research-01"): Date().addingTimeInterval(-6130)]
             creations = [creation.machine: creation]

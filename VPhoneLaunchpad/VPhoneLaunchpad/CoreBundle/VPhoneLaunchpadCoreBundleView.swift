@@ -177,12 +177,12 @@ struct VPhoneLaunchpadCoreBundleView: View {
         case .passed: String(localized: "Preflight passed")
         case .warning: String(localized: "Preflight skipped")
         case .pending: String(localized: "Not checked")
-        case .failed: bundle.policy != .passed ? String(localized: "No policy exception") : String(localized: "Preflight failed")
+        case .failed: bundle.policy != .passed ? String(localized: "Not allowed to run") : String(localized: "Preflight failed")
         }
     }
 
     private func checkHelp(_ bundle: VPhoneLaunchpadCoreBundle.Installed) -> String {
-        let policy = bundle.policy == .passed ? String(localized: "Policy exception added.") : String(localized: "No policy exception.")
+        let policy = bundle.policy == .passed ? String(localized: "Allowed to run.") : String(localized: "Not allowed to run.")
         return bundle.preflightDetail.isEmpty ? policy : "\(policy)\n\(bundle.preflightDetail)"
     }
 
@@ -228,7 +228,7 @@ struct VPhoneLaunchpadCoreBundleView: View {
             Text("Available")
         } footer: {
             if source == .actions {
-                Text("Builds from the package workflow, kept by GitHub for 7 days. Downloading them needs a token that can read Actions for Lakr233/vphone-cli. It is stored in your keychain.")
+                Text("Builds from GitHub Actions, kept for 7 days. To download them, add a token that can read Actions for Lakr233/vphone-cli. The token is stored in your keychain.")
                     .foregroundStyle(.secondary)
             }
         }
@@ -344,10 +344,9 @@ struct VPhoneLaunchpadCoreBundleView: View {
         panel.treatsFilePackagesAsDirectories = false
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = [.zip, .bundle]
-        guard panel.runModal() == .OK, let url = panel.url else {
-            return
+        panel.present { url in
+            Task { await model.installLocalBundle(url) }
         }
-        Task { await model.installLocalBundle(url) }
     }
 
     // MARK: - Formatting

@@ -110,7 +110,13 @@ struct VPhoneLaunchpadMachinesView: View {
     private var toolbar: some ToolbarContent {
         let selected = library.selected
         let state = selected.map { library.state(of: $0.path) }
-        ToolbarItemGroup(placement: .primaryAction) {
+        // Host Setup and Core Bundle hold the leading edge; the space pushes
+        // everything here to the trailing edge, in three groups: the selected
+        // machine, the library, and the inspector toggle above the inspector.
+        ToolbarItem(placement: .automatic) {
+            Spacer()
+        }
+        ToolbarItemGroup(placement: .automatic) {
             if state == .running, let selected {
                 Button {
                     Task { await library.stop(selected.path) }
@@ -135,6 +141,8 @@ struct VPhoneLaunchpadMachinesView: View {
                 Label("Actions", systemImage: "ellipsis.circle")
             }
             .disabled(selected == nil)
+        }
+        ToolbarItemGroup(placement: .automatic) {
             Button {
                 chooseImport()
             } label: {
@@ -150,10 +158,9 @@ struct VPhoneLaunchpadMachinesView: View {
             .help("Create a machine")
             .disabled(model.bundles.activeVersion == nil)
         }
-        // Primary actions sit at the leading edge on macOS; the space pushes
-        // the inspector toggle to the trailing edge, above the inspector.
-        ToolbarItem(placement: .automatic) {
-            Spacer()
+        // Adjacent items share one background on macOS 26.
+        if #available(macOS 26.0, *) {
+            ToolbarSpacer(.fixed)
         }
         ToolbarItem(placement: .automatic) {
             inspectorToggle
@@ -255,6 +262,8 @@ struct VPhoneLaunchpadMachinesView: View {
                 Button("Set Up…") { model.panel = model.host.requiredPassed ? .coreBundle : .hostSetup }
                     .buttonStyle(.borderedProminent)
             }
+        } else if !library.hasListed {
+            Color.clear
         } else {
             ContentUnavailableView {
                 Label("No Machines", systemImage: "iphone")
@@ -306,13 +315,12 @@ struct VPhoneLaunchpadMachinesView: View {
     private func chooseImport() {
         let panel = NSOpenPanel()
         panel.title = String(localized: "Import Machine")
-        panel.message = String(localized: "Choose a .tzst or .txz archive made by Export.")
+        panel.message = String(localized: "Choose an exported machine archive (.tzst or .txz).")
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else {
-            return
+        panel.present { url in
+            Task { await library.importArchive(url) }
         }
-        Task { await library.importArchive(url) }
     }
 
     // MARK: - Formatting

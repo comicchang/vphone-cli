@@ -56,7 +56,7 @@ struct VPhoneLaunchpadNewMachineView: View {
     private var nameProblem: String? {
         let isDefault = name.trimmingCharacters(in: .whitespaces).isEmpty
         if !VPhoneLaunchpadNames.isValidMachineName(effectiveName) {
-            return String(localized: "Use letters, digits, dots, dashes and underscores.")
+            return String(localized: "Use letters, numbers, periods, hyphens, and underscores.")
         }
         if model.machines.machines.contains(where: { $0.path == machine }) || model.machines.creations[machine]?.isRunning == true {
             return isDefault
@@ -107,9 +107,9 @@ struct VPhoneLaunchpadNewMachineView: View {
             }
 
             Section {
-                Toggle("Frida Stalker kernel relaxations", isOn: $enableFrida)
+                Toggle("Relax kernel restrictions for Frida Stalker", isOn: $enableFrida)
                 Toggle("Disable dyld shared cache randomization", isOn: $forceMaxSlide)
-                Toggle("Keep the prepared restore tree", isOn: $keepArtifacts)
+                Toggle("Keep prepared restore files", isOn: $keepArtifacts)
             } header: {
                 Text("Options")
             } footer: {
@@ -177,9 +177,12 @@ struct VPhoneLaunchpadNewMachineView: View {
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
         panel.directoryURL = URL(fileURLWithPath: location, isDirectory: true)
-        guard panel.runModal() == .OK, let url = panel.url else {
-            return
+        panel.present { url in
+            useLocation(url)
         }
+    }
+
+    private func useLocation(_ url: URL) {
         let root = VPhoneLaunchpadMachineLocations.canonical(url)
         if !model.machines.roots.contains(root) {
             chosenLocation = root
@@ -239,7 +242,7 @@ struct VPhoneLaunchpadNewMachineView: View {
                 Button("Choose…") {
                     let panel = NSOpenPanel()
                     panel.canChooseDirectories = false
-                    if panel.runModal() == .OK, let url = panel.url {
+                    panel.present { url in
                         text.wrappedValue = url.path
                     }
                 }

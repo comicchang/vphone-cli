@@ -409,36 +409,36 @@
         }
       }
     },
-    "%@ is on %@" : {
+    "%@ is on %@, not APFS" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ is on %@"
+            "value" : "%@ is on %@, not APFS"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ は %2$@ 上にあります"
+            "value" : "%1$@ は APFS ではなく %2$@ 上にあります"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@이(가) %2$@에 있습니다"
+            "value" : "%1$@이(가) APFS가 아닌 %2$@에 있습니다"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ nằm trên %2$@"
+            "value" : "%1$@ nằm trên %2$@, không phải APFS"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ 位于 %2$@ 卷宗"
+            "value" : "%1$@ 位于 %2$@ 宗卷，不是 APFS"
           }
         }
       }
@@ -1067,40 +1067,6 @@
         }
       }
     },
-    "Add execution policy exception" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add execution policy exception"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "実行ポリシーの例外を追加"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "실행 정책 예외 추가"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Thêm ngoại lệ chính sách thực thi"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "添加执行策略例外"
-          }
-        }
-      }
-    },
     "Administrator authorization failed (OSStatus %d)." : {
       "localizations" : {
         "en" : {
@@ -1237,6 +1203,40 @@
         }
       }
     },
+    "Allow bundle to run" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow bundle to run"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "バンドルの実行を許可"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "번들 실행 허용"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cho phép bundle chạy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许 bundle 运行"
+          }
+        }
+      }
+    },
     "Allow vphone-launchpad in Privacy & Security → Developer Tools, then click Reopen." : {
       "localizations" : {
         "en" : {
@@ -1301,6 +1301,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已允许"
+          }
+        }
+      }
+    },
+    "Allowed to run." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allowed to run."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "実行が許可されています。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "실행이 허용되었습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã được phép chạy."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已允许运行。"
           }
         }
       }
@@ -1509,36 +1543,36 @@
         }
       }
     },
-    "Builds from the package workflow, kept by GitHub for 7 days. Downloading them needs a token that can read Actions for Lakr233/vphone-cli. It is stored in your keychain." : {
+    "Builds from GitHub Actions, kept for 7 days. To download them, add a token that can read Actions for Lakr233/vphone-cli. The token is stored in your keychain." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Builds from the package workflow, kept by GitHub for 7 days. Downloading them needs a token that can read Actions for Lakr233/vphone-cli. It is stored in your keychain."
+            "value" : "Builds from GitHub Actions, kept for 7 days. To download them, add a token that can read Actions for Lakr233/vphone-cli. The token is stored in your keychain."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "パッケージワークフローのビルドで、GitHub に 7 日間保持されます。ダウンロードには、Lakr233/vphone-cli の Actions を読み取れるトークンが必要です。トークンはキーチェーンに保存されます。"
+            "value" : "GitHub Actions のビルドで、7 日間保持されます。ダウンロードするには、Lakr233/vphone-cli の Actions を読み取れるトークンを追加してください。トークンはキーチェーンに保存されます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "패키지 워크플로의 빌드로, GitHub에 7일간 보관됩니다. 다운로드하려면 Lakr233/vphone-cli의 Actions를 읽을 수 있는 토큰이 필요합니다. 토큰은 키체인에 저장됩니다."
+            "value" : "GitHub Actions의 빌드로, 7일간 보관됩니다. 다운로드하려면 Lakr233/vphone-cli의 Actions를 읽을 수 있는 토큰을 추가하십시오. 토큰은 키체인에 저장됩니다."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Các bản dựng từ quy trình đóng gói, được GitHub lưu giữ trong 7 ngày. Để tải xuống, cần token có quyền đọc Actions của Lakr233/vphone-cli. Token được lưu trong chuỗi khóa của bạn."
+            "value" : "Các bản dựng từ GitHub Actions, được lưu giữ trong 7 ngày. Để tải xuống, hãy thêm token có quyền đọc Actions của Lakr233/vphone-cli. Token được lưu trong chuỗi khóa của bạn."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "来自打包工作流程的构建版本，GitHub 会保留 7 天。下载需要一个可读取 Lakr233/vphone-cli 的 Actions 的令牌，令牌存储在你的钥匙串中。"
+            "value" : "来自 GitHub Actions 的构建版本，保留 7 天。如需下载，请添加一个可读取 Lakr233/vphone-cli 的 Actions 的令牌。令牌存储在你的钥匙串中。"
           }
         }
       }
@@ -1951,40 +1985,6 @@
         }
       }
     },
-    "Choose a .tzst or .txz archive made by Export." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose a .tzst or .txz archive made by Export."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「書き出す」で作成した .tzst または .txz アーカイブを選択してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "내보내기로 만든 .tzst 또는 .txz 아카이브를 선택하십시오."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chọn tệp lưu trữ .tzst hoặc .txz được tạo bằng Xuất."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择由“导出”生成的 .tzst 或 .txz 归档。"
-          }
-        }
-      }
-    },
     "Choose a Location" : {
       "localizations" : {
         "en" : {
@@ -2049,6 +2049,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择 VPhone.bundle 文件夹或包含它的 .zip。"
+          }
+        }
+      }
+    },
+    "Choose an exported machine archive (.tzst or .txz)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose an exported machine archive (.tzst or .txz)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "書き出したマシンのアーカイブ（.tzst または .txz）を選択してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내보낸 머신 아카이브(.tzst 또는 .txz)를 선택하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn tệp lưu trữ máy đã xuất (.tzst hoặc .txz)."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择导出的机器归档（.tzst 或 .txz）。"
           }
         }
       }
@@ -2325,6 +2359,40 @@
         }
       }
     },
+    "Closing the window keeps Launchpad in the menu bar, where you can start and stop machines. The Dock icon appears only while a window or the menu is open." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closing the window keeps Launchpad in the menu bar, where you can start and stop machines. The Dock icon appears only while a window or the menu is open."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ウインドウを閉じても Launchpad はメニューバーに残り、メニューバーからマシンを開始・停止できます。Dock アイコンは、ウインドウかメニューが開いているときだけ表示されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "윈도우를 닫아도 Launchpad가 메뉴 막대에 남아 있으며, 메뉴 막대에서 머신을 시작하고 중지할 수 있습니다. Dock 아이콘은 윈도우나 메뉴가 열려 있을 때만 표시됩니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khi đóng cửa sổ, Launchpad vẫn nằm trên thanh menu, nơi bạn có thể khởi động và dừng máy. Biểu tượng trong Dock chỉ hiện khi có cửa sổ hoặc menu đang mở."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭窗口后，Launchpad 会保留在菜单栏中，你可以从菜单栏启动和停止机器。只有在窗口或菜单打开时，Dock 中才会显示图标。"
+          }
+        }
+      }
+    },
     "Closing this window keeps it running." : {
       "localizations" : {
         "en" : {
@@ -2563,36 +2631,36 @@
         }
       }
     },
-    "Continue without this check. The bundle’s own preflight still runs." : {
+    "Continue without this check. The Core Bundle still runs its own checks." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Continue without this check. The bundle’s own preflight still runs."
+            "value" : "Continue without this check. The Core Bundle still runs its own checks."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このチェックなしで続行します。バンドル自体の事前チェックは引き続き実行されます。"
+            "value" : "このチェックなしで続行します。コアバンドル自体のチェックは引き続き実行されます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 검사 없이 계속합니다. 번들 자체의 사전 점검은 계속 실행됩니다."
+            "value" : "이 검사 없이 계속합니다. 코어 번들 자체의 검사는 계속 실행됩니다."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tiếp tục mà không có mục kiểm tra này. Bundle vẫn chạy kiểm tra trước của riêng nó."
+            "value" : "Tiếp tục mà không có mục kiểm tra này. Bundle lõi vẫn chạy các kiểm tra của riêng nó."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "不经此项检查继续。bundle 自身的预检仍会运行。"
+            "value" : "跳过此项检查继续。核心 Bundle 仍会运行自己的检查。"
           }
         }
       }
@@ -4275,40 +4343,6 @@
         }
       }
     },
-    "Frida Stalker kernel relaxations" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Frida Stalker kernel relaxations"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Frida Stalker 向けのカーネル制限緩和"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Frida Stalker용 커널 제한 완화"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nới lỏng kernel cho Frida Stalker"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "放宽内核限制以支持 Frida Stalker"
-          }
-        }
-      }
-    },
     "GitHub Actions" : {
       "localizations" : {
         "en" : {
@@ -5737,36 +5771,70 @@
         }
       }
     },
-    "Keep the prepared restore tree" : {
+    "Keep in Menu Bar" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keep the prepared restore tree"
+            "value" : "Keep in Menu Bar"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "準備した復元ツリーを残す"
+            "value" : "メニューバーに常駐"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "준비된 복원 트리 유지"
+            "value" : "메뉴 막대에 유지"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Giữ lại cây khôi phục đã chuẩn bị"
+            "value" : "Giữ trên thanh menu"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保留准备好的恢复目录"
+            "value" : "常驻菜单栏"
+          }
+        }
+      }
+    },
+    "Keep prepared restore files" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep prepared restore files"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "準備した復元ファイルを残す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "준비된 복원 파일 유지"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giữ lại các tệp khôi phục đã chuẩn bị"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保留准备好的恢复文件"
           }
         }
       }
@@ -6859,74 +6927,6 @@
         }
       }
     },
-    "No policy exception" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No policy exception"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ポリシーの例外なし"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "정책 예외 없음"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không có ngoại lệ chính sách"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无策略例外"
-          }
-        }
-      }
-    },
-    "No policy exception." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No policy exception."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ポリシーの例外はありません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "정책 예외가 없습니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không có ngoại lệ chính sách."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无策略例外。"
-          }
-        }
-      }
-    },
     "No Selection" : {
       "localizations" : {
         "en" : {
@@ -6957,40 +6957,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未选择"
-          }
-        }
-      }
-    },
-    "No signing team in this build" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No signing team in this build"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このビルドには署名チームがありません"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 빌드에 서명 팀이 없습니다"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bản dựng này không có nhóm ký"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此构建版本没有签名团队"
           }
         }
       }
@@ -7093,6 +7059,108 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未允许"
+          }
+        }
+      }
+    },
+    "Not allowed to run" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not allowed to run"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "実行が許可されていません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "실행이 허용되지 않음"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa được phép chạy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未允许运行"
+          }
+        }
+      }
+    },
+    "Not allowed to run." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not allowed to run."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "実行が許可されていません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "실행이 허용되지 않았습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa được phép chạy."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未允许运行。"
+          }
+        }
+      }
+    },
+    "Not available in this build" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not available in this build"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このビルドでは利用できません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 빌드에서는 사용할 수 없음"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không có trong bản dựng này"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此构建版本中不可用"
           }
         }
       }
@@ -7297,6 +7365,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开控制台"
+          }
+        }
+      }
+    },
+    "Open Launchpad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Launchpad"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Launchpad を開く"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Launchpad 열기"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở Launchpad"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 Launchpad"
           }
         }
       }
@@ -7637,40 +7739,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "策略例外"
-          }
-        }
-      }
-    },
-    "Policy exception added." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Policy exception added."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ポリシーの例外を追加しました。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "정책 예외가 추가되었습니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đã thêm ngoại lệ chính sách."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已添加策略例外。"
           }
         }
       }
@@ -8147,6 +8215,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "来自 vphone-cli fw catalog 的 %@ 推荐组合。"
+          }
+        }
+      }
+    },
+    "Relax kernel restrictions for Frida Stalker" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relax kernel restrictions for Frida Stalker"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frida Stalker 向けにカーネル制限を緩和"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frida Stalker용 커널 제한 완화"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nới lỏng giới hạn kernel cho Frida Stalker"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放宽内核限制以支持 Frida Stalker"
           }
         }
       }
@@ -10225,40 +10327,6 @@
         }
       }
     },
-    "The artifact does not contain a VPhone bundle zip." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The artifact does not contain a VPhone bundle zip."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アーティファクトに VPhone バンドルの zip が含まれていません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "아티팩트에 VPhone 번들 zip이 없습니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Artifact không chứa tệp zip của bundle VPhone."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此构建产物不包含 VPhone bundle 的 zip 文件。"
-          }
-        }
-      }
-    },
     "The clone boots as a new device. SEP storage is copied as is, so a restored machine may need restoring again." : {
       "localizations" : {
         "en" : {
@@ -11071,6 +11139,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "虚拟机在 vphoned 响应前已退出。"
+          }
+        }
+      }
+    },
+    "This build does not contain VPhone.bundle. Choose another build." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This build does not contain VPhone.bundle. Choose another build."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このビルドには VPhone.bundle が含まれていません。別のビルドを選択してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 빌드에는 VPhone.bundle이 없습니다. 다른 빌드를 선택하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bản dựng này không chứa VPhone.bundle. Hãy chọn bản dựng khác."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此构建版本不包含 VPhone.bundle。请选择其他构建版本。"
           }
         }
       }
@@ -11989,40 +12091,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "URL 或路径"
-          }
-        }
-      }
-    },
-    "Use letters, digits, dots, dashes and underscores." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use letters, digits, dots, dashes and underscores."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "英字、数字、ピリオド、ハイフン、アンダースコアを使用してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "문자, 숫자, 마침표, 하이픈, 밑줄을 사용하십시오."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hãy dùng chữ cái, chữ số, dấu chấm, gạch ngang và gạch dưới."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "请使用字母、数字、句点、连字符和下划线。"
           }
         }
       }

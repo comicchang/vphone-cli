@@ -26,6 +26,7 @@ class VPhoneVirtualMachineAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         NSApp.setActivationPolicy(command.noGraphics ? .prohibited : .regular)
+        VPhoneDockName.set(VPhoneDockName.name(forConfig: command.config))
 
         signal(SIGINT, SIG_IGN)
         let src = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)

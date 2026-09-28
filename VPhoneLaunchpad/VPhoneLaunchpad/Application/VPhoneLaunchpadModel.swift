@@ -73,18 +73,26 @@ final class VPhoneLaunchpadModel {
                 return
             }
         #endif
-        await host.refresh()
+        // Host checks, installed bundles and the helper state were read at
+        // init. These confirm them without holding up the machine list; the
+        // network probe and the GitHub lists come last.
+        machines.startMonitoring()
+        async let listed: Void = machines.refresh()
+        async let hostChecked: Void = host.refresh()
+        await bundles.checkActive()
+        await hostChecked
         if case .outdated = helper.state {
             await host.installHelper()
             await host.refresh()
+            await bundles.checkActive()
         }
-        await bundles.refresh()
-        await machines.refresh()
-        machines.startMonitoring()
+        await listed
         // An unfinished install is picked up in the inspector instead.
         if panel == nil, bundles.progress == nil || bundles.progress?.isFinished == true {
             panel = !host.requiredPassed ? .hostSetup : !bundles.isReady ? .coreBundle : nil
         }
+        await bundles.fetchReleases()
+        await bundles.fetchArtifacts()
     }
 
     func refreshHost() async {
