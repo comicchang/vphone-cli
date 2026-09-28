@@ -103,40 +103,6 @@
         }
       }
     },
-    "%@ The guest reported: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ The guest reported: %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ ゲストからの報告: %2$@"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ 게스트 보고: %2$@"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ Máy khách báo: %2$@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ 客体报告：%2$@"
-          }
-        }
-      }
-    },
     "%@ apps" : {
       "localizations" : {
         "en" : {
@@ -919,40 +885,6 @@
         }
       }
     },
-    "%lld blocks" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld blocks"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld 個のブロック"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "블록 %1$lld개"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld khối"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld 个文本块"
-          }
-        }
-      }
-    },
     "%lld characters" : {
       "localizations" : {
         "en" : {
@@ -983,40 +915,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld 个字符"
-          }
-        }
-      }
-    },
-    "%lld elements" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld elements"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld 個の要素"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "요소 %1$lld개"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld phần tử"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld 个元素"
           }
         }
       }
@@ -1361,40 +1259,6 @@
         }
       }
     },
-    "%lld+ elements" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld+ elements"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld+ 個の要素"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "요소 %1$lld+개"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld+ phần tử"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld+ 个元素"
-          }
-        }
-      }
-    },
     "(protected)" : {
       "localizations" : {
         "en" : {
@@ -1691,34 +1555,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "访问组"
-          }
-        }
-      }
-    },
-    "Accessibility" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アクセシビリティ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "손쉬운 사용"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trợ năng"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "辅助功能"
           }
         }
       }
@@ -3805,62 +3641,6 @@
         }
       }
     },
-    "Capture the guest screen and reload the elements (⌘R)" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ゲストの画面をキャプチャして要素を再読み込み (⌘R)"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "게스트 화면을 캡처하고 요소를 다시 불러오기(⌘R)"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chụp màn hình máy khách và tải lại các phần tử (⌘R)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "截取客户机屏幕并重新载入元素 (⌘R)"
-          }
-        }
-      }
-    },
-    "Capturing the guest screen…" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ゲストの画面をキャプチャしています…"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "게스트 화면을 캡처하는 중…"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đang chụp màn hình máy khách…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在截取客户机屏幕…"
-          }
-        }
-      }
-    },
     "Category" : {
       "localizations" : {
         "ja" : {
@@ -4171,62 +3951,6 @@
         }
       }
     },
-    "Choose Refresh to capture the guest screen." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「更新」を選択してゲストの画面をキャプチャします。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "새로 고침을 선택하여 게스트 화면을 캡처하십시오."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chọn Làm mới để chụp màn hình máy khách."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择“刷新”以截取客户机屏幕。"
-          }
-        }
-      }
-    },
-    "Choose Refresh to inspect the guest screen." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「更新」を選択してゲストの画面を検査します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "새로 고침을 선택하여 게스트 화면을 검사하십시오."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chọn Làm mới để kiểm tra màn hình máy khách."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择“刷新”以检查客户机屏幕。"
-          }
-        }
-      }
-    },
     "Choose Refresh to list the guest's crash reports." : {
       "localizations" : {
         "ja" : {
@@ -4525,34 +4249,6 @@
         }
       }
     },
-    "Choose accessibility elements or text recognized in the screenshot" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アクセシビリティ要素か、スクリーンショットから認識したテキストかを選択"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "손쉬운 사용 요소 또는 스크린샷에서 인식한 텍스트 선택"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chọn phần tử trợ năng hoặc văn bản nhận dạng được trong ảnh chụp màn hình"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择辅助功能元素或截图中识别出的文字"
-          }
-        }
-      }
-    },
     "Choose an IPA or TIPA package to install in the guest." : {
       "localizations" : {
         "en" : {
@@ -4841,90 +4537,6 @@
         }
       }
     },
-    "Click to select the element under the pointer. Double-click to tap there in the guest." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "クリックするとポインタの下の要素を選択します。ダブルクリックするとゲストのその位置をタップします。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "클릭하여 포인터 아래의 요소를 선택합니다. 이중 클릭하면 게스트에서 해당 위치를 탭합니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bấm để chọn phần tử dưới con trỏ. Bấm đúp để chạm vào vị trí đó trong máy khách."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "点按以选择指针下的元素。连按两次以在客户机中轻点该位置。"
-          }
-        }
-      }
-    },
-    "Clickable" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タップ可能"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "클릭 가능"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Có thể bấm"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "可点按"
-          }
-        }
-      }
-    },
-    "Clickable Only" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タップ可能のみ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "클릭 가능 항목만"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chỉ có thể bấm"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "仅可点按"
-          }
-        }
-      }
-    },
     "Clipboard" : {
       "localizations" : {
         "en" : {
@@ -5159,34 +4771,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "常用偏好设置域"
-          }
-        }
-      }
-    },
-    "Confidence" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "信頼度"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "신뢰도"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Độ tin cậy"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "置信度"
           }
         }
       }
@@ -5535,34 +5119,6 @@
         }
       }
     },
-    "Copied the selected element as JSON." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選択した要素をJSONとしてコピーしました。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "선택한 요소를 JSON으로 복사했습니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đã sao chép phần tử đã chọn dưới dạng JSON."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已将所选元素拷贝为 JSON。"
-          }
-        }
-      }
-    },
     "Copied the selection to the Mac clipboard." : {
       "localizations" : {
         "ja" : {
@@ -5841,62 +5397,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "拷贝可执行文件路径"
-          }
-        }
-      }
-    },
-    "Copy Frame" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "フレームをコピー"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "프레임 복사"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sao chép khung"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "拷贝框架"
-          }
-        }
-      }
-    },
-    "Copy Identifier" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "識別子をコピー"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "식별자 복사"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sao chép mã định danh"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "拷贝标识符"
           }
         }
       }
@@ -6811,34 +6311,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "将结果复制为 JSON"
-          }
-        }
-      }
-    },
-    "Copy the selected element as JSON (⇧⌘C)" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選択した要素をJSONとしてコピー (⇧⌘C)"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "선택한 요소를 JSON으로 복사(⇧⌘C)"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sao chép phần tử đã chọn dưới dạng JSON (⇧⌘C)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "将所选元素拷贝为 JSON (⇧⌘C)"
           }
         }
       }
@@ -8733,34 +8205,6 @@
         }
       }
     },
-    "Enabled" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "有効"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "활성화됨"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đã bật"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已启用"
-          }
-        }
-      }
-    },
     "Enabled %@." : {
       "localizations" : {
         "en" : {
@@ -10127,124 +9571,6 @@
         }
       }
     },
-    "Found %lld accessibility elements." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Found %1$lld accessibility elements."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld 個のアクセシビリティ要素が見つかりました。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "손쉬운 사용 요소 %1$lld개를 찾았습니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đã tìm thấy %1$lld phần tử trợ năng."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "找到 %1$lld 个辅助功能元素。"
-          }
-        }
-      }
-    },
-    "Found 1 accessibility element." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 個のアクセシビリティ要素が見つかりました。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "손쉬운 사용 요소 1개를 찾았습니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đã tìm thấy 1 phần tử trợ năng."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "找到 1 个辅助功能元素。"
-          }
-        }
-      }
-    },
-    "Frame" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "フレーム"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "프레임"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Khung"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "框架"
-          }
-        }
-      }
-    },
-    "Frontmost app unknown" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最前面のAppは不明"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "전면 앱 알 수 없음"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không rõ ứng dụng phía trước"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "前台 App 未知"
-          }
-        }
-      }
-    },
     "Full" : {
       "localizations" : {
         "ja" : {
@@ -10727,34 +10053,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "客户机进程"
-          }
-        }
-      }
-    },
-    "Guest screenshot" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ゲストのスクリーンショット"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "게스트 스크린샷"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ảnh chụp màn hình máy khách"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "客户机截图"
           }
         }
       }
@@ -14299,34 +13597,6 @@
         }
       }
     },
-    "No Elements" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "要素なし"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "요소 없음"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không có phần tử"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无元素"
-          }
-        }
-      }
-    },
     "No Matching Entries" : {
       "localizations" : {
         "ja" : {
@@ -14591,34 +13861,6 @@
         }
       }
     },
-    "No Screenshot" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "スクリーンショットなし"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "스크린샷 없음"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không có ảnh chụp màn hình"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无截图"
-          }
-        }
-      }
-    },
     "No Service Selected" : {
       "localizations" : {
         "ja" : {
@@ -14671,34 +13913,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "没有服务"
-          }
-        }
-      }
-    },
-    "No Text" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "テキストなし"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "텍스트 없음"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không có văn bản"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无文字"
           }
         }
       }
@@ -15081,34 +14295,6 @@
         }
       }
     },
-    "No text was recognized on the guest screen." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ゲスト画面でテキストは認識されませんでした。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "게스트 화면에서 인식된 텍스트가 없습니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không nhận dạng được văn bản nào trên màn hình máy khách."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未在客户机屏幕上识别出文字。"
-          }
-        }
-      }
-    },
     "No value." : {
       "localizations" : {
         "en" : {
@@ -15267,34 +14453,6 @@
         }
       }
     },
-    "Not Loaded" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未読み込み"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "불러오지 않음"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chưa tải"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未载入"
-          }
-        }
-      }
-    },
     "Not Set" : {
       "localizations" : {
         "ja" : {
@@ -15319,34 +14477,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未设置"
-          }
-        }
-      }
-    },
-    "Not clickable" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タップ不可"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "클릭 불가"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không thể bấm"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "不可点按"
           }
         }
       }
@@ -18013,34 +17143,6 @@
         }
       }
     },
-    "Reading accessibility elements…" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アクセシビリティ要素を読み込んでいます…"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "손쉬운 사용 요소를 읽는 중…"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đang đọc các phần tử trợ năng…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在读取辅助功能元素…"
-          }
-        }
-      }
-    },
     "Reading device information…" : {
       "localizations" : {
         "ja" : {
@@ -18161,96 +17263,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在读取偏好设置…"
-          }
-        }
-      }
-    },
-    "Recognized %lld text blocks." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Recognized %1$lld text blocks."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld 個のテキストブロックを認識しました。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "텍스트 블록 %1$lld개를 인식했습니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đã nhận dạng %1$lld khối văn bản."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "识别出 %1$lld 个文本块。"
-          }
-        }
-      }
-    },
-    "Recognized 1 text block." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 個のテキストブロックを認識しました。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "텍스트 블록 1개를 인식했습니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đã nhận dạng 1 khối văn bản."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "识别出 1 个文本块。"
-          }
-        }
-      }
-    },
-    "Recognizing text on the guest screen…" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ゲスト画面のテキストを認識しています…"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "게스트 화면의 텍스트를 인식하는 중…"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đang nhận dạng văn bản trên màn hình máy khách…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在识别客户机屏幕上的文字…"
           }
         }
       }
@@ -19603,34 +18615,6 @@
         }
       }
     },
-    "Role" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ロール"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "역할"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vai trò"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "角色"
-          }
-        }
-      }
-    },
     "RootHide Runtime" : {
       "localizations" : {
         "ja" : {
@@ -20713,34 +19697,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择一个应用以查看其 Bundle、二进制文件和数据容器。"
-          }
-        }
-      }
-    },
-    "Select an element in the table or on the screenshot to see all of its keys." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "表またはスクリーンショットで要素を選択すると、そのすべてのキーが表示されます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "표 또는 스크린샷에서 요소를 선택하면 모든 키를 볼 수 있습니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chọn một phần tử trong bảng hoặc trên ảnh chụp màn hình để xem tất cả khóa của nó."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在表格或截图中选择一个元素以查看其所有键。"
           }
         }
       }
@@ -21891,62 +20847,6 @@
         }
       }
     },
-    "Show only accessibility elements inside the screen" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "画面内にあるアクセシビリティ要素のみを表示"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "화면 안에 있는 손쉬운 사용 요소만 표시"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chỉ hiện các phần tử trợ năng nằm trong màn hình"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "仅显示位于屏幕内的辅助功能元素"
-          }
-        }
-      }
-    },
-    "Show only accessibility elements that accept taps" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タップを受け付けるアクセシビリティ要素のみを表示"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "탭을 받는 손쉬운 사용 요소만 표시"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chỉ hiện các phần tử trợ năng nhận thao tác chạm"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "仅显示可接受轻点的辅助功能元素"
-          }
-        }
-      }
-    },
     "Show or hide app info (⌘I)" : {
       "localizations" : {
         "ja" : {
@@ -22005,40 +20905,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "以大纲或 JSON 显示结果"
-          }
-        }
-      }
-    },
-    "Showing the first %lld accessibility elements. The guest stopped reading at its limit." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Showing the first %1$lld accessibility elements. The guest stopped reading at its limit."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最初の %1$lld 個のアクセシビリティ要素を表示しています。ゲストは上限に達したため読み込みを停止しました。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "처음 %1$lld개의 손쉬운 사용 요소를 표시합니다. 게스트가 한도에 도달하여 읽기를 중단했습니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đang hiển thị %1$lld phần tử trợ năng đầu tiên. Máy khách đã dừng đọc khi đạt giới hạn."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "显示前 %1$lld 个辅助功能元素。客户机已达到读取上限。"
           }
         }
       }
@@ -22129,34 +20995,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "尺寸"
-          }
-        }
-      }
-    },
-    "Source" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ソース"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "소스"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nguồn"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "来源"
           }
         }
       }
@@ -23515,118 +22353,6 @@
         }
       }
     },
-    "Tap" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タップ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "탭"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chạm"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "轻点"
-          }
-        }
-      }
-    },
-    "Tap Selected" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選択項目をタップ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "선택 항목 탭"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chạm mục đã chọn"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "轻点所选项"
-          }
-        }
-      }
-    },
-    "Tap the selected element in the guest (⌘T)" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ゲストで選択した要素をタップ (⌘T)"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "게스트에서 선택한 요소 탭(⌘T)"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chạm vào phần tử đã chọn trong máy khách (⌘T)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在客户机中轻点所选元素 (⌘T)"
-          }
-        }
-      }
-    },
-    "Tapping the guest…" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ゲストをタップしています…"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "게스트를 탭하는 중…"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đang chạm vào máy khách…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在轻点客户机…"
-          }
-        }
-      }
-    },
     "Terminate" : {
       "localizations" : {
         "ja" : {
@@ -23809,34 +22535,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "文字"
-          }
-        }
-      }
-    },
-    "Text (OCR)" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "テキスト (OCR)"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "텍스트(OCR)"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Văn bản (OCR)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "文字 (OCR)"
           }
         }
       }
@@ -24057,34 +22755,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "此二进制文件没有权限。"
-          }
-        }
-      }
-    },
-    "The frontmost app reported no accessibility elements. Turn off Visible Only or Clickable Only, or bring another app to the front." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最前面のAppはアクセシビリティ要素を報告しませんでした。「表示中のみ」または「タップ可能のみ」をオフにするか、別のAppを最前面に表示してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "전면 앱이 손쉬운 사용 요소를 보고하지 않았습니다. 보이는 항목만 또는 클릭 가능 항목만을 끄거나 다른 앱을 전면으로 가져오십시오."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ứng dụng phía trước không báo cáo phần tử trợ năng nào. Hãy tắt Chỉ hiển thị hoặc Chỉ có thể bấm, hoặc đưa một ứng dụng khác lên phía trước."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "前台 App 未报告任何辅助功能元素。请关闭“仅可见”或“仅可点按”，或将其他 App 置于前台。"
           }
         }
       }
@@ -24497,34 +23167,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "客户机只发送了此报告的一部分。"
-          }
-        }
-      }
-    },
-    "The inspector loads once vphoned is reachable in the guest." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ゲストのvphonedに接続できるようになると、インスペクタが読み込まれます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "게스트의 vphoned에 연결할 수 있게 되면 검사기가 불러옵니다."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trình kiểm tra sẽ tải khi có thể kết nối tới vphoned trong máy khách."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "客户机中的 vphoned 可访问后，检查器将自动载入。"
           }
         }
       }
@@ -25307,34 +23949,6 @@
         }
       }
     },
-    "UI Inspector" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "UI インスペクタ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "UI 검사기"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trình kiểm tra UI"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "界面检查器"
-          }
-        }
-      }
-    },
     "URL" : {
       "localizations" : {
         "ja" : {
@@ -25647,34 +24261,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法捕获客户机日志：%1$@。请检查连接；将在 3 秒后重试。"
-          }
-        }
-      }
-    },
-    "Unable to capture the guest screen. Check the connection, then try again." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ゲストの画面をキャプチャできません。接続を確認してから、もう一度お試しください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "게스트 화면을 캡처할 수 없습니다. 연결을 확인한 다음 다시 시도하십시오."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không thể chụp màn hình máy khách. Hãy kiểm tra kết nối rồi thử lại."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法截取客户机屏幕。请检查连接，然后重试。"
           }
         }
       }
@@ -26997,34 +25583,6 @@
         }
       }
     },
-    "Unable to read the accessibility elements. Bring an app to the front in the guest, then try again." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アクセシビリティ要素を読み込めません。ゲストでAppを最前面に表示してから、もう一度お試しください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "손쉬운 사용 요소를 읽을 수 없습니다. 게스트에서 앱을 전면으로 가져온 다음 다시 시도하십시오."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không thể đọc các phần tử trợ năng. Hãy đưa một ứng dụng lên phía trước trong máy khách rồi thử lại."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法读取辅助功能元素。请在客户机中将某个 App 置于前台，然后重试。"
-          }
-        }
-      }
-    },
     "Unable to read the dropped items. Drag files from Finder, then try again." : {
       "localizations" : {
         "en" : {
@@ -27253,34 +25811,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法读取“%@”。请确认该文件仍然存在，然后重试。"
-          }
-        }
-      }
-    },
-    "Unable to recognize text on the guest screen. Check the connection, then try again." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ゲスト画面のテキストを認識できません。接続を確認してから、もう一度お試しください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "게스트 화면의 텍스트를 인식할 수 없습니다. 연결을 확인한 다음 다시 시도하십시오."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không thể nhận dạng văn bản trên màn hình máy khách. Hãy kiểm tra kết nối rồi thử lại."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法识别客户机屏幕上的文字。请检查连接，然后重试。"
           }
         }
       }
@@ -28091,34 +26621,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法停止 %1$@。%2$@"
-          }
-        }
-      }
-    },
-    "Unable to tap the guest. Check the connection, then try again." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ゲストをタップできません。接続を確認してから、もう一度お試しください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "게스트를 탭할 수 없습니다. 연결을 확인한 다음 다시 시도하십시오."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không thể chạm vào máy khách. Hãy kiểm tra kết nối rồi thử lại."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法轻点客户机。请检查连接，然后重试。"
           }
         }
       }
@@ -29231,34 +27733,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "版本"
-          }
-        }
-      }
-    },
-    "Visible Only" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "表示中のみ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "보이는 항목만"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chỉ hiển thị"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "仅可见"
           }
         }
       }
