@@ -20,7 +20,7 @@ executables and resources, not a macOS app or a dynamically loaded plug-in.
 `Contents/MacOS` holds only programs that run on the Mac.
 `guest-resources` holds only files installed into the guest; every Mach-O in
 it is built for iOS. `ValidateBundle.sh` enforces both rules.
-Launchpad 2.0.8 requires a bundle version of at least 2.0.8 and the
+Launchpad 2.0.8 and later require a bundle version of at least 2.0.8 and the
 `vphone-escalator` executable. It does not load older bundle layouts.
 
 All executable payloads use ad hoc code signatures. Only the required child
