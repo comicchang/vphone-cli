@@ -57,7 +57,7 @@ expires asks for an administrator password on the Mac, as the window does.
 | `bundle accept <version> [--off]` / `bundle remove <version>` | Skip failed checks, or remove a version |
 | `vm list` | Machines in every library with run state and log path |
 | `vm start <name> [--headless] [--wait]` / `vm stop <name>` | Launch or stop; `--wait` waits for vphoned |
-| `vm wait <name>` / `vm log <name> [--kind create\|dfu]` | Wait for vphoned; read a console log |
+| `vm wait <name>` / `vm log <name> [--kind create\|dfu\|patch]` | Wait for vphoned; read a console log |
 | `vm create <name> [...] [--from <step>]` | The New Machine pipeline; `--from` retries from a step |
 | `cfw install <name>` | Install CFW into a stopped machine through the helper |
 | `guest send <name> <json>` | One raw `vphone.sock` request (tap, swipe, key, screenshot) |
