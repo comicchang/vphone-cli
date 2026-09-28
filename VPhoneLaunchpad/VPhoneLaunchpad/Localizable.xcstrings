@@ -1,6 +1,40 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ already exists. Enter another name." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ already exists. Enter another name."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ は既に存在します。別の名前を入力してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@이(가) 이미 있습니다. 다른 이름을 입력하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ đã tồn tại. Hãy nhập tên khác."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 已存在。请输入其他名称。"
+          }
+        }
+      }
+    },
     "%@ Console" : {
       "localizations" : {
         "en" : {
@@ -99,6 +133,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法启动 %@。"
+          }
+        }
+      }
+    },
+    "%@ does not contain VPhone.bundle at its top level." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ does not contain VPhone.bundle at its top level."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ の最上位に VPhone.bundle がありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@의 최상위에 VPhone.bundle이 없습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ không chứa VPhone.bundle ở cấp cao nhất."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 的顶层不包含 VPhone.bundle。"
           }
         }
       }
@@ -235,6 +303,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 是一台虚拟机。请选择包含它的文件夹。"
+          }
+        }
+      }
+    },
+    "%@ is not a VPhone.bundle." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is not a VPhone.bundle."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ は VPhone.bundle ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@은(는) VPhone.bundle이 아닙니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ không phải là VPhone.bundle."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 不是 VPhone.bundle。"
           }
         }
       }
@@ -511,6 +613,40 @@
         }
       }
     },
+    "%@ · %@ · Expires %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@ · Expires %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@ · %3$@に期限切れ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@ · %3$@ 만료"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@ · Hết hạn %3$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@ · 将于%3$@过期"
+          }
+        }
+      }
+    },
     "%@; 8 cores, 16 GB recommended" : {
       "localizations" : {
         "en" : {
@@ -727,6 +863,74 @@
         }
       }
     },
+    "A Core Bundle can be installed once every required check passes." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Core Bundle can be installed once every required check passes."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "必須項目がすべて合格すると、コアバンドルをインストールできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 필수 검사를 통과하면 코어 번들을 설치할 수 있습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Có thể cài đặt Bundle lõi khi mọi mục kiểm tra bắt buộc đều đạt."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有必需检查通过后，即可安装核心 Bundle。"
+          }
+        }
+      }
+    },
+    "A folder named %@ already exists in this location. Enter another name." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A folder named %@ already exists in this location. Enter another name."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この場所には %@ という名前のフォルダが既に存在します。別の名前を入力してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 위치에 %@(이)라는 이름의 폴더가 이미 있습니다. 다른 이름을 입력하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vị trí này đã có thư mục tên %@. Hãy nhập tên khác."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此位置已存在名为 %@ 的文件夹。请输入其他名称。"
+          }
+        }
+      }
+    },
     "A folder with this name already exists in this location." : {
       "localizations" : {
         "en" : {
@@ -825,6 +1029,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "操作"
+          }
+        }
+      }
+    },
+    "Add a GitHub token to download builds from GitHub Actions." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a GitHub token to download builds from GitHub Actions."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions からビルドをダウンロードするには、GitHub トークンを追加してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions에서 빌드를 다운로드하려면 GitHub 토큰을 추가하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm token GitHub để tải bản dựng từ GitHub Actions."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加 GitHub 令牌即可从 GitHub Actions 下载构建版本。"
           }
         }
       }
@@ -1067,6 +1305,40 @@
         }
       }
     },
+    "An install is in progress. Follow it in the inspector." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An install is in progress. Follow it in the inspector."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "インストール中です。進行状況はインスペクタで確認できます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치가 진행 중입니다. 속성 패널에서 진행 상황을 확인하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang cài đặt. Hãy theo dõi trong bảng kiểm tra."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在安装。可在检查器中查看进度。"
+          }
+        }
+      }
+    },
     "Apple silicon" : {
       "localizations" : {
         "en" : {
@@ -1233,6 +1505,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "桥接到 %@"
+          }
+        }
+      }
+    },
+    "Builds from the package workflow, kept by GitHub for 7 days. Downloading them needs a token that can read Actions for Lakr233/vphone-cli. It is stored in your keychain." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Builds from the package workflow, kept by GitHub for 7 days. Downloading them needs a token that can read Actions for Lakr233/vphone-cli. It is stored in your keychain."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "パッケージワークフローのビルドで、GitHub に 7 日間保持されます。ダウンロードには、Lakr233/vphone-cli の Actions を読み取れるトークンが必要です。トークンはキーチェーンに保存されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "패키지 워크플로의 빌드로, GitHub에 7일간 보관됩니다. 다운로드하려면 Lakr233/vphone-cli의 Actions를 읽을 수 있는 토큰이 필요합니다. 토큰은 키체인에 저장됩니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Các bản dựng từ quy trình đóng gói, được GitHub lưu giữ trong 7 ngày. Để tải xuống, cần token có quyền đọc Actions của Lakr233/vphone-cli. Token được lưu trong chuỗi khóa của bạn."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来自打包工作流程的构建版本，GitHub 会保留 7 天。下载需要一个可读取 Lakr233/vphone-cli 的 Actions 的令牌，令牌存储在你的钥匙串中。"
           }
         }
       }
@@ -1543,6 +1849,74 @@
         }
       }
     },
+    "Checks failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checks failed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "チェックに不合格"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "검사 실패"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra không đạt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查未通过"
+          }
+        }
+      }
+    },
+    "Checks skipped" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checks skipped"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "チェックをスキップ済み"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "검사 건너뜀"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã bỏ qua kiểm tra"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已跳过检查"
+          }
+        }
+      }
+    },
     "Choose" : {
       "localizations" : {
         "en" : {
@@ -1641,6 +2015,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选取位置"
+          }
+        }
+      }
+    },
+    "Choose a VPhone.bundle folder or a .zip that contains one." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a VPhone.bundle folder or a .zip that contains one."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VPhone.bundle フォルダ、またはそれを含む .zip を選択してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VPhone.bundle 폴더 또는 이를 포함하는 .zip을 선택하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hãy chọn thư mục VPhone.bundle hoặc tệp .zip chứa nó."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择 VPhone.bundle 文件夹或包含它的 .zip。"
           }
         }
       }
@@ -2121,6 +2529,74 @@
         }
       }
     },
+    "Continue" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "続ける"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계속"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếp tục"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续"
+          }
+        }
+      }
+    },
+    "Continue without this check. The bundle’s own preflight still runs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue without this check. The bundle’s own preflight still runs."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このチェックなしで続行します。バンドル自体の事前チェックは引き続き実行されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 검사 없이 계속합니다. 번들 자체의 사전 점검은 계속 실행됩니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếp tục mà không có mục kiểm tra này. Bundle vẫn chạy kiểm tra trước của riêng nó."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不经此项检查继续。bundle 自身的预检仍会运行。"
+          }
+        }
+      }
+    },
     "Copy Command" : {
       "localizations" : {
         "en" : {
@@ -2219,6 +2695,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "所有必需检查通过后，将显示“核心 Bundle”。"
+          }
+        }
+      }
+    },
+    "Core Bundle Install" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Core Bundle Install"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コアバンドルのインストール"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "코어 번들 설치"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài đặt Bundle lõi"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "核心 Bundle 安装"
+          }
+        }
+      }
+    },
+    "Core Bundle…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Core Bundle…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コアバンドル…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "코어 번들…"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bundle lõi…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "核心 Bundle…"
           }
         }
       }
@@ -3119,6 +3663,74 @@
         }
       }
     },
+    "Done" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完了"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "완료"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xong"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "Don’t Skip" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don’t Skip"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スキップしない"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "건너뛰지 않음"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không bỏ qua"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不跳过"
+          }
+        }
+      }
+    },
     "Download" : {
       "localizations" : {
         "en" : {
@@ -3285,6 +3897,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在下载…"
+          }
+        }
+      }
+    },
+    "Every release is installed." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every release is installed."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのリリースがインストール済みです。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 릴리스가 설치되어 있습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã cài đặt mọi bản phát hành."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有发行版均已安装。"
           }
         }
       }
@@ -3663,6 +4309,74 @@
         }
       }
     },
+    "GitHub Actions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions"
+          }
+        }
+      }
+    },
+    "GitHub Actions build · Installed %@ · SHA-256 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions build · Installed %@ · SHA-256 %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions ビルド · %1$@ にインストール · SHA-256 %2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions 빌드 · %1$@에 설치됨 · SHA-256 %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bản dựng GitHub Actions · Cài đặt %1$@ · SHA-256 %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions 构建版本 · 安装于 %1$@ · SHA-256 %2$@"
+          }
+        }
+      }
+    },
     "GitHub answered the release list with an error." : {
       "localizations" : {
         "en" : {
@@ -3693,6 +4407,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "GitHub 返回发行版列表时出错。"
+          }
+        }
+      }
+    },
+    "GitHub refused the token. Check that it can read Actions for Lakr233/vphone-cli." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub refused the token. Check that it can read Actions for Lakr233/vphone-cli."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub がトークンを拒否しました。Lakr233/vphone-cli の Actions を読み取れるか確認してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub가 토큰을 거부했습니다. Lakr233/vphone-cli의 Actions를 읽을 수 있는지 확인하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub đã từ chối token. Hãy kiểm tra token có quyền đọc Actions của Lakr233/vphone-cli."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub 拒绝了此令牌。请确认它可以读取 Lakr233/vphone-cli 的 Actions。"
+          }
+        }
+      }
+    },
+    "GitHub Token" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Token"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Token"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Token"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Token"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Token"
           }
         }
       }
@@ -3761,6 +4543,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "隐藏检查器"
+          }
+        }
+      }
+    },
+    "Hide the install steps" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide the install steps"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "インストール手順を隠す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치 단계 가리기"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ẩn các bước cài đặt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏安装步骤"
           }
         }
       }
@@ -3867,6 +4683,40 @@
         }
       }
     },
+    "Host preflight failed. Fix the issue and retry, or skip to use this version anyway." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host preflight failed. Fix the issue and retry, or skip to use this version anyway."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ホストの事前チェックに合格しませんでした。問題を解決して再試行するか、スキップしてこのバージョンをそのまま使用してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "호스트 사전 점검에 실패했습니다. 문제를 해결한 후 다시 시도하거나, 건너뛰고 이 버전을 그대로 사용하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra trước máy chủ không đạt. Hãy khắc phục sự cố rồi thử lại, hoặc bỏ qua để vẫn dùng phiên bản này."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主机预检未通过。请修复问题后重试，或跳过以继续使用此版本。"
+          }
+        }
+      }
+    },
     "Host preflight failed. Fix the issue below, then choose Run Preflight Again." : {
       "localizations" : {
         "en" : {
@@ -3931,6 +4781,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "主机设置"
+          }
+        }
+      }
+    },
+    "Host Setup…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host Setup…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ホスト設定…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "호스트 설정…"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thiết lập máy chủ…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主机设置…"
           }
         }
       }
@@ -4241,6 +5125,108 @@
         }
       }
     },
+    "Install" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "インストール"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài đặt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安装"
+          }
+        }
+      }
+    },
+    "Install a VPhone.bundle folder or .zip built on this Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install a VPhone.bundle folder or .zip built on this Mac."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この Mac でビルドした VPhone.bundle フォルダまたは .zip をインストールします。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 Mac에서 빌드한 VPhone.bundle 폴더 또는 .zip을 설치합니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài đặt thư mục VPhone.bundle hoặc tệp .zip được dựng trên máy Mac này."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安装在此 Mac 上构建的 VPhone.bundle 文件夹或 .zip。"
+          }
+        }
+      }
+    },
+    "Install a VPhone.bundle to create and run machines." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install a VPhone.bundle to create and run machines."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "マシンを作成して実行するには、VPhone.bundle をインストールしてください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "머신을 생성하고 실행하려면 VPhone.bundle을 설치하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài đặt VPhone.bundle để tạo và chạy máy ảo."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安装 VPhone.bundle 以创建和运行虚拟机。"
+          }
+        }
+      }
+    },
     "Install as root" : {
       "localizations" : {
         "en" : {
@@ -4305,6 +5291,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "安装 CFW"
+          }
+        }
+      }
+    },
+    "Install Local Build" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install Local Build"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ローカルビルドをインストール"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로컬 빌드 설치"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài đặt bản dựng cục bộ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安装本地构建版本"
+          }
+        }
+      }
+    },
+    "Install Local Build…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install Local Build…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ローカルビルドをインストール…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로컬 빌드 설치…"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài đặt bản dựng cục bộ…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安装本地构建版本…"
           }
         }
       }
@@ -4479,6 +5533,40 @@
         }
       }
     },
+    "Installing…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installing…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "インストール中…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치 중…"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang cài đặt…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在安装…"
+          }
+        }
+      }
+    },
     "Intel Macs are not supported" : {
       "localizations" : {
         "en" : {
@@ -4615,6 +5703,40 @@
         }
       }
     },
+    "Its Info.plist must have the bundle identifier %@ and a version." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Its Info.plist must have the bundle identifier %@ and a version."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Info.plist にはバンドル識別子 %@ とバージョンが必要です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Info.plist에 번들 식별자 %@ 및 버전이 있어야 합니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Info.plist của nó phải có mã định danh bundle %@ và phiên bản."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其 Info.plist 必须包含 bundle 标识符 %@ 和版本号。"
+          }
+        }
+      }
+    },
     "Keep the prepared restore tree" : {
       "localizations" : {
         "en" : {
@@ -4679,6 +5801,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "最新发行版"
+          }
+        }
+      }
+    },
+    "Launchpad quit before the install finished. Retry to continue." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Launchpad quit before the install finished. Retry to continue."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "インストールが完了する前に Launchpad が終了しました。再試行して続行してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치가 완료되기 전에 Launchpad가 종료되었습니다. 계속하려면 다시 시도하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Launchpad đã thoát trước khi cài đặt xong. Hãy thử lại để tiếp tục."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Launchpad 在安装完成前退出。请重试以继续。"
           }
         }
       }
@@ -4883,6 +6039,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在载入发行版…"
+          }
+        }
+      }
+    },
+    "Local build · Installed %@ · SHA-256 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local build · Installed %@ · SHA-256 %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ローカルビルド · %1$@ にインストール · SHA-256 %2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로컬 빌드 · %1$@에 설치됨 · SHA-256 %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bản dựng cục bộ · Cài đặt %1$@ · SHA-256 %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本地构建版本 · 安装于 %1$@ · SHA-256 %2$@"
           }
         }
       }
@@ -5465,6 +6655,40 @@
         }
       }
     },
+    "No Core Bundle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Core Bundle"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コアバンドルがありません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "코어 번들 없음"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa có Bundle lõi"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有核心 Bundle"
+          }
+        }
+      }
+    },
     "No core bundle is active." : {
       "localizations" : {
         "en" : {
@@ -5529,6 +6753,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未使用任何核心 Bundle 版本。请在“核心 Bundle”中选择一个版本。"
+          }
+        }
+      }
+    },
+    "No GitHub Actions builds are available." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No GitHub Actions builds are available."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "利用可能な GitHub Actions ビルドがありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용 가능한 GitHub Actions 빌드가 없습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không có bản dựng GitHub Actions nào."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可用的 GitHub Actions 构建版本。"
           }
         }
       }
@@ -5631,6 +6889,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无策略例外"
+          }
+        }
+      }
+    },
+    "No policy exception." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No policy exception."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ポリシーの例外はありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정책 예외가 없습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không có ngoại lệ chính sách."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无策略例外。"
           }
         }
       }
@@ -5801,6 +7093,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未允许"
+          }
+        }
+      }
+    },
+    "Not checked" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not checked"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未チェック"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확인 안 됨"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa kiểm tra"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未检查"
           }
         }
       }
@@ -6043,6 +7369,40 @@
         }
       }
     },
+    "Open the workflow run on GitHub" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the workflow run on GitHub"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub でワークフローの実行を開く"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub에서 워크플로 실행 열기"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở lần chạy quy trình trên GitHub"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 GitHub 上打开工作流程运行"
+          }
+        }
+      }
+    },
     "Options" : {
       "localizations" : {
         "en" : {
@@ -6281,6 +7641,40 @@
         }
       }
     },
+    "Policy exception added." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Policy exception added."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ポリシーの例外を追加しました。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정책 예외가 추가되었습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã thêm ngoại lệ chính sách."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已添加策略例外。"
+          }
+        }
+      }
+    },
     "Pre-release" : {
       "localizations" : {
         "en" : {
@@ -6413,6 +7807,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "预检已通过"
+          }
+        }
+      }
+    },
+    "Preflight skipped" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preflight skipped"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "事前チェックをスキップ済み"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사전 점검 건너뜀"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã bỏ qua kiểm tra trước"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已跳过预检"
+          }
+        }
+      }
+    },
+    "Prepare bundle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prepare bundle"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "バンドルを準備"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "번들 준비"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chuẩn bị bundle"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "准备 bundle"
           }
         }
       }
@@ -6685,6 +8147,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "来自 vphone-cli fw catalog 的 %@ 推荐组合。"
+          }
+        }
+      }
+    },
+    "Releases" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Releases"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リリース"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "릴리스"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bản phát hành"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发行版"
+          }
+        }
+      }
+    },
+    "Reload releases and builds, and run host preflight again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reload releases and builds, and run host preflight again."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リリースとビルドを再読み込みし、ホストの事前チェックを再実行します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "릴리스와 빌드를 다시 불러오고 호스트 사전 점검을 다시 실행합니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tải lại các bản phát hành và bản dựng, rồi chạy lại kiểm tra trước máy chủ."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新载入发行版和构建版本，并再次运行主机预检。"
           }
         }
       }
@@ -7063,6 +8593,40 @@
         }
       }
     },
+    "Require Preflight" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Require Preflight"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "事前チェックを必須にする"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사전 점검 요구"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yêu cầu kiểm tra trước"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要求预检"
+          }
+        }
+      }
+    },
     "Required" : {
       "localizations" : {
         "en" : {
@@ -7195,6 +8759,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "受系统限制"
+          }
+        }
+      }
+    },
+    "Retry" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再試行"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 시도"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thử lại"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
           }
         }
       }
@@ -7471,6 +9069,40 @@
         }
       }
     },
+    "Saved in the keychain" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved in the keychain"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キーチェーンに保存済み"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "키체인에 저장됨"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã lưu trong chuỗi khóa"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已存储在钥匙串中"
+          }
+        }
+      }
+    },
     "Saving settings" : {
       "localizations" : {
         "en" : {
@@ -7603,6 +9235,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "请查看虚拟机的控制台。"
+          }
+        }
+      }
+    },
+    "Set Up…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set Up…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "セットアップ…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설정 시작…"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thiết lập…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始设置…"
           }
         }
       }
@@ -7807,6 +9473,142 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "显示检查器"
+          }
+        }
+      }
+    },
+    "Show the install steps" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the install steps"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "インストール手順を表示"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치 단계 보기"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiện các bước cài đặt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示安装步骤"
+          }
+        }
+      }
+    },
+    "Skip" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スキップ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "건너뛰기"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bỏ qua bước"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳过"
+          }
+        }
+      }
+    },
+    "Skipped" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skipped"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スキップ済み"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "건너뜀"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã bỏ qua"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已跳过"
+          }
+        }
+      }
+    },
+    "Skipped · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skipped · %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スキップ済み · %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "건너뜀 · %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã bỏ qua · %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已跳过 · %@"
           }
         }
       }
@@ -8389,6 +10191,74 @@
         }
       }
     },
+    "Stored in %@, owned by root and written only by the helper." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stored in %@, owned by root and written only by the helper."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ に保存されます。所有者は root で、ヘルパーのみが書き込みます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@에 저장되며, root가 소유하고 도우미만 기록합니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Được lưu trong %@, thuộc sở hữu của root và chỉ trình trợ giúp được ghi."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "存储在 %@ 中，所有者为 root，仅由辅助工具写入。"
+          }
+        }
+      }
+    },
+    "The artifact does not contain a VPhone bundle zip." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The artifact does not contain a VPhone bundle zip."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アーティファクトに VPhone バンドルの zip が含まれていません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아티팩트에 VPhone 번들 zip이 없습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artifact không chứa tệp zip của bundle VPhone."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此构建产物不包含 VPhone bundle 的 zip 文件。"
+          }
+        }
+      }
+    },
     "The clone boots as a new device. SEP storage is copied as is, so a restored machine may need restoring again." : {
       "localizations" : {
         "en" : {
@@ -8831,6 +10701,40 @@
         }
       }
     },
+    "The installed helper did not match the copy in this app. Try again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The installed helper did not match the copy in this app. Try again."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "インストールされたヘルパーがこの App 内のコピーと一致しませんでした。もう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치된 도우미가 이 앱에 포함된 사본과 일치하지 않습니다. 다시 시도하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trình trợ giúp đã cài không khớp với bản trong ứng dụng này. Hãy thử lại."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已安装的辅助工具与此 App 中的副本不一致。请重试。"
+          }
+        }
+      }
+    },
     "The machine did not enter DFU mode within 30 seconds." : {
       "localizations" : {
         "en" : {
@@ -9167,6 +11071,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "虚拟机在 vphoned 响应前已退出。"
+          }
+        }
+      }
+    },
+    "This build has expired on GitHub. Choose a newer one." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This build has expired on GitHub. Choose a newer one."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このビルドは GitHub 上で期限切れです。より新しいビルドを選択してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 빌드는 GitHub에서 만료되었습니다. 더 최신 빌드를 선택하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bản dựng này đã hết hạn trên GitHub. Hãy chọn bản mới hơn."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此构建版本已在 GitHub 上过期。请选择更新的构建版本。"
           }
         }
       }
@@ -9613,6 +11551,40 @@
         }
       }
     },
+    "Unable to load GitHub Actions builds. Try again later." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to load GitHub Actions builds. Try again later."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions のビルドを読み込めません。しばらくしてからもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions 빌드를 불러올 수 없습니다. 나중에 다시 시도하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thể tải các bản dựng GitHub Actions. Hãy thử lại sau."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法载入 GitHub Actions 构建版本。请稍后重试。"
+          }
+        }
+      }
+    },
     "Unable to load releases from GitHub. Try again later." : {
       "localizations" : {
         "en" : {
@@ -9681,6 +11653,40 @@
         }
       }
     },
+    "Unable to read the local build." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to read the local build."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ローカルビルドを読み取れません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로컬 빌드를 읽을 수 없습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thể đọc bản dựng cục bộ."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法读取本地构建版本。"
+          }
+        }
+      }
+    },
     "Unable to Remove VPhone.bundle %@" : {
       "localizations" : {
         "en" : {
@@ -9745,6 +11751,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法重新打开"
+          }
+        }
+      }
+    },
+    "Unable to save the token in the keychain." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to save the token in the keychain."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "トークンをキーチェーンに保存できません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토큰을 키체인에 저장할 수 없습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thể lưu token vào chuỗi khóa."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法将令牌存储到钥匙串中。"
           }
         }
       }
@@ -9847,6 +11887,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未知错误"
+          }
+        }
+      }
+    },
+    "Update the privileged helper in Host Setup, then run preflight again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update the privileged helper in Host Setup, then run preflight again."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「ホスト設定」で特権ヘルパーをアップデートしてから、事前チェックを再実行してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "호스트 설정에서 권한 있는 도우미를 업데이트한 후 사전 점검을 다시 실행하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hãy cập nhật trình trợ giúp đặc quyền trong Thiết lập máy chủ, rồi chạy lại kiểm tra trước."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在“主机设置”中更新特权辅助工具，然后再次运行预检。"
           }
         }
       }
@@ -10017,6 +12091,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "使用此版本"
+          }
+        }
+      }
+    },
+    "Use this version without the failed checks." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use this version without the failed checks."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不合格のチェックを無視してこのバージョンを使用します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "실패한 검사를 무시하고 이 버전을 사용합니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng phiên bản này mà không cần các mục kiểm tra không đạt."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "忽略未通过的检查，使用此版本。"
+          }
+        }
+      }
+    },
+    "Use Without Preflight" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Without Preflight"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "事前チェックなしで使用"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사전 점검 없이 사용"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng mà không kiểm tra trước"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不经预检直接使用"
           }
         }
       }
@@ -10197,6 +12339,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "VPhone.bundle %1$@ is not supported. Use version %2$@ or newer."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VPhone.bundle %1$@ は非対応です。%2$@ 以降を使用してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VPhone.bundle %1$@은(는) 지원되지 않습니다. %2$@ 이상을 사용하세요."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VPhone.bundle %1$@ không được hỗ trợ. Hãy dùng phiên bản %2$@ trở lên."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不支持 VPhone.bundle %1$@。请使用 %2$@ 或更新版本。"
+          }
+        }
+      }
+    },
+    "VPhone.bundle %@ is not supported. Use version %@ or newer." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VPhone.bundle %@ is not supported. Use version %@ or newer."
           }
         },
         "ja" : {
@@ -10493,6 +12669,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "将 dyld 缓存的 maxSlide 置零"
+          }
+        }
+      }
+    },
+    "Zip the bundle with `ditto -c -k --keepParent VPhone.bundle VPhone.zip`, or choose the VPhone.bundle folder." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zip the bundle with `ditto -c -k --keepParent VPhone.bundle VPhone.zip`, or choose the VPhone.bundle folder."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "`ditto -c -k --keepParent VPhone.bundle VPhone.zip` でバンドルを zip に圧縮するか、VPhone.bundle フォルダを選択してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "`ditto -c -k --keepParent VPhone.bundle VPhone.zip`로 번들을 압축하거나 VPhone.bundle 폴더를 선택하십시오."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hãy nén bundle bằng `ditto -c -k --keepParent VPhone.bundle VPhone.zip`, hoặc chọn thư mục VPhone.bundle."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请使用 `ditto -c -k --keepParent VPhone.bundle VPhone.zip` 压缩 bundle，或选择 VPhone.bundle 文件夹。"
           }
         }
       }

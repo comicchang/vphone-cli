@@ -1,10 +1,9 @@
-import CryptoKit
 import Foundation
 
 /// A GitHub release that carries a `VPhone-<tag>.zip` asset. GitHub records a
 /// SHA-256 digest for every asset, which is what the download is checked
 /// against, here and again in the helper.
-nonisolated struct VPhoneLaunchpadRelease: Identifiable, Hashable, Sendable {
+nonisolated struct VPhoneLaunchpadRelease: Identifiable, Hashable, Codable, Sendable {
     let version: String
     let publishedAt: Date
     let isPrerelease: Bool
@@ -73,44 +72,17 @@ nonisolated struct VPhoneLaunchpadRelease: Identifiable, Hashable, Sendable {
 
     // MARK: - Download
 
-    /// Downloads the asset into a fresh temporary directory, hashing as it
-    /// goes. Returns the file and its hex SHA-256.
+    /// Downloads the asset into a fresh temporary directory. Returns the file
+    /// and its hex SHA-256.
     @concurrent func download(progress: @escaping @Sendable (Int64) -> Void) async throws -> (URL, String) {
-        var request = URLRequest(url: downloadURL)
-        request.setValue("vphone-launchpad", forHTTPHeaderField: "User-Agent")
-        let (bytes, response) = try await URLSession.shared.bytes(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw VPhoneLaunchpadError(String(localized: "Unable to download \(assetName). Check your connection and try again."))
-        }
-
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("vphone-launchpad-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let file = directory.appendingPathComponent(assetName)
-        FileManager.default.createFile(atPath: file.path, contents: nil)
-        let output = try FileHandle(forWritingTo: file)
-        defer { try? output.close() }
-
-        var hasher = SHA256()
-        var buffer = Data()
-        buffer.reserveCapacity(1 << 20)
-        var received: Int64 = 0
-        for try await byte in bytes {
-            buffer.append(byte)
-            if buffer.count >= 1 << 20 {
-                hasher.update(data: buffer)
-                try output.write(contentsOf: buffer)
-                received += Int64(buffer.count)
-                progress(received)
-                buffer.removeAll(keepingCapacity: true)
-            }
-        }
-        hasher.update(data: buffer)
-        try output.write(contentsOf: buffer)
-        received += Int64(buffer.count)
-        progress(received)
-
-        let digest = hasher.finalize().map { String(format: "%02x", $0) }.joined()
-        return (file, digest)
+        let name = assetName
+        return try await VPhoneLaunchpadDownload.fetch(
+            URLRequest(url: downloadURL),
+            as: name,
+            refused: { _ in
+                VPhoneLaunchpadError(String(localized: "Unable to download \(name). Check your connection and try again."))
+            },
+            progress: progress,
+        )
     }
 }

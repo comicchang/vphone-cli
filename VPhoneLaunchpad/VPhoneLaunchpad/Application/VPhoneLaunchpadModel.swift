@@ -1,19 +1,16 @@
 import Foundation
 import Observation
 
-/// Owns the three stages and decides which of them the segmented control
-/// shows. Host Setup is always there; Core Bundle appears once the required
-/// host checks pass; Machines appears once the active bundle passes host
-/// preflight. After setup has completed once, all three stay visible and a
-/// regression only marks Host Setup, so machines are never hidden by, say,
-/// a helper that needs updating.
+/// Owns the host checks, the installed bundles and the machine library. The
+/// window always shows the machines; Host Setup and Core Bundle are sheets
+/// over it. On launch the first stage that is not ready opens by itself, and
+/// a toolbar button marks a stage that regresses later.
 @MainActor
 @Observable
 final class VPhoneLaunchpadModel {
-    enum Section: String, CaseIterable, Identifiable {
+    enum Panel: String, Identifiable {
         case hostSetup
         case coreBundle
-        case machines
 
         var id: Self {
             self
@@ -23,7 +20,6 @@ final class VPhoneLaunchpadModel {
             switch self {
             case .hostSetup: String(localized: "Host Setup")
             case .coreBundle: String(localized: "Core Bundle")
-            case .machines: String(localized: "Machines")
             }
         }
     }
@@ -35,11 +31,8 @@ final class VPhoneLaunchpadModel {
     let bundles: VPhoneLaunchpadCoreBundle
     let machines: VPhoneLaunchpadMachineLibrary
 
-    var selection: Section = .hostSetup
+    var panel: Panel?
     private(set) var isStarted = false
-
-    private static let setupCompletedKey = "VPhoneLaunchpadSetupCompleted"
-    private static let showAllSectionsKey = "VPhoneLaunchpadShowAllSections"
 
     init() {
         libraryRoot = URL(fileURLWithPath: VPhoneLaunchpadMachineLocations.defaultRoot, isDirectory: true)
@@ -48,58 +41,14 @@ final class VPhoneLaunchpadModel {
         machines = VPhoneLaunchpadMachineLibrary(bundles: bundles, helper: helper)
     }
 
-    // MARK: - Sections
+    // MARK: - Attention
 
-    #if DEBUG
-        /// Snapshot mode keeps setup state in memory, off the real defaults.
-        var previewSetupCompleted: Bool?
-    #endif
-
-    private var setupCompleted: Bool {
-        get {
-            access(keyPath: \.setupCompleted)
-            #if DEBUG
-                if let previewSetupCompleted {
-                    return previewSetupCompleted
-                }
-            #endif
-            return UserDefaults.standard.bool(forKey: Self.setupCompletedKey)
-        }
-        set {
-            withMutation(keyPath: \.setupCompleted) {
-                UserDefaults.standard.set(newValue, forKey: Self.setupCompletedKey)
-            }
-        }
+    var hostNeedsAttention: Bool {
+        !host.isChecking && !host.requiredPassed
     }
 
-    var sections: [Section] {
-        #if DEBUG
-            if UserDefaults.standard.bool(forKey: Self.showAllSectionsKey) {
-                return Section.allCases
-            }
-        #endif
-        if setupCompleted {
-            return Section.allCases
-        }
-        var sections: [Section] = [.hostSetup]
-        if host.requiredPassed {
-            sections.append(.coreBundle)
-            if bundles.isReady {
-                sections.append(.machines)
-            }
-        }
-        return sections
-    }
-
-    func title(for section: Section) -> String {
-        switch section {
-        case .hostSetup where setupCompleted && !host.isChecking && !host.requiredPassed:
-            "\(section.title) ▲"
-        case .coreBundle where setupCompleted && !bundles.isReady && !bundles.installed.isEmpty:
-            "\(section.title) ▲"
-        default:
-            section.title
-        }
+    var bundleNeedsAttention: Bool {
+        host.requiredPassed && !bundles.isReady && !bundles.isInstalling && bundles.progress?.canSkip != true
     }
 
     /// Installing a bundle needs the helper (root-owned store) and Developer
@@ -132,46 +81,58 @@ final class VPhoneLaunchpadModel {
         await bundles.refresh()
         await machines.refresh()
         machines.startMonitoring()
-        advance(selectNewest: true)
+        // An unfinished install is picked up in the inspector instead.
+        if panel == nil, bundles.progress == nil || bundles.progress?.isFinished == true {
+            panel = !host.requiredPassed ? .hostSetup : !bundles.isReady ? .coreBundle : nil
+        }
     }
 
     func refreshHost() async {
         await host.refresh()
-        advance(selectNewest: true)
     }
 
+    // MARK: - Bundle install
+
+    /// An install runs in the inspector, not in the sheet it started from,
+    /// so the sheet closes and the inspector opens on its progress.
     func installBundle(_ release: VPhoneLaunchpadRelease) async {
+        revealInstall()
         await bundles.install(release)
         await machines.refresh()
-        advance(selectNewest: false)
+    }
+
+    func installArtifact(_ artifact: VPhoneLaunchpadArtifact) async {
+        revealInstall()
+        await bundles.installArtifact(artifact)
+        await machines.refresh()
     }
 
     func installLocalBundle(_ source: URL) async {
+        revealInstall()
         await bundles.installLocal(source)
         await machines.refresh()
-        advance(selectNewest: false)
     }
+
+    func retryInstall() async {
+        await bundles.retry()
+        await machines.refresh()
+    }
+
+    private func revealInstall() {
+        panel = nil
+        showsInspector = true
+        isInstallExpanded = true
+    }
+
+    // MARK: - Inspector
+
+    var showsInspector = true
+    var isInstallExpanded = true
 
     func removeBundle(_ version: String) async {
         await bundles.remove(version)
         if let active = bundles.activeVersion, bundles.active?.preflight == .pending {
             await bundles.verify(active)
-        }
-        advance(selectNewest: false)
-    }
-
-    /// Records completed setup and moves the selection to a newly revealed
-    /// section, or back to one that still exists.
-    private func advance(selectNewest: Bool) {
-        let before = sections
-        if host.requiredPassed, bundles.isReady {
-            setupCompleted = true
-        }
-        let after = sections
-        if selectNewest {
-            selection = !host.requiredPassed ? .hostSetup : bundles.isReady ? .machines : .coreBundle
-        } else if after.count > before.count || !after.contains(selection) {
-            selection = after.last ?? .hostSetup
         }
     }
 }

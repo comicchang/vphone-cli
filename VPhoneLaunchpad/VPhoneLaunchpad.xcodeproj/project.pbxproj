@@ -109,7 +109,7 @@
 		5A1000000000000000000093 /* Build configuration list for PBXNativeTarget "VPhoneLaunchpadHelper" */ = {isa = XCConfigurationList; buildConfigurations = (5A1000000000000000000085 /* Debug */, 5A1000000000000000000086 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 /* Begin XCRemoteSwiftPackageReference section */
-		5A10000000000000000000A1 /* XCRemoteSwiftPackageReference "libghostty-spm" */ = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/Lakr233/libghostty-spm.git"; requirement = {kind = upToNextMajorVersion; minimumVersion = 1.6.20260922; }; };
+		5A10000000000000000000A1 /* XCRemoteSwiftPackageReference "libghostty-spm" */ = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/Lakr233/libghostty-spm.git"; requirement = {kind = upToNextMajorVersion; minimumVersion = 1.6.20260928; }; };
 /* End XCRemoteSwiftPackageReference section */
 /* Begin XCSwiftPackageProductDependency section */
 		5A10000000000000000000B1 /* GhosttyTerminal */ = {isa = XCSwiftPackageProductDependency; package = 5A10000000000000000000A1 /* XCRemoteSwiftPackageReference "libghostty-spm" */; productName = GhosttyTerminal; };

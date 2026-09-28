@@ -46,7 +46,7 @@ enum VPhoneLaunchpadHelperBundleInstaller {
         let info = try PropertyListSerialization.propertyList(from: Data(contentsOf: infoURL), format: nil)
         let bundleVersion = (info as? [String: Any])?["CFBundleShortVersionString"] as? String
         guard let bundleVersion, VPhoneLaunchpadNames.isCompatibleBundleVersion(bundleVersion),
-              version == bundleVersion || version == "\(bundleVersion)-local"
+              VPhoneLaunchpadNames.bundleVersion(of: version) == bundleVersion
         else {
             throw VPhoneLaunchpadHelperError("VPhone.bundle version does not match \(version). Download it again.")
         }

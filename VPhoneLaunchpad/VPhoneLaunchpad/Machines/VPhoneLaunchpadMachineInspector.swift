@@ -38,6 +38,8 @@ struct VPhoneLaunchpadMachineInspector: View {
 
     var body: some View {
         Form {
+            VPhoneLaunchpadInstallSection()
+
             Section {
                 if let creation = library.creations[machine.path] {
                     creationSummary(creation)

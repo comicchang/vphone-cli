@@ -29,7 +29,6 @@ struct VPhoneLaunchpadMachinesView: View {
     @Environment(VPhoneLaunchpadModel.self) private var model
     @State private var sheet: Sheet?
     @State private var deletion: MachinePath?
-    @State private var showsInspector = true
 
     private var library: VPhoneLaunchpadMachineLibrary {
         model.machines
@@ -37,6 +36,7 @@ struct VPhoneLaunchpadMachinesView: View {
 
     var body: some View {
         @Bindable var library = library
+        @Bindable var model = model
         Group {
             if library.machines.isEmpty {
                 emptyState
@@ -44,7 +44,7 @@ struct VPhoneLaunchpadMachinesView: View {
                 table(selection: $library.selection)
             }
         }
-        .inspector(isPresented: $showsInspector) {
+        .inspector(isPresented: $model.showsInspector) {
             Group {
                 if let machine = library.selected {
                     VPhoneLaunchpadMachineInspector(
@@ -52,6 +52,11 @@ struct VPhoneLaunchpadMachinesView: View {
                         onShowProgress: { path in sheet = .creation(path) },
                         onOpenConsole: { path in sheet = .console(path) },
                     )
+                } else if model.bundles.progress != nil {
+                    Form {
+                        VPhoneLaunchpadInstallSection()
+                    }
+                    .formStyle(.grouped)
                 } else {
                     ContentUnavailableView("No Selection", systemImage: "iphone")
                 }
@@ -136,20 +141,32 @@ struct VPhoneLaunchpadMachinesView: View {
                 Label("Import", systemImage: "square.and.arrow.down")
             }
             .help("Import an exported machine")
-            .disabled(library.globalActivity != nil)
+            .disabled(library.globalActivity != nil || model.bundles.activeVersion == nil)
             Button {
                 sheet = .newMachine
             } label: {
                 Label("New Machine", systemImage: "plus")
             }
             .help("Create a machine")
-            Button {
-                showsInspector.toggle()
-            } label: {
-                Label("Inspector", systemImage: "sidebar.trailing")
-            }
-            .help(showsInspector ? "Hide the inspector" : "Show the inspector")
+            .disabled(model.bundles.activeVersion == nil)
         }
+        // Primary actions sit at the leading edge on macOS; the space pushes
+        // the inspector toggle to the trailing edge, above the inspector.
+        ToolbarItem(placement: .automatic) {
+            Spacer()
+        }
+        ToolbarItem(placement: .automatic) {
+            inspectorToggle
+        }
+    }
+
+    private var inspectorToggle: some View {
+        Button {
+            model.showsInspector.toggle()
+        } label: {
+            Label("Inspector", systemImage: "sidebar.trailing")
+        }
+        .help(model.showsInspector ? "Hide the inspector" : "Show the inspector")
     }
 
     /// The same actions in the toolbar menu and the table's context menu.
@@ -227,15 +244,27 @@ struct VPhoneLaunchpadMachinesView: View {
         }
     }
 
+    @ViewBuilder
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("No Machines", systemImage: "iphone")
-        } description: {
-            Text(library.listError ?? String(localized: "Machines in \(VPhoneLaunchpadHostSetup.abbreviated(URL(fileURLWithPath: library.libraryRoot, isDirectory: true))) appear here."))
-        } actions: {
-            Button("New Machine…") { sheet = .newMachine }
-                .buttonStyle(.borderedProminent)
-            Button("Import…") { chooseImport() }
+        if model.bundles.activeVersion == nil {
+            ContentUnavailableView {
+                Label("No Core Bundle", systemImage: "shippingbox")
+            } description: {
+                Text("Install a VPhone.bundle to create and run machines.")
+            } actions: {
+                Button("Set Up…") { model.panel = model.host.requiredPassed ? .coreBundle : .hostSetup }
+                    .buttonStyle(.borderedProminent)
+            }
+        } else {
+            ContentUnavailableView {
+                Label("No Machines", systemImage: "iphone")
+            } description: {
+                Text(library.listError ?? String(localized: "Machines in \(VPhoneLaunchpadHostSetup.abbreviated(URL(fileURLWithPath: library.libraryRoot, isDirectory: true))) appear here."))
+            } actions: {
+                Button("New Machine…") { sheet = .newMachine }
+                    .buttonStyle(.borderedProminent)
+                Button("Import…") { chooseImport() }
+            }
         }
     }
 

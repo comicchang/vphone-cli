@@ -27,7 +27,7 @@ final class VPhoneLaunchpadCoreBundle {
 
     // MARK: - Install progress
 
-    enum InstallStep: CaseIterable, Identifiable {
+    enum InstallStep: String, CaseIterable, Identifiable, Codable {
         case prepare
         case download
         case verify
@@ -41,7 +41,7 @@ final class VPhoneLaunchpadCoreBundle {
 
         var title: String {
             switch self {
-            case .prepare: String(localized: "Read local build")
+            case .prepare: String(localized: "Prepare bundle")
             case .download: String(localized: "Download")
             case .verify: String(localized: "Verify SHA-256")
             case .install: String(localized: "Install as root")
@@ -51,48 +51,114 @@ final class VPhoneLaunchpadCoreBundle {
         }
     }
 
-    struct InstallProgress {
+    /// Where an install came from, kept so Retry can start it again after a
+    /// relaunch, when the downloaded files are gone.
+    enum InstallSource: Codable {
+        case release(VPhoneLaunchpadRelease)
+        case artifact(VPhoneLaunchpadArtifact)
+        case local(path: String)
+    }
+
+    /// The last install and how far it got. It is written to disk on every
+    /// change, so it survives quitting Launchpad; a step that was running
+    /// then comes back as failed and can be retried.
+    struct InstallProgress: Codable {
         /// The store version, once known. A local build's comes from its
         /// Info.plist in the prepare step.
         var version: String?
-        let source: String
+        let source: InstallSource
+        let name: String
         let size: Int64
         let plan: [InstallStep]
         var steps: [InstallStep: VPhoneLaunchpadStatus] = [:]
         var received: Int64 = 0
-        var error: VPhoneLaunchpadError?
+        var errorMessage: String?
+        var errorDetail: String?
+        var startedAt = Date()
 
         init(release: VPhoneLaunchpadRelease) {
             version = release.version
-            source = release.assetName
+            source = .release(release)
+            name = release.assetName
             size = release.size
             plan = [.download, .verify, .install, .policy, .preflight]
         }
 
         init(local: URL) {
-            source = local.lastPathComponent
+            source = .local(path: local.path)
+            name = local.lastPathComponent
             size = 0
             plan = [.prepare, .install, .policy, .preflight]
         }
 
+        /// The version is read from the bundle once the artifact is unpacked.
+        init(artifact: VPhoneLaunchpadArtifact) {
+            source = .artifact(artifact)
+            name = artifact.name
+            size = artifact.size
+            plan = [.download, .verify, .prepare, .install, .policy, .preflight]
+        }
+
         func status(_ step: InstallStep) -> VPhoneLaunchpadStatus {
             steps[step] ?? .pending
+        }
+
+        var error: VPhoneLaunchpadError? {
+            get { errorMessage.map { VPhoneLaunchpadError($0, detail: errorDetail) } }
+            set {
+                errorMessage = newValue?.message
+                errorDetail = newValue?.detail
+            }
+        }
+
+        /// Every step passed, or was skipped.
+        var isFinished: Bool {
+            plan.allSatisfy { status($0) == .passed || status($0) == .warning }
+        }
+
+        /// Once the bundle is in the store, only the checks after it failed,
+        /// and those may be skipped.
+        var canSkip: Bool {
+            error != nil && status(.install) == .passed
+        }
+
+        var overall: VPhoneLaunchpadStatus {
+            if error != nil {
+                return .failed
+            }
+            if !isFinished {
+                return .running
+            }
+            return plan.contains { status($0) == .warning } ? .warning : .passed
         }
     }
 
     private(set) var installed: [Installed] = []
     private(set) var releases: [VPhoneLaunchpadRelease] = []
     private(set) var releasesError: String?
-    private(set) var progress: InstallProgress?
+    private(set) var artifacts: [VPhoneLaunchpadArtifact] = []
+    private(set) var artifactsError: String?
+    private(set) var hasGitHubToken = VPhoneLaunchpadGitHubToken.load() != nil
+    private(set) var progress: InstallProgress? {
+        didSet { Self.saveProgress(progress) }
+    }
+
     var actionError: VPhoneLaunchpadError?
 
     private let helper: VPhoneLaunchpadHelperClient
     private let history: VPhoneLaunchpadCommandHistory
     private static let activeVersionKey = "VPhoneLaunchpadActiveBundleVersion"
+    private static let acceptedVersionsKey = "VPhoneLaunchpadAcceptedBundleVersions"
 
     init(helper: VPhoneLaunchpadHelperClient, history: VPhoneLaunchpadCommandHistory) {
         self.helper = helper
         self.history = history
+        #if DEBUG
+            if VPhoneLaunchpadPreview.isActive {
+                return
+            }
+        #endif
+        progress = Self.loadProgress()
     }
 
     // MARK: - Active version
@@ -117,16 +183,47 @@ final class VPhoneLaunchpadCoreBundle {
         installed.first { $0.version == activeVersion }
     }
 
-    /// Machines appears once the active bundle has passed host preflight.
+    /// The active bundle passed host preflight, or the user chose to use it
+    /// without.
     var isReady: Bool {
-        active?.preflight == .passed
+        guard let active else {
+            return false
+        }
+        return active.preflight == .passed || isAccepted(active.version)
     }
 
     var isInstalling: Bool {
         guard let progress else {
             return false
         }
-        return progress.error == nil && progress.status(.preflight) != .passed
+        return progress.error == nil && !progress.isFinished
+    }
+
+    // MARK: - Accepted versions
+
+    /// Versions whose failed preflight the user chose to skip.
+    private var acceptedVersions: Set<String> {
+        get {
+            access(keyPath: \.acceptedVersions)
+            return Set(UserDefaults.standard.stringArray(forKey: Self.acceptedVersionsKey) ?? [])
+        }
+        set {
+            withMutation(keyPath: \.acceptedVersions) {
+                UserDefaults.standard.set(newValue.sorted(), forKey: Self.acceptedVersionsKey)
+            }
+        }
+    }
+
+    func isAccepted(_ version: String) -> Bool {
+        acceptedVersions.contains(version)
+    }
+
+    func setAccepted(_ version: String, _ isAccepted: Bool) {
+        if isAccepted {
+            acceptedVersions.insert(version)
+        } else {
+            acceptedVersions.remove(version)
+        }
     }
 
     /// The newest release that is not installed yet, if it is newer than
@@ -156,6 +253,7 @@ final class VPhoneLaunchpadCoreBundle {
             await verify(version)
         }
         await fetchReleases()
+        await fetchArtifacts()
     }
 
     func fetchReleases() async {
@@ -165,6 +263,31 @@ final class VPhoneLaunchpadCoreBundle {
         } catch {
             releasesError = error.localizedDescription
         }
+    }
+
+    func fetchArtifacts() async {
+        do {
+            artifacts = try await VPhoneLaunchpadArtifact.fetch(token: VPhoneLaunchpadGitHubToken.load())
+            artifactsError = nil
+        } catch {
+            artifactsError = error.localizedDescription
+        }
+    }
+
+    /// An empty token removes the saved one.
+    func setGitHubToken(_ token: String) {
+        let token = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            if token.isEmpty {
+                VPhoneLaunchpadGitHubToken.delete()
+            } else {
+                try VPhoneLaunchpadGitHubToken.save(token)
+            }
+        } catch {
+            actionError = error as? VPhoneLaunchpadError
+                ?? VPhoneLaunchpadError(String(localized: "Unable to save the token in the keychain."), detail: error.localizedDescription)
+        }
+        hasGitHubToken = VPhoneLaunchpadGitHubToken.load() != nil
     }
 
     private func loadInstalled() {
@@ -306,7 +429,58 @@ final class VPhoneLaunchpadCoreBundle {
         }
     }
 
-    /// The steps a release and a local build share: the helper installs the
+    /// Installs the bundle inside a GitHub Actions artifact as
+    /// `<version>-ci.<commit>`. The artifact is checked against the digest
+    /// GitHub published; the bundle zip inside it is then handed over like a
+    /// local build.
+    func installArtifact(_ artifact: VPhoneLaunchpadArtifact) async {
+        progress = InstallProgress(artifact: artifact)
+        var archive: URL?
+        var work: URL?
+        defer {
+            if let archive {
+                try? FileManager.default.removeItem(at: archive.deletingLastPathComponent())
+            }
+            if let work {
+                try? FileManager.default.removeItem(at: work)
+            }
+        }
+        do {
+            guard let token = VPhoneLaunchpadGitHubToken.load() else {
+                throw VPhoneLaunchpadError(String(localized: "Add a GitHub token to download builds from GitHub Actions."))
+            }
+            set(.download, .running)
+            let (file, digest) = try await artifact.download(token: token) { received in
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated { self.progress?.received = received }
+                }
+            }
+            archive = file
+            set(.download, .passed)
+
+            set(.verify, .running)
+            guard digest == artifact.sha256.lowercased() else {
+                throw VPhoneLaunchpadError(
+                    String(localized: "The download could not be verified. Try again."),
+                    detail: String(localized: "Expected \(artifact.sha256)\nReceived \(digest)"),
+                )
+            }
+            set(.verify, .passed)
+
+            set(.prepare, .running)
+            let bundleArchive = try await VPhoneLaunchpadArtifact.bundleArchive(in: file)
+            let local = try await VPhoneLaunchpadLocalBundle.prepare(bundleArchive, suffix: artifact.versionSuffix)
+            work = local.workDirectory
+            progress?.version = local.version
+            set(.prepare, .passed)
+
+            try await installAndVerify(version: local.version, archive: local.archive, sha256: local.sha256)
+        } catch {
+            fail(error)
+        }
+    }
+
+    /// The steps every source shares: the helper installs the
     /// archive as root, then the new version becomes active and is checked.
     private func installAndVerify(version: String, archive: URL, sha256: String) async throws {
         set(.install, .running)
@@ -317,6 +491,12 @@ final class VPhoneLaunchpadCoreBundle {
 
         loadInstalled()
         activeVersion = version
+        try await checkInstalled(version)
+    }
+
+    /// The policy exception and host preflight for a bundle already in the
+    /// store.
+    private func checkInstalled(_ version: String) async throws {
         set(.policy, .running)
         set(.preflight, .running)
         await verify(version)
@@ -325,7 +505,7 @@ final class VPhoneLaunchpadCoreBundle {
         set(.preflight, installed?.preflight ?? .failed)
         if installed?.preflight != .passed {
             throw VPhoneLaunchpadError(
-                String(localized: "Host preflight failed. Fix the issue below, then choose Run Preflight Again."),
+                String(localized: "Host preflight failed. Fix the issue and retry, or skip to use this version anyway."),
                 detail: installed?.preflightDetail,
             )
         }
@@ -339,8 +519,92 @@ final class VPhoneLaunchpadCoreBundle {
             ?? VPhoneLaunchpadError(String(localized: "Unable to install the bundle. Try again."), detail: error.localizedDescription)
     }
 
+    // MARK: - Retry and skip
+
+    /// Runs the failed install again. Once the bundle is in the store only
+    /// the checks after it run again; before that the whole install starts
+    /// over, since a download does not outlive the attempt.
+    func retry() async {
+        guard let progress, !isInstalling else {
+            return
+        }
+        if progress.status(.install) == .passed, let version = progress.version,
+           installed.contains(where: { $0.version == version })
+        {
+            self.progress?.error = nil
+            do {
+                try await checkInstalled(version)
+            } catch {
+                fail(error)
+            }
+            return
+        }
+        switch progress.source {
+        case let .release(release):
+            await install(release)
+        case let .artifact(artifact):
+            await installArtifact(artifact)
+        case let .local(path):
+            await installLocal(URL(fileURLWithPath: path))
+        }
+    }
+
+    /// Accepts a bundle whose policy exception or preflight failed, so it can
+    /// be used anyway. The choice is remembered for that version.
+    func skipFailedChecks() {
+        guard let current = progress, current.canSkip, let version = current.version else {
+            return
+        }
+        for step in current.plan where current.status(step) != .passed {
+            set(step, .warning)
+        }
+        progress?.error = nil
+        setAccepted(version, true)
+    }
+
     func dismissProgress() {
         progress = nil
+    }
+
+    // MARK: - Persistence
+
+    private static var progressFile: URL {
+        URL.applicationSupportDirectory
+            .appendingPathComponent("vphone-launchpad", isDirectory: true)
+            .appendingPathComponent("bundle-install.json")
+    }
+
+    private static func saveProgress(_ progress: InstallProgress?) {
+        #if DEBUG
+            if VPhoneLaunchpadPreview.isActive {
+                return
+            }
+        #endif
+        let file = progressFile
+        guard let progress else {
+            try? FileManager.default.removeItem(at: file)
+            return
+        }
+        try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? VPhoneLaunchpadBundleReceipt.encoder.encode(progress).write(to: file, options: .atomic)
+    }
+
+    /// A step still marked running belonged to a Launchpad that quit.
+    private static func loadProgress() -> InstallProgress? {
+        guard let data = try? Data(contentsOf: progressFile),
+              var progress = try? VPhoneLaunchpadBundleReceipt.decoder.decode(InstallProgress.self, from: data)
+        else {
+            return nil
+        }
+        let interrupted = progress.plan.filter { progress.status($0) == .running }
+        guard !interrupted.isEmpty else {
+            return progress
+        }
+        for step in interrupted {
+            progress.steps[step] = .failed
+        }
+        progress.error = VPhoneLaunchpadError(String(localized: "Launchpad quit before the install finished. Retry to continue."))
+        return progress
     }
 
     private func set(_ step: InstallStep, _ status: VPhoneLaunchpadStatus) {
@@ -362,6 +626,9 @@ final class VPhoneLaunchpadCoreBundle {
             actionError = VPhoneLaunchpadError(String(localized: "Unable to Remove VPhone.bundle \(version)"), detail: error.localizedDescription)
         }
         loadInstalled()
+        if !installed.contains(where: { $0.version == version }) {
+            setAccepted(version, false)
+        }
     }
 }
 
@@ -369,6 +636,8 @@ final class VPhoneLaunchpadCoreBundle {
     extension VPhoneLaunchpadCoreBundle {
         func applyPreview(installing: Bool) {
             releases = VPhoneLaunchpadPreview.releases
+            artifacts = VPhoneLaunchpadPreview.artifacts
+            hasGitHubToken = false
             if installing {
                 installed = []
                 var progress = InstallProgress(release: releases[0])
@@ -377,7 +646,13 @@ final class VPhoneLaunchpadCoreBundle {
                 self.progress = progress
                 return
             }
-            progress = nil
+            var progress = InstallProgress(release: releases[1])
+            progress.steps = [.download: .passed, .verify: .passed, .install: .passed, .policy: .passed, .preflight: .failed]
+            progress.error = VPhoneLaunchpadError(
+                String(localized: "Host preflight failed. Fix the issue and retry, or skip to use this version anyway."),
+                detail: "AMFI blocked vphone-vm",
+            )
+            self.progress = progress
             installed = VPhoneLaunchpadPreview.releases.dropFirst().map { release in
                 var bundle = Installed(receipt: VPhoneLaunchpadBundleReceipt(
                     version: release.version,

@@ -75,11 +75,45 @@ final class VPhoneLaunchpadHostSetup {
     }
 
     var requiredPassed: Bool {
-        required.allSatisfy { $0.status == .passed }
+        required.allSatisfy(isSatisfied)
     }
 
     var passedRequiredCount: Int {
-        required.count(where: { $0.status == .passed })
+        required.count(where: isSatisfied)
+    }
+
+    func isSatisfied(_ check: VPhoneLaunchpadHostCheck) -> Bool {
+        check.status == .passed || isSkipped(check)
+    }
+
+    // MARK: - Skipping
+
+    /// Checks that can misjudge an unusual host, such as a Mac mini in a
+    /// rack or a library on a network volume. The user may take the risk and
+    /// skip them; the bundle's own preflight still runs. Developer Tools
+    /// access and the helper cannot be skipped: installing needs both.
+    static let skippable: Set<VPhoneLaunchpadHostCheck.Kind> = [.macOS, .physicalMac, .libraryVolume]
+    private static let skippedKey = "VPhoneLaunchpadSkippedHostChecks"
+
+    private(set) var skipped: Set<VPhoneLaunchpadHostCheck.Kind> = Set(
+        (UserDefaults.standard.stringArray(forKey: skippedKey) ?? []).compactMap(VPhoneLaunchpadHostCheck.Kind.init),
+    )
+
+    func isSkipped(_ check: VPhoneLaunchpadHostCheck) -> Bool {
+        check.status != .passed && skipped.contains(check.kind)
+    }
+
+    func canSkip(_ check: VPhoneLaunchpadHostCheck) -> Bool {
+        Self.skippable.contains(check.kind) && (check.status == .failed || check.status == .warning)
+    }
+
+    func setSkipped(_ kind: VPhoneLaunchpadHostCheck.Kind, _ isSkipped: Bool) {
+        if isSkipped {
+            skipped.insert(kind)
+        } else {
+            skipped.remove(kind)
+        }
+        UserDefaults.standard.set(skipped.map(\.rawValue).sorted(), forKey: Self.skippedKey)
     }
 
     var isDeveloperToolAuthorized: Bool {

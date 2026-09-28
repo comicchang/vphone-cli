@@ -15,6 +15,8 @@
         }
 
         static let sheetNotification = Notification.Name("VPhoneLaunchpadPreviewSheet")
+        /// The source a Core Bundle sheet opens on.
+        static var coreBundleSource = VPhoneLaunchpadCoreBundleView.Source.releases
 
         // MARK: - Driver
 
@@ -46,30 +48,29 @@
             for (suffix, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
                 NSApp.appearance = NSAppearance(named: appearance)
 
-                model.previewSetupCompleted = false
                 model.helper.applyPreview(.notInstalled)
                 model.host.applyPreview(blocked: true)
                 model.bundles.applyPreview(installing: false)
-                model.selection = .hostSetup
-                await shot("01-host-setup-first-run", suffix)
+                await panel(model, .hostSetup, "01-host-setup-first-run", suffix)
 
                 model.helper.applyPreview(.ready("1"))
                 model.host.applyPreview(blocked: false)
                 model.bundles.applyPreview(installing: true)
-                model.selection = .coreBundle
-                await shot("02-core-bundle-first-install", suffix)
+                await panel(model, .coreBundle, "02-core-bundle-first-install", suffix)
 
                 model.bundles.applyPreview(installing: false)
-                model.previewSetupCompleted = true
-                model.selection = .coreBundle
-                await shot("03-core-bundle", suffix)
+                await panel(model, .coreBundle, "03-core-bundle", suffix)
+                coreBundleSource = .actions
+                await panel(model, .coreBundle, "03b-core-bundle-actions", suffix)
+                coreBundleSource = .releases
 
-                model.selection = .hostSetup
-                await shot("04-host-setup-passed", suffix)
+                await panel(model, .hostSetup, "04-host-setup-passed", suffix)
 
                 model.machines.selection = path("research-01")
-                model.selection = .machines
                 await shot("05-machines", suffix)
+                model.showsInspector = false
+                await shot("05a-machines-no-inspector", suffix)
+                model.showsInspector = true
                 if let machine = model.machines.selected {
                     await standalone("05b-machine-inspector", suffix, size: NSSize(width: 380, height: 980)) {
                         VPhoneLaunchpadMachineInspector(machine: machine, onShowProgress: { _ in }, onOpenConsole: { _ in })
@@ -101,6 +102,18 @@
 
         private static var mainWindow: NSWindow? {
             NSApp.windows.first { $0.isVisible && $0.sheetParent == nil && $0.frame.width > 400 }
+        }
+
+        private static func panel(
+            _ model: VPhoneLaunchpadModel,
+            _ panel: VPhoneLaunchpadModel.Panel,
+            _ name: String,
+            _ suffix: String,
+        ) async {
+            model.panel = panel
+            await shot(name, suffix)
+            model.panel = nil
+            try? await Task.sleep(for: .milliseconds(800))
         }
 
         private static func sheet(_ sheet: VPhoneLaunchpadMachinesView.Sheet, _ name: String, _ suffix: String) async {
@@ -172,6 +185,27 @@
                 downloadURL: URL(string: "https://example.invalid/VPhone-\(version).zip")!,
                 size: size,
                 sha256: sha256,
+            )
+        }
+
+        static let artifacts: [VPhoneLaunchpadArtifact] = [
+            artifact(1, "cd013c2a5e8f41b7d09c3e6a2f14b85d7c90e3a1", "2026-09-28T02:14:00Z"),
+            artifact(2, "374a2c5f0b1e9d8c7a6b5d4e3f2a1b0c9d8e7f6a", "2026-09-27T16:40:00Z"),
+        ]
+
+        private static func artifact(_ id: Int64, _ commit: String, _ date: String) -> VPhoneLaunchpadArtifact {
+            let created = ISO8601DateFormatter().date(from: date) ?? Date()
+            return VPhoneLaunchpadArtifact(
+                id: id,
+                name: "vphone-release-\(commit)",
+                commit: commit,
+                branch: "main",
+                runID: id,
+                createdAt: created,
+                expiresAt: created.addingTimeInterval(7 * 86400),
+                size: 20_564_139,
+                sha256: String(repeating: "0", count: 64),
+                downloadURL: URL(string: "https://example.invalid/\(id).zip")!,
             )
         }
 

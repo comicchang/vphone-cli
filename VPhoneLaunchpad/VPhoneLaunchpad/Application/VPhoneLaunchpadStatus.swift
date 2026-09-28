@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - Status
 
-nonisolated enum VPhoneLaunchpadStatus: Equatable, Sendable {
+nonisolated enum VPhoneLaunchpadStatus: String, Codable, Sendable {
     case passed
     case warning
     case failed

@@ -40,24 +40,35 @@ struct VPhoneLaunchpadNewMachineView: View {
         return selectedPairing.map { ($0.ios.url, $0.recommendedCloudOS.url) }
     }
 
+    /// Used when the name field is left empty. It is refused only when a
+    /// machine or folder of that name already exists.
+    private static let defaultName = "research-01"
+
+    private var effectiveName: String {
+        let name = name.trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? Self.defaultName : name
+    }
+
     private var machine: VPhoneLaunchpadMachinePath {
-        VPhoneLaunchpadMachinePath(libraryRoot: location, name: name)
+        VPhoneLaunchpadMachinePath(libraryRoot: location, name: effectiveName)
     }
 
     private var nameProblem: String? {
-        if name.isEmpty {
-            return nil
-        }
-        if !VPhoneLaunchpadNames.isValidMachineName(name) {
+        let isDefault = name.trimmingCharacters(in: .whitespaces).isEmpty
+        if !VPhoneLaunchpadNames.isValidMachineName(effectiveName) {
             return String(localized: "Use letters, digits, dots, dashes and underscores.")
         }
         if model.machines.machines.contains(where: { $0.path == machine }) || model.machines.creations[machine]?.isRunning == true {
-            return String(localized: "A machine with this name already exists.")
+            return isDefault
+                ? String(localized: "\(Self.defaultName) already exists. Enter another name.")
+                : String(localized: "A machine with this name already exists.")
         }
         if FileManager.default.fileExists(atPath: machine.url.path) {
-            return String(localized: "A folder with this name already exists in this location.")
+            return isDefault
+                ? String(localized: "A folder named \(Self.defaultName) already exists in this location. Enter another name.")
+                : String(localized: "A folder with this name already exists in this location.")
         }
-        if !VPhoneLaunchpadMachineLocations.socketPathFits(root: location, name: name) {
+        if !VPhoneLaunchpadMachineLocations.socketPathFits(root: location, name: effectiveName) {
             return String(localized: "The path is too long. Use a shorter name, or a location with a shorter path.")
         }
         return nil
@@ -68,13 +79,13 @@ struct VPhoneLaunchpadNewMachineView: View {
     }
 
     private var canCreate: Bool {
-        !name.isEmpty && nameProblem == nil && locationProblem == nil && sources != nil
+        nameProblem == nil && locationProblem == nil && sources != nil
     }
 
     var body: some View {
         Form {
             Section {
-                TextField("Name", text: $name, prompt: Text(verbatim: "research-01"))
+                TextField("Name", text: $name, prompt: Text(verbatim: Self.defaultName))
                 locationPicker
             } footer: {
                 if let problem = nameProblem ?? locationProblem {
@@ -276,7 +287,7 @@ struct VPhoneLaunchpadNewMachineView: View {
             return
         }
         let options = VPhoneLaunchpadCreationPipeline.Options(
-            name: name,
+            name: effectiveName,
             libraryRoot: location,
             iphoneSource: iphone,
             cloudOSSource: cloudOS,

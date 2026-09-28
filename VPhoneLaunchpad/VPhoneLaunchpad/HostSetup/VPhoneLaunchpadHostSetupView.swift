@@ -2,12 +2,14 @@ import SwiftUI
 
 struct VPhoneLaunchpadHostSetupView: View {
     @Environment(VPhoneLaunchpadModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
 
     private var host: VPhoneLaunchpadHostSetup {
         model.host
     }
 
     var body: some View {
+        @Bindable var host = host
         Form {
             Section {
                 ForEach(host.required) { check in
@@ -26,7 +28,7 @@ struct VPhoneLaunchpadHostSetupView: View {
                         if host.checks.contains(where: { $0.kind == .developerTools && $0.status != .passed }) {
                             Text("Allow vphone-launchpad in Privacy & Security → Developer Tools, then click Reopen.")
                         }
-                        Text("Core Bundle appears once every required check passes.")
+                        Text("A Core Bundle can be installed once every required check passes.")
                     }
                     .foregroundStyle(.secondary)
                 }
@@ -44,18 +46,27 @@ struct VPhoneLaunchpadHostSetupView: View {
             }
         }
         .formStyle(.grouped)
+        .navigationTitle("Host Setup")
+        .frame(width: 600, height: 560)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             host.refreshDeveloperTools()
         }
+        .errorAlert($host.actionError)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
+            ToolbarItem(placement: .automatic) {
+                Button("Check Again") {
                     Task { await model.refreshHost() }
-                } label: {
-                    Label("Check Again", systemImage: "arrow.clockwise")
                 }
                 .help("Run every check again")
                 .disabled(host.isChecking)
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                // Straight on to the next stage while it is not ready.
+                if host.requiredPassed, !model.bundles.isReady {
+                    Button("Continue") { model.panel = .coreBundle }
+                } else {
+                    Button("Done") { dismiss() }
+                }
             }
         }
     }
@@ -65,12 +76,13 @@ struct VPhoneLaunchpadHostSetupView: View {
     /// row into columns and truncated the detail while leaving the button
     /// short of the edge.
     private func row(_ check: VPhoneLaunchpadHostCheck) -> some View {
-        HStack(spacing: 8) {
-            VPhoneLaunchpadStatusIcon(status: check.status)
+        let isSkipped = host.isSkipped(check)
+        return HStack(spacing: 8) {
+            VPhoneLaunchpadStatusIcon(status: isSkipped ? .warning : check.status)
             Text(check.title)
                 .layoutPriority(1)
             Spacer(minLength: 16)
-            Text(check.detail)
+            Text(isSkipped ? String(localized: "Skipped · \(check.detail)") : check.detail)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -104,7 +116,12 @@ struct VPhoneLaunchpadHostSetupView: View {
                 }
             }
         default:
-            EmptyView()
+            if host.isSkipped(check) {
+                Button("Don’t Skip") { host.setSkipped(check.kind, false) }
+            } else if host.canSkip(check) {
+                Button("Skip") { host.setSkipped(check.kind, true) }
+                    .help("Continue without this check. The bundle’s own preflight still runs.")
+            }
         }
     }
 }

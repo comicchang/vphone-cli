@@ -10,12 +10,15 @@ struct VPhoneLaunchpadApp: App {
         Window(Text(verbatim: "vphone-launchpad"), id: "main") {
             VPhoneLaunchpadRootView()
                 .environment(model)
-                .frame(minWidth: 820, minHeight: 560)
                 .onAppear { delegate.model = model }
         }
         .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             CommandGroup(replacing: .newItem) {}
+            CommandGroup(after: .appSettings) {
+                Button("Host Setup…") { model.panel = .hostSetup }
+                Button("Core Bundle…") { model.panel = .coreBundle }
+            }
         }
     }
 }

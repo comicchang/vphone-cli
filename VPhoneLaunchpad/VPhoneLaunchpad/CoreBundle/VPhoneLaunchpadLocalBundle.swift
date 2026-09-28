@@ -30,8 +30,12 @@ nonisolated struct VPhoneLaunchpadLocalBundle: Sendable {
     // MARK: - Prepare
 
     /// Reads the version from the bundle's Info.plist and produces the zip
-    /// and digest the helper expects.
-    @concurrent static func prepare(_ source: URL) async throws -> VPhoneLaunchpadLocalBundle {
+    /// and digest the helper expects. A GitHub Actions build passes its own
+    /// suffix in place of `-local`.
+    @concurrent static func prepare(
+        _ source: URL,
+        suffix: String = versionSuffix,
+    ) async throws -> VPhoneLaunchpadLocalBundle {
         let values = try? source.resourceValues(forKeys: [.isDirectoryKey])
         let isDirectory = values?.isDirectory ?? false
         let fileManager = FileManager.default
@@ -75,7 +79,7 @@ nonisolated struct VPhoneLaunchpadLocalBundle: Sendable {
                 archive = source
             }
 
-            let version = try version(from: infoPlist, source: source)
+            let version = try version(from: infoPlist, source: source, suffix: suffix)
             return try VPhoneLaunchpadLocalBundle(
                 version: version,
                 archive: archive,
@@ -88,14 +92,14 @@ nonisolated struct VPhoneLaunchpadLocalBundle: Sendable {
         }
     }
 
-    private static func version(from infoPlist: Data, source: URL) throws -> String {
+    private static func version(from infoPlist: Data, source: URL, suffix: String) throws -> String {
         guard let plist = try? PropertyListSerialization.propertyList(from: infoPlist, format: nil) as? [String: Any],
               plist["CFBundleIdentifier"] as? String == bundleIdentifier,
               let shortVersion = plist["CFBundleShortVersionString"] as? String
         else {
             throw notVPhoneBundle(source)
         }
-        let version = shortVersion + versionSuffix
+        let version = shortVersion + suffix
         guard VPhoneLaunchpadNames.isCompatibleBundleVersion(version) else {
             throw VPhoneLaunchpadError(String(localized: "VPhone.bundle \(shortVersion) is not supported. Use version \(VPhoneLaunchpadNames.minimumBundleVersion) or newer."))
         }
