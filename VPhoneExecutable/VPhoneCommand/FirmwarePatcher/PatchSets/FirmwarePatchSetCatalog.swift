@@ -46,9 +46,30 @@ public enum FirmwarePatchSetCatalog {
     /// The Frida relaxations widen what any process in the guest may do and
     /// nothing needs them to boot, so `standard` leaves them off. They stay in the
     /// catalogue, version-gated like everything else, and a VM can check them on.
-    public static let manualOnlyPatches: Set<String> = Set(
-        FirmwareKernelFridaPatchSet.manifest.patches.map(\.identifier),
-    )
+    ///
+    /// The hypervisor concealment pair is off for a harder reason: it stops a
+    /// freshly restored 26.4 guest booting at all. See
+    /// ``hypervisorConcealmentPatches``.
+    public static let manualOnlyPatches: Set<String> =
+        Set(FirmwareKernelFridaPatchSet.manifest.patches.map(\.identifier))
+            .union(hypervisorConcealmentPatches)
+
+    /// The two halves of the `hv_vmm_present` concealment, which are one patch in
+    /// everything but name and have to be selected together.
+    ///
+    /// Renaming the OID without mangling the shared cache breaks the graphics and
+    /// ML paths; mangling the cache without the rename does nothing. Both are off
+    /// in `standard` because on a freshly restored 26.4 guest the rename makes
+    /// `bluetoothd`'s cached `kern.hv_vmm_present` lookup fail, which sends it down
+    /// the `MGIsDeviceOneOfType` path, leaves its transport singleton NULL and
+    /// crash-loops it until launchd throttles it; `locationd` then blocks on the
+    /// throttled Bluetooth XPC service, the data migrator hangs, and SpringBoard
+    /// waits on migration forever — a black screen with no panic. See
+    /// `Research/Patches/hv_vmm_present_usermode_xrefs.md`.
+    public static let hypervisorConcealmentPatches: Set<String> = [
+        "kernelcache_exp.hv_vmm",
+        "hv_vmm_dsc",
+    ]
 
     /// The preset a VM gets when nothing else is named.
     ///
@@ -64,12 +85,17 @@ public enum FirmwarePatchSetCatalog {
         selection: .block(manualOnlyPatches),
     )
 
-    /// Everything the bundle declares, including the Frida relaxations. Each
-    /// patch's own version gate still decides whether it lands.
+    /// Everything the bundle declares, including the Frida relaxations and the
+    /// hypervisor concealment. Each patch's own version gate still decides whether
+    /// it lands.
     public static let extendedPreset = VPhonePatchPreset(
         identifier: "extended",
         title: "Extended",
-        summary: "Every patch this bundle declares, including the Frida Stalker relaxations.",
+        summary: """
+        Every patch this bundle declares, including the Frida Stalker relaxations \
+        and the hv_vmm_present concealment that a freshly restored 26.4 guest does \
+        not survive.
+        """,
         patchSets: bundledReferences,
         selection: .all,
     )

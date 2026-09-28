@@ -45,7 +45,6 @@ extension FirmwarePipeline {
         let includeBootChain = includesSet(FirmwareBootChainPatchSet.identifier)
         let includeKernelBase = includesSet(FirmwareKernelBasePatchSet.identifier)
         let includeKernelJailbreak = includesSet(FirmwareKernelJailbreakPatchSet.identifier)
-        let includeHypervisor = includesSet(FirmwareKernelHypervisorPatchSet.identifier)
         let includeDeviceTree = includesSet(FirmwareDeviceTreePatchSet.identifier)
 
         /// Whether the plan turned a patch on. Without a plan, fall back to the
@@ -54,6 +53,13 @@ extension FirmwarePipeline {
         func isEnabled(_ identifier: String, fallback: Bool) -> Bool {
             plan?.isEnabled(identifier) ?? fallback
         }
+
+        // The hypervisor concealment. Its set holds this one patch, so the patcher
+        // goes when the patch does — the gate would refuse the write anyway, but a
+        // patcher built to write nothing is a patcher whose log lines lie.
+        // `standard` blocks it: see FirmwareKernelHypervisorPatchSet.
+        let includeHypervisor = includesSet(FirmwareKernelHypervisorPatchSet.identifier)
+            && isEnabled("kernelcache_exp.hv_vmm", fallback: false)
 
         let baseIs18 = iOSBase?.major == 18
         let baseIs27 = iOSBase?.major == 27

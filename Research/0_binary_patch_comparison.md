@@ -15,8 +15,31 @@
 > Two presets ship, prewritten, in
 > `VPhone.bundle/Contents/Resources/patches_presets/`. Both name all nine sets and
 > differ only in their selection: `standard` (the default, and what a VM gets
-> unless `--preset` says otherwise) blocks the two Frida Stalker relaxations;
-> `extended` blocks nothing. A VM records only the boxes its owner changed, in
+> unless `--preset` says otherwise) blocks the two Frida Stalker relaxations and the
+> two halves of the `hv_vmm_present` concealment; `extended` blocks nothing.
+>
+> **`hv_vmm_present` concealment is opt-in as of 2026-09-28, and it is not a
+> preference.** `kernelcache_exp.hv_vmm` (the kernel OID rename plus the
+> kernel-internal cstring mangle) and `hv_vmm_dsc` (the shared-cache mangle the JB
+> system installer runs) were made default-on by commit 228326d; on a freshly
+> restored 26.4 guest they are a brick. `bluetoothd` on 23E246 caches its
+> `sysctlbyname("kern.hv_vmm_present")` answer in a `dispatch_once`, gets ENOENT and
+> caches 0, and its chip-selection singleton then picks a transport from
+> `MGIsDeviceOneOfType` — nothing matches a virtual iPhone, the singleton stays
+> NULL, and it faults and crash-loops until launchd throttles it. `locationd` blocks
+> on a synchronous call to the throttled Bluetooth XPC service, the
+> `com.apple.locationd.migrator` datamigrator plugin hangs, and SpringBoard waits on
+> migration: black screen, no panic. The addresses and the full chain are in
+> `Research/Patches/hv_vmm_present_usermode_xrefs.md` (B.3 correction).
+>
+> Neither half is useful alone — the rename without the cache mangle breaks the
+> graphics and ML paths, the mangle without the rename does nothing — so they are
+> declared as a pair, `FirmwarePatchSetCatalog.hypervisorConcealmentPatches`, and a
+> catalogue test refuses a shipped preset that enables one without the other. Both
+> lost `bootEssential`, which they never were: a shipped preset that drops a
+> boot-essential patch warns on every run. The other former EXP patches are
+> untouched — DeviceTree identity and camera, `camera_dsc`, the watchdogd cache
+> patch, and the post-restore Preboot DeviceTree rewrite all stay on by default. A VM records only the boxes its owner changed, in
 > `<vm>/PatchSelection.plist`, and `fw patch` writes what it resolved to
 > `<vm>/PatchPlan.plist` for `cfw install` to reuse.
 >
@@ -80,10 +103,11 @@
 > repository. The native Swift JB install retains the base system patches,
 > launchd jetsam guard, debugserver entitlement edit, iOS 27 Campo entitlement
 > edit, GPU driver, mandatory vphoned, and the small vphone launchd hook described
-> below. The JB firmware pipeline now also runs the former EXP kernel OID and
-> DeviceTree identity/camera patches. The JB system installer runs the former
-> EXP DSC hypervisor and camera patches, watchdogd patch, and post-restore
-> Preboot DeviceTree rewrite. `SPOOF_BUILD` remains opt-in and updates the
+> below. The JB firmware pipeline also runs the former EXP DeviceTree
+> identity/camera patches. The JB system installer runs the former EXP DSC camera
+> patch, watchdogd patch, and post-restore Preboot DeviceTree rewrite. The former
+> EXP kernel OID rename and its DSC half are the exception: declared, but off in
+> `standard` since 2026-09-28 for the reason in the note above. `SPOOF_BUILD` remains opt-in and updates the
 > rootfs and installed SystemOS SystemVersion.plist copies, plus the Preboot
 > Cryptex copy when present. These are install-time integrations;
 > successful patch dry-runs do not establish guest boot or Camera.app behavior.

@@ -90,7 +90,7 @@ struct FirmwarePatchSetCatalogTests {
         #expect(!plan.skippedByVersion.isEmpty)
     }
 
-    @Test("Standard leaves the Frida relaxations off, on every base")
+    @Test("Standard leaves every manual-only patch off, on every base")
     func standardExcludesManualOnly() throws {
         for base in ["18.6.2", "26.4", "27.0"] {
             let plan = try VPhonePatchPlan.resolve(
@@ -105,7 +105,7 @@ struct FirmwarePatchSetCatalogTests {
         }
     }
 
-    @Test("Extended is standard plus the Frida relaxations, and nothing else")
+    @Test("Extended is standard plus the manual-only patches, and nothing else")
     func extendedDiffersOnlyByManualOnly() throws {
         let standard = try VPhonePatchPlan.resolve(
             preset: FirmwarePatchSetCatalog.standardPreset,
@@ -154,8 +154,48 @@ struct FirmwarePatchSetCatalogTests {
                 iOSBase: VPhoneVersion("26.4"),
                 cloudOS: VPhoneVersion(cloud),
             )
-            let on = FirmwarePatchSetCatalog.manualOnlyPatches.allSatisfy { plan.isEnabled($0) }
+            let on = FirmwareKernelFridaPatchSet.manifest.patches.allSatisfy {
+                plan.isEnabled($0.identifier)
+            }
             #expect(on == (cloud == "26.4"))
+        }
+    }
+
+    @Test("The hv_vmm_present halves move together, and only extended has them")
+    func hypervisorConcealmentIsOptInAsAPair() throws {
+        // Two patches, one behaviour: the kernel OID rename and the shared-cache
+        // mangle. A plan holding one without the other is broken either way round —
+        // the rename alone breaks the graphics and ML paths, the mangle alone does
+        // nothing — and both together brick a freshly restored 26.4 guest, which is
+        // why standard has neither. See FirmwareKernelHypervisorPatchSet.
+        let pair = FirmwarePatchSetCatalog.hypervisorConcealmentPatches
+        #expect(pair.count == 2)
+        for identifier in pair {
+            let declaration = try #require(
+                FirmwarePatchSetCatalog.allDeclarations.first { $0.identifier == identifier },
+                "\(identifier) is not declared by any bundled set",
+            )
+            // Not boot-essential: standard drops both, and a shipped preset that
+            // drops a boot-essential patch warns on every run.
+            #expect(!declaration.bootEssential)
+        }
+        for base in ["18.6.2", "26.4", "27.0"] {
+            for cloud in ["26.1", "26.4"] {
+                for preset in FirmwarePatchSetCatalog.builtInPresets {
+                    let plan = try VPhonePatchPlan.resolve(
+                        preset: preset,
+                        patchSets: FirmwarePatchSetCatalog.bundled,
+                        iOSBase: VPhoneVersion(base),
+                        cloudOS: VPhoneVersion(cloud),
+                    )
+                    let on = pair.filter { plan.isEnabled($0) }
+                    #expect(
+                        on.isEmpty || on == pair,
+                        "\(preset.identifier) on \(base)/\(cloud) enabled only \(on)",
+                    )
+                    #expect(on.isEmpty == preset.isStandard)
+                }
+            }
         }
     }
 

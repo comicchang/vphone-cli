@@ -8,9 +8,15 @@ This document enumerates every place in user space that reads
 caller appears to do with the result, and what is reasonable to expect from
 patching that specific reader instead of the kernel.
 
-## Current shipping design — blacklist-flip + kernel rename
+## The design — blacklist-flip + kernel rename (opt-in since 2026-09-28)
 
-The current patch pipeline takes a **kernel-rename + user-mode-blacklist**
+**Not applied by default any more.** Both halves are blocked by the `standard`
+preset and reachable only through `--preset extended` or two per-VM checkmarks,
+because on a freshly restored 26.4 guest they mean a permanent black screen. The
+reason is `bluetoothd`, and it is written out under B.3 below. What follows
+describes the patch as it works when it *is* selected.
+
+The patch pipeline takes a **kernel-rename + user-mode-blacklist**
 approach. Summary:
 
 * The Swift kernel patch `patch_hv_vmm_rename` (JB-26, Group B) renames
@@ -36,6 +42,13 @@ approach. Summary:
   JB-3.5 and `cfw_install_dev.sh` 6.5/7) was removed. With the kernel
   rename in place, those 6 rootfs binaries fall into the "unpatched → ENOENT
   → cache 0" bucket automatically.
+
+  **This is the step that bricks a 26.4 guest.** "Cache 0" is not harmless for
+  every rootfs binary: on 23E246 `bluetoothd` reads the sysctl (it did not on
+  23B85), and a cached 0 sends it down a device-type table that has no entry for a
+  virtual iPhone, so it crash-loops. The mangle covered only the 37 cstrings inside
+  the shared cache; standalone executables were never touched. See the correction
+  under B.3 for the full chain from there to a black screen.
 
 The earlier whitelist-only design (no kernel patch, mangle a chosen
 subset to ENOENT) is preserved for reference in the section
@@ -221,7 +234,7 @@ encoding of the address (raw, image-relative, or 36-bit chained-fixup
 shape) appears in any other section either.
 
 ```
-usr/sbin/bluetoothd                                                      (verified: 0 ADRPs into the page; 0 byte-pointer matches)
+usr/sbin/bluetoothd            23B85 ONLY — see the correction below     (verified: 0 ADRPs into the page; 0 byte-pointer matches)
 System/Library/Frameworks/MediaToolbox.framework/MediaToolbox
 System/Library/Frameworks/ManagedAppDistribution.framework/Support/managedappdistributiond
 System/Library/PrivateFrameworks/ApplePushService.framework/apsd
@@ -231,6 +244,39 @@ System/Library/PrivateFrameworks/NeuralNetworks.framework/NeuralNetworks
 System/Library/PrivateFrameworks/Recon3D.framework/Recon3D
 System/Library/PrivateFrameworks/VFX.framework/VFX
 ```
+
+> **Correction (2026-09-28): B.3 is per build, and `bluetoothd` left it.** This
+> inventory is 26.1 (23B85). On **26.4 (23E246)** `usr/sbin/bluetoothd`
+> (UUID `58F4BA7F-2E62-3E04-8ABB-03D06FD7A591`) reads the sysctl for real: the
+> `sysctlbyname("kern.hv_vmm_present", …)` is at `0x1004ac7b4`, inside a
+> `dispatch_once` at `0x1004ac798` whose flag is `0x100b51bc0`, so the answer is
+> cached for the life of the process. Its Bluetooth chip-selection singleton
+> (`0x10042fa40`) uses that flag to choose the virtual transport — the 6000 path.
+>
+> With the OID renamed the lookup returns ENOENT, 0 is cached, and the singleton
+> falls through to the `MGIsDeviceOneOfType` table instead. Nothing in the table
+> matches a virtual iPhone, the transport singleton at `0x100b50bd0` stays NULL,
+> and `bluetoothd` faults on `ldr w23, [x0, #0x31c]` at `+0x402864`
+> (EXC_BAD_ACCESS at `0x31c`). It crash-loops until launchd throttles
+> `com.apple.bluetoothd`.
+>
+> That is why the guest never draws: `locationd`'s `CLSeparationAlertsServiceSilo`
+> makes a **synchronous** call to `com.apple.server.bluetooth.general.xpc`, which is
+> now throttled, so it blocks; the `com.apple.locationd.migrator` datamigrator
+> plugin then hangs for 65+ minutes (stackshots under the guest's CrashReporter as
+> `stacks+com.apple.datamigrator-*.ips`); SpringBoard waits for migration to finish.
+> A black screen with no panic and no log line naming the cause.
+>
+> Consequence for the shipping design: both halves of the concealment — the kernel
+> OID rename and the shared-cache mangle — are **off in the `standard` preset** as of
+> this date and are opt-in only (`--preset extended`, or the two checkmarks
+> together). A freshly restored 26.4 VM does not survive them. The pair is
+> `kernelcache_exp.hv_vmm` + `hv_vmm_dsc`; see
+> `FirmwarePatchSetCatalog.hypervisorConcealmentPatches`.
+>
+> What this does not say: nothing here re-verifies B.3 for the other eight binaries
+> on 23E246, and nothing here says the 23B85 result was wrong for 23B85. Treat every
+> "unreferenced" line as a claim about the build it was measured on.
 
 #### B.4 Adjacent‑string anchor (REFERENCED but not a sysctl call)
 

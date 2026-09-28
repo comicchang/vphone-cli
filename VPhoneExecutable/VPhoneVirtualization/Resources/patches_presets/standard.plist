@@ -4,9 +4,15 @@
   The preset every VM gets unless another is named.
 
   It draws on every patch set the bundle ships and turns on all of their patches
-  bar the Frida Stalker pair, which widen what any process in the guest may do and
-  which nothing needs in order to boot. Each patch's own version gate still decides
-  whether it lands on this pairing of iPhone base and cloudOS.
+  bar two pairs. The Frida Stalker pair widens what any process in the guest may do
+  and nothing needs it in order to boot. The hv_vmm_present pair — the kernel OID
+  rename and the shared-cache mangle — leaves a freshly restored 26.4 guest on a
+  black screen: bluetoothd caches the failed sysctl lookup, crash-loops, and the
+  data migrator SpringBoard waits on never finishes. Each pair is all-or-nothing;
+  see FirmwareKernelHypervisorPatchSet for the whole chain.
+
+  Each patch's own version gate still decides whether it lands on this pairing of
+  iPhone base and cloudOS.
 
   Prewritten and reviewed. Nothing in the tool edits a preset: a VM records which
   boxes its owner changed, and those compose on top of this.
@@ -87,6 +93,8 @@
 		<array>
 			<string>kernelcache_frida.thread_set_state_entitlement_flag</string>
 			<string>kernelcache_frida.vm_map_delete_immutable_code</string>
+			<string>kernelcache_exp.hv_vmm</string>
+			<string>hv_vmm_dsc</string>
 		</array>
 	</dict>
 </dict>

@@ -1,13 +1,23 @@
 // FirmwareKernelHypervisorPatchSet.swift — Manifest for the hv_vmm rename.
 //
 // The guest runs under a hypervisor and the research kernel says so through an
-// `hv_vmm_present` sysctl. Renaming the OID and mangling its internal caller
-// hides that from the userland checks that would otherwise refuse to run, which
-// is what lets stock apps start at all.
+// `hv_vmm_present` sysctl. Renaming the OID and mangling its internal caller hides
+// that from userland checks that would otherwise refuse to run.
+//
+// **Off in `standard`, and it is not a preference.** On a freshly restored 26.4
+// guest the rename bricks the boot: `bluetoothd` caches its
+// `sysctlbyname("kern.hv_vmm_present")` answer in a `dispatch_once`, gets ENOENT,
+// caches 0, and picks its Bluetooth transport from `MGIsDeviceOneOfType` instead —
+// nothing matches, its transport singleton stays NULL, and it faults and
+// crash-loops until launchd throttles `com.apple.bluetoothd`. `locationd` then
+// blocks on a synchronous call to the throttled Bluetooth XPC service, the
+// `com.apple.locationd.migrator` data-migrator plugin hangs for over an hour, and
+// SpringBoard waits on migration — black screen, no panic. `--preset extended` or a
+// per-VM checkmark turns it back on, together with `hv_vmm_dsc`.
 //
 // Its own set because it is the one kernel change that is about hiding the
-// hypervisor rather than about jailbreaking, and a preset studying VM detection
-// wants it off without giving up the rest.
+// hypervisor rather than about jailbreaking, so a preset can take it or leave it
+// without giving up the rest.
 
 import Foundation
 import VPhonePatchKit
@@ -25,10 +35,11 @@ public enum FirmwareKernelHypervisorPatchSet {
                 title: "hv_vmm_present sysctl",
                 summary: """
                 Renames the hv_vmm_present OID and mangles its internal caller, so a userland \
-                check for the hypervisor finds nothing.
+                check for the hypervisor finds nothing. Off by default: it leaves a freshly \
+                restored 26.4 guest on a black screen. Enable it together with hv_vmm_dsc, \
+                never alone.
                 """,
                 target: .firmware(.kernelcache),
-                bootEssential: true,
             ),
         ],
         requires: ["vphone.kernel.base"],

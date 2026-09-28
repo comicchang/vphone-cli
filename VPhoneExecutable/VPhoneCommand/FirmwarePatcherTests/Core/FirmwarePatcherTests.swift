@@ -523,16 +523,22 @@ struct IM4PPayloadParityTests {
 }
 
 struct FirmwarePipelineTests {
-    @Test func `public JB includes former EXP kernel and device tree patchers`() throws {
+    @Test func `public JB includes the former EXP device tree patchers, not the hv_vmm rename`() throws {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
         let pipeline = FirmwarePipeline(vmDirectory: root, variant: .jb, verbose: false)
         let components = pipeline.buildComponentList(
             restoreDir: root,
             iOSBase: VPhoneVersion("27.0"),
         )
+        // Base and jailbreak, and no KernelExperimentalPatcher: the hv_vmm_present
+        // concealment is off unless a preset or a checkmark asks for it, and a
+        // patcher that would write nothing is not built. See
+        // FirmwareKernelHypervisorPatchSet for what it does to a 26.4 guest.
         let kernel = try #require(components.first { $0.name == "kernelcache" })
-        #expect(kernel.patcherFactories.count == 3)
-        #expect(try kernel.patcherFactories[2](Data(), false) is KernelExperimentalPatcher)
+        #expect(kernel.patcherFactories.count == 2)
+        for factory in kernel.patcherFactories {
+            #expect(try !(factory(Data(), false) is KernelExperimentalPatcher))
+        }
 
         let deviceTree = try #require(components.first { $0.name == "DeviceTree" })
         let patcher = try #require(deviceTree.patcherFactories.first?(Data(), false) as? DeviceTreePatcher)
