@@ -297,13 +297,12 @@ icli's own error `code` (`failed`, `unavailable`, `device_locked`, …) and
 message.
 
 The environment update keeps `launchdhook-vphone.dylib`,
-`SystemHook-vphone.dylib`, `libvcamcaptured.dylib`, `libcamfix.dylib`, and
-`libvlocation.dylib` in
+`SystemHook-vphone.dylib`, `libvcamcaptured.dylib` and `libcamfix.dylib` in
 `/usr/lib` in step with the host bundle. After each connection the VM
 process compares the guest's hashes with `Contents/Resources/guest-resources`,
 uploads the libraries that differ to the staging directory
 (`/var/root/Library/Caches/vphone-environment`) and calls
-`environment.install`. vphoned accepts only those five names and checks each
+`environment.install`. vphoned accepts only those four names and checks each
 SHA-256. When `/` is mounted read-only it runs `/sbin/mount -u -w /`, copies
 each library beside its destination, renames it into place with mode 0755
 and owner root, and tries `/sbin/mount -u -r /` again. An APFS guest can reject
@@ -315,14 +314,27 @@ camera client loads the new hook. The result lists `installed`,
 `restarted_pids` and `reboot_required`, which is true when the launchd hook
 changed: launchd keeps the copy it mapped at boot.
 
-`location.set` publishes the validated coordinate atomically to
-`/var/mobile/Library/Caches/vphone-location.json`. The app hook reads that file
-and delivers updates to authorized `CLLocationManager` clients, including Maps;
-`location.clear` removes it. The system simulation request remains best effort
-because iOS 26.4's location fusion may reject it. `location.current` reports
-`delivery: application_override` when the state file exists; it reports the
-published coordinate, not independent confirmation from each app. Newly
-installed hooks require app relaunch before that app receives overrides.
+`location.set` is IcliKit's `simulateLocation`: it sends locationd's
+`CLSimulationManager` the sequence Xcode uses (`stopLocationSimulation`,
+`clearSimulatedLocations`, `appendSimulatedLocation:`, `flush`,
+`startLocationSimulation`). locationd sends no reply and silently ignores a
+client without `com.apple.locationd.simulation`, so success is decided by a
+read-back: vphoned opens a `CLLocationManager` with
+`initWithEffectiveBundlePath:` on the first authorized System Services bundle
+(`SystemCustomization`, `TimeZone`, `CompassCalibration`), then waits up to 5 s
+for a fix stamped no earlier than one second before the read, within 1e-7° of
+the requested coordinate. The fix must be `fresh` and
+`sourceInformation.isSimulatedBySoftware`; otherwise vphoned clears the
+simulation and returns `unavailable` (`no location within 5 s`, or `locationd
+did not apply the simulated location`). The reply is `simulating: true` plus
+the fix that was read back. `location.clear` stops the simulation and polls for
+up to 6 s until locationd stops reporting a fresh simulated fix.
+`location.current` reads the same way with the caller's timeout and reports
+`fresh` and `simulated` as CoreLocation gives them. The read-back needs
+locationd to deliver a fused fix. The 2.0.4 guest in
+`Research/Guest/location_simulation_26_4_failure.md` never got one; that build
+had the hv_vmm_present concealment on, under which bluetoothd crash-loops and
+locationd blocks on it (issue #438). `standard` no longer enables it.
 
 ## Connection failure behavior
 

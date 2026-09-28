@@ -7,6 +7,10 @@
 //
 // None is boot-essential: a VM with a stock device tree boots, it just looks like
 // a research board and has no camera.
+//
+// The eight Device Identity rewrites came from the former EXP variant and are off
+// in `standard` (`FirmwarePatchSetCatalog.experimentalIdentityPatches`). The camera
+// geometry and added nodes stay on: the camera needs them, not the identity.
 
 import Foundation
 import VPhonePatchKit

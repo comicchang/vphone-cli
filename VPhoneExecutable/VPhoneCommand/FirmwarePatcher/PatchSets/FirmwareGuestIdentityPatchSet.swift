@@ -1,15 +1,18 @@
 // FirmwareGuestIdentityPatchSet.swift — Manifest for what the guest sees of itself.
 //
 // The shared-cache half of the hypervisor concealment that the kernel set starts,
+// the watchdogd patch that goes with it, the Preboot device tree identity rewrite,
 // plus the camera symbols the virtual camera is published through. These pair with
-// `com.vphone.patchset.kernel.hypervisor` and the device tree's camera nodes: on
-// their own, each half leaves the guest inconsistent with itself.
+// `com.vphone.patchset.kernel.hypervisor` and the device tree's identity and camera
+// nodes: on their own, each half leaves the guest inconsistent with itself.
 //
-// `hv_vmm_dsc` is therefore off in `standard` for exactly the reason its kernel
-// half is — see `FirmwareKernelHypervisorPatchSet` for what a 26.4 guest does when
-// the OID is renamed. The watchdogd patch beside it is not part of that pair and
-// stays on: it stops watchdogd acting on a cached positive answer, which is
-// harmless when the sysctl still reads true.
+// Everything here came from the former EXP variant. Only `camera_dsc` is on in
+// `standard`. `hv_vmm_dsc` is off for exactly the reason its kernel half is — see
+// `FirmwareKernelHypervisorPatchSet` for what a 26.4 guest does when the OID is
+// renamed. The watchdogd patch only matters once the hypervisor is hidden, so it
+// moves with that pair (`FirmwarePatchSetCatalog.hypervisorConcealmentPatches`).
+// The Preboot rewrite belongs with the device tree identity patches
+// (`FirmwarePatchSetCatalog.experimentalIdentityPatches`).
 
 import Foundation
 import VPhonePatchKit
@@ -17,10 +20,14 @@ import VPhonePatchKit
 public enum FirmwareGuestIdentityPatchSet {
     public static let identifier = "com.vphone.patchset.guest.identity"
 
+    /// The root `model`, `target-type` and `compatible` rewrite in the restored
+    /// Preboot device tree, run by `cfw install`.
+    public static let prebootDeviceTreeIdentity = "preboot_devicetree.identity"
+
     public static let manifest = VPhonePatchSetManifest(
         identifier: identifier,
         name: "Guest Identity",
-        summary: "Hypervisor concealment in the shared cache and watchdog, plus the virtual camera symbols",
+        summary: "Hypervisor concealment in the shared cache and watchdog, the Preboot identity, and the virtual camera symbols",
         patches: [
             VPhonePatchDeclaration(
                 identifier: "hv_vmm_dsc",
@@ -35,9 +42,21 @@ public enum FirmwareGuestIdentityPatchSet {
             VPhonePatchDeclaration(
                 identifier: "watchdogd.hv_vmm_cache",
                 title: "watchdogd hypervisor cache",
-                summary: "Stops watchdogd caching a positive hypervisor answer and acting on it.",
+                summary: """
+                Forces watchdogd's cached hypervisor answer to true. Without it, watchdogd \
+                panics the guest once kernelcache_exp.hv_vmm renames the sysctl, so it is \
+                off by default with the concealment and must be enabled with it.
+                """,
                 target: .guestExecutable(path: "/usr/libexec/watchdogd"),
-                bootEssential: true,
+            ),
+            VPhonePatchDeclaration(
+                identifier: prebootDeviceTreeIdentity,
+                title: "Preboot device tree identity",
+                summary: """
+                Rewrites the restored device tree's root model, target-type and compatible \
+                entries to iPhone17,3 / D47. Off by default with the other identity rewrites.
+                """,
+                target: .prebootDeviceTree,
             ),
             VPhonePatchDeclaration(
                 identifier: "camera_dsc",

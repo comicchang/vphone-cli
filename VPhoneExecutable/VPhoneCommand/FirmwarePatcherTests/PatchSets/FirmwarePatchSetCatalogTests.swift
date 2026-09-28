@@ -162,14 +162,15 @@ struct FirmwarePatchSetCatalogTests {
     }
 
     @Test
-    func `The hv_vmm_present halves move together, and only extended has them`() throws {
-        // Two patches, one behaviour: the kernel OID rename and the shared-cache
-        // mangle. A plan holding one without the other is broken either way round —
-        // the rename alone breaks the graphics and ML paths, the mangle alone does
-        // nothing — and both together brick a freshly restored 26.4 guest, which is
-        // why standard has neither. See FirmwareKernelHypervisorPatchSet.
+    func `The hv_vmm_present patches move together, and only extended has them`() throws {
+        // Three patches, one behaviour: the kernel OID rename, the shared-cache
+        // mangle and the watchdogd cache patch. A plan holding some without the
+        // rest is broken — the rename alone breaks the graphics and ML paths and
+        // panics watchdogd, the others alone do nothing — and all together brick a
+        // freshly restored 26.4 guest, which is why standard has none. See
+        // FirmwareKernelHypervisorPatchSet.
         let pair = FirmwarePatchSetCatalog.hypervisorConcealmentPatches
-        #expect(pair.count == 2)
+        #expect(pair.count == 3)
         for identifier in pair {
             let declaration = try #require(
                 FirmwarePatchSetCatalog.allDeclarations.first { $0.identifier == identifier },

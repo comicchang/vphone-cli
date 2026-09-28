@@ -9,14 +9,37 @@
 > identifier is the record identifier the patcher already emits, or the common
 > prefix when one patch writes several sites — so `jb.kcall10` is one selectable
 > patch covering its four records, and `sandbox_ext` covers every
-> `sandbox_ext_<index>`. 115 patches are declared in total. `vphone-cli fw patches`
+> `sandbox_ext_<index>`. 116 patches are declared in total. `vphone-cli fw patches`
 > prints them; `--json` is what the Launchpad patch editor reads.
 >
 > Two presets ship, prewritten, in
 > `VPhone.bundle/Contents/Resources/patches_presets/`. Both name all nine sets and
 > differ only in their selection: `standard` (the default, and what a VM gets
-> unless `--preset` says otherwise) blocks the two Frida Stalker relaxations and the
-> two halves of the `hv_vmm_present` concealment; `extended` blocks nothing.
+> unless `--preset` says otherwise) blocks the two Frida Stalker relaxations, the
+> three `hv_vmm_present` concealment patches, and the iPhone17,3 identity rewrites;
+> `extended` blocks nothing.
+>
+> **Only the camera remains of EXP by default (2026-09-28).** `standard` is now the
+> JB baseline plus the virtual camera. Off by default, besides the concealment
+> below: `watchdogd.hv_vmm_cache` (moved into
+> `FirmwarePatchSetCatalog.hypervisorConcealmentPatches`, and no longer
+> `bootEssential` — watchdogd only panics once the OID is renamed), the eight
+> DeviceTree identity rewrites (`devicetree.target_sub_type`,
+> `compatible_secondary`, `product.fdr_product_type`, `product.sub_product_type`,
+> `product.unique_model`, `product.gestalt_variants_rename`,
+> `arm_io.device_type`, `arm_io.soc_generation`), and the post-restore Preboot
+> DeviceTree rewrite, now declared as `preboot_devicetree.identity`
+> (`.prebootDeviceTree`, Guest Identity set). Until now that rewrite was undeclared
+> and `cfw install` ran it on every VM; it now asks the plan first, and a VM with
+> no plan still gets it. The last two groups are
+> `FirmwarePatchSetCatalog.experimentalIdentityPatches`. Still on: the four board
+> presentation properties, camera offsets, the camera / FaceTime / audio / IOPM /
+> SMC / ISP nodes, and `camera_dsc`. Camera support reads `/product/camera`
+> through MobileGestalt and does not depend on the identity rewrites. Issue #438
+> (no location with EXP) is the reason. The `libvlocation.dylib` app hook that
+> worked around it is removed, and `location.*` is back on IcliKit's locationd
+> simulation with read-back. The Preboot DeviceTree comes from restore, so a VM
+> restored with the identity on keeps it until it is restored again.
 >
 > **`hv_vmm_present` concealment is opt-in as of 2026-09-28, and it is not a
 > preference.** `kernelcache_exp.hv_vmm` (the kernel OID rename plus the
@@ -37,9 +60,9 @@
 > declared as a pair, `FirmwarePatchSetCatalog.hypervisorConcealmentPatches`, and a
 > catalogue test refuses a shipped preset that enables one without the other. Both
 > lost `bootEssential`, which they never were: a shipped preset that drops a
-> boot-essential patch warns on every run. The other former EXP patches are
-> untouched — DeviceTree identity and camera, `camera_dsc`, the watchdogd cache
-> patch, and the post-restore Preboot DeviceTree rewrite all stay on by default. A VM records only the boxes its owner changed, in
+> boot-essential patch warns on every run. (The other former EXP patches stayed on
+> in this first change; the note above turns everything but the camera off.) A VM
+> records only the boxes its owner changed, in
 > `<vm>/PatchSelection.plist`, and `fw patch` writes what it resolved to
 > `<vm>/PatchPlan.plist` for `cfw install` to reuse.
 >
@@ -1520,3 +1543,9 @@ coordinate through `CLLocationManager` for authorized clients. The location
 state is an atomically replaced JSON file, and removal restores the native
 path. Maps showed the Tokyo and Apple Park coordinates in the running 26.4 VM;
 the automatic SystemHook injection path was verified after relaunching Maps.
+
+**Removed (2026-09-28).** The hook worked around a symptom of the former EXP
+patches (issue #438), which `standard` now leaves off; see the note at the top.
+SystemHook no longer loads `libvlocation.dylib`, the bundle no longer ships it,
+and vphoned's `location.*` methods call IcliKit directly again. A guest that
+already has `/usr/lib/libvlocation.dylib` keeps the file, but nothing loads it.

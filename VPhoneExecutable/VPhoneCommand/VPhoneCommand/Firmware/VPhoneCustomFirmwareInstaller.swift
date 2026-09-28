@@ -214,7 +214,7 @@ struct VPhoneCustomFirmwareInstaller {
                 plan: plan,
             )
         }
-        try patchPreboot(volumes: volumes, work: work)
+        try patchPreboot(volumes: volumes, work: work, plan: plan)
         _ = try tool("/sbin/umount", [data.path])
         dataMounted = false
         _ = try tool("/sbin/umount", [system.path])
@@ -755,8 +755,8 @@ struct VPhoneCustomFirmwareInstaller {
         try bundle.replaceFile(".vphoned.signed", fromFileAt: work.file("vphoned"), mode: 0o755, owner: owner)
     }
 
-    /// The launchd hook, SystemHook, camera hooks, and location hook. SystemHook
-    /// loads app hooks from /usr/lib without a bootstrap or tweak loader.
+    /// The launchd hook, SystemHook and the camera hooks. SystemHook loads the
+    /// camera hooks from /usr/lib without a bootstrap or tweak loader.
     private func installEnvironment(system: VPhoneConfinedDirectory) throws {
         for name in VPhoneGuestEnvironment.libraries {
             let source = try VPhoneGuestBinaries.resolve(name)
@@ -793,7 +793,18 @@ struct VPhoneCustomFirmwareInstaller {
 
     // MARK: - Preboot
 
-    private func patchPreboot(volumes: [[String: Any]], work: WorkDirectory) throws {
+    private func patchPreboot(
+        volumes: [[String: Any]],
+        work: WorkDirectory,
+        plan: VPhoneVirtualMachinePatchPlan?,
+    ) throws {
+        // Like every guest patch, a VM with no plan still gets it.
+        let identity = FirmwareGuestIdentityPatchSet.prebootDeviceTreeIdentity
+        let rewriteIdentity = plan?.isEnabled(identity) ?? true
+        if let plan, !rewriteIdentity {
+            print("  [·] \(identity): off in preset \(plan.presetIdentifier)")
+        }
+        guard rewriteIdentity || !(spoofBuild ?? "").isEmpty else { return }
         guard
             let preboot = volumes.first(where: { ($0["Roles"] as? [String])?.contains("Preboot") == true }),
             let device = preboot["DeviceIdentifier"] as? String
@@ -818,7 +829,9 @@ struct VPhoneCustomFirmwareInstaller {
             guard candidates.count == 1, let deviceTree = candidates.first else {
                 throw ValidationError("Expected one device tree in the Preboot volume but found \(candidates.count). Restore the VM, then install CFW again.")
             }
-            try patchCopy(of: deviceTree, in: root, work: work, verb: "patch-post-restore-dt")
+            if rewriteIdentity {
+                try patchCopy(of: deviceTree, in: root, work: work, verb: "patch-post-restore-dt")
+            }
             if let build = spoofBuild {
                 let version = "Cryptexes/OS/System/Library/CoreServices/SystemVersion.plist"
                 if try root.isRegularFile(version) {

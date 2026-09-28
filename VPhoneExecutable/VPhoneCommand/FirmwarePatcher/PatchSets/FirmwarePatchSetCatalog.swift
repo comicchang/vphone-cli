@@ -49,16 +49,41 @@ public enum FirmwarePatchSetCatalog {
     ///
     /// The hypervisor concealment pair is off for a harder reason: it stops a
     /// freshly restored 26.4 guest booting at all. See
-    /// ``hypervisorConcealmentPatches``.
+    /// ``hypervisorConcealmentPatches``. The rest of the former EXP variant is
+    /// off with it, bar the camera: see ``experimentalIdentityPatches``.
     public static let manualOnlyPatches: Set<String> =
         Set(FirmwareKernelFridaPatchSet.manifest.patches.map(\.identifier))
             .union(hypervisorConcealmentPatches)
+            .union(experimentalIdentityPatches)
 
-    /// The two halves of the `hv_vmm_present` concealment, which are one patch in
-    /// everything but name and have to be selected together.
+    /// The former EXP patches that make the guest claim to be an iPhone17,3.
+    ///
+    /// `standard` is the JB baseline plus the camera. The camera needs the device
+    /// tree's `/product/camera`, ISP and SMC nodes and `camera_dsc`, which stay on;
+    /// it does not need the identity rewrites. They shipped on with the hypervisor
+    /// concealment when EXP joined the JB flow, and guests from that build lost
+    /// location (issue #438), so they go back to opt-in with it. `extended` or a
+    /// per-VM checkmark turns them back on.
+    public static let experimentalIdentityPatches: Set<String> = [
+        "devicetree.target_sub_type",
+        "devicetree.compatible_secondary",
+        "devicetree.product.fdr_product_type",
+        "devicetree.product.sub_product_type",
+        "devicetree.product.unique_model",
+        "devicetree.product.gestalt_variants_rename",
+        "devicetree.arm_io.device_type",
+        "devicetree.arm_io.soc_generation",
+        FirmwareGuestIdentityPatchSet.prebootDeviceTreeIdentity,
+    ]
+
+    /// The `hv_vmm_present` concealment, which is one patch in everything but name
+    /// and has to be selected as a whole.
     ///
     /// Renaming the OID without mangling the shared cache breaks the graphics and
-    /// ML paths; mangling the cache without the rename does nothing. Both are off
+    /// ML paths; mangling the cache without the rename does nothing. watchdogd
+    /// caches the sysctl at startup and, when the renamed OID returns ENOENT,
+    /// reaches a `brk` that launchd turns into a panic, so its patch goes with the
+    /// rename and is pointless without it. All three are off
     /// in `standard` because on a freshly restored 26.4 guest the rename makes
     /// `bluetoothd`'s cached `kern.hv_vmm_present` lookup fail, which sends it down
     /// the `MGIsDeviceOneOfType` path, leaves its transport singleton NULL and
@@ -69,6 +94,7 @@ public enum FirmwarePatchSetCatalog {
     public static let hypervisorConcealmentPatches: Set<String> = [
         "kernelcache_exp.hv_vmm",
         "hv_vmm_dsc",
+        "watchdogd.hv_vmm_cache",
     ]
 
     /// The preset a VM gets when nothing else is named.
@@ -85,16 +111,16 @@ public enum FirmwarePatchSetCatalog {
         selection: .block(manualOnlyPatches),
     )
 
-    /// Everything the bundle declares, including the Frida relaxations and the
-    /// hypervisor concealment. Each patch's own version gate still decides whether
-    /// it lands.
+    /// Everything the bundle declares, including the Frida relaxations, the
+    /// hypervisor concealment and the iPhone17,3 identity. Each patch's own version
+    /// gate still decides whether it lands.
     public static let extendedPreset = VPhonePatchPreset(
         identifier: "extended",
         title: "Extended",
         summary: """
-        Every patch this bundle declares, including the Frida Stalker relaxations \
-        and the hv_vmm_present concealment that a freshly restored 26.4 guest does \
-        not survive.
+        Every patch this bundle declares, including the Frida Stalker relaxations, \
+        the iPhone17,3 identity rewrites, and the hv_vmm_present concealment that a \
+        freshly restored 26.4 guest does not survive.
         """,
         patchSets: bundledReferences,
         selection: .all,

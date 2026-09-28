@@ -11,6 +11,5 @@ public enum VPhoneGuestEnvironment {
         "SystemHook-vphone.dylib",
         "libvcamcaptured.dylib",
         "libcamfix.dylib",
-        "libvlocation.dylib",
     ]
 }

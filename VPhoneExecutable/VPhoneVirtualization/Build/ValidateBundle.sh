@@ -55,13 +55,14 @@ for preset in "$resources/patches_presets/"*.plist; do
     /usr/bin/plutil -lint -s "$preset" || { print -u2 "Malformed patch preset: ${preset:t}"; exit 1; }
 done
 
-for name in vphoned launchdhook-vphone.dylib SystemHook-vphone.dylib libcamfix.dylib libvlocation.dylib \
+for name in vphoned launchdhook-vphone.dylib SystemHook-vphone.dylib libcamfix.dylib \
     libvcamcaptured.dylib libAppleParavirtCompilerPluginIOGPUFamily.dylib; do
     require_signed_macho "$guest/$name"
 done
 for name in vphoned.plist libcamfix.plist libvcamcaptured.plist; do
     [[ -f "$guest/$name" ]] || { print -u2 "Missing guest configuration: $name"; exit 1; }
 done
+[[ ! -e "$guest/libvlocation.dylib" ]] || { print -u2 "Obsolete guest library: libvlocation.dylib"; exit 1; }
 
 for name in vphoned vphoned.signed vphone-app VPhoneAMFIAllow VPhoneEscalator vphone-archive icli vpregister \
     vphone-ask-for-permission libcamfix.dylib libvlocation.dylib libvcamcaptured.dylib launchdhook-vphone.dylib \

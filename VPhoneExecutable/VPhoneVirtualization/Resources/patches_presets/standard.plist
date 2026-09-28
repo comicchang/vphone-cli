@@ -3,13 +3,18 @@
 <!--
   The preset every VM gets unless another is named.
 
-  It draws on every patch set the bundle ships and turns on all of their patches
-  bar two pairs. The Frida Stalker pair widens what any process in the guest may do
-  and nothing needs it in order to boot. The hv_vmm_present pair — the kernel OID
-  rename and the shared-cache mangle — leaves a freshly restored 26.4 guest on a
-  black screen: bluetoothd caches the failed sysctl lookup, crash-loops, and the
-  data migrator SpringBoard waits on never finishes. Each pair is all-or-nothing;
-  see FirmwareKernelHypervisorPatchSet for the whole chain.
+  It is the JB baseline plus the virtual camera. It draws on every patch set the
+  bundle ships and turns on all of their patches bar three groups. The Frida
+  Stalker pair widens what any process in the guest may do and nothing needs it in
+  order to boot. The hv_vmm_present concealment — the kernel OID rename, the
+  shared-cache mangle and the watchdogd patch — leaves a freshly restored 26.4
+  guest on a black screen: bluetoothd caches the failed sysctl lookup,
+  crash-loops, and the data migrator SpringBoard waits on never finishes. Each of
+  those groups is all-or-nothing; see FirmwareKernelHypervisorPatchSet for the
+  whole chain. The iPhone17,3 identity rewrites — eight device tree properties and
+  the Preboot root model / target-type / compatible — are the rest of the former
+  EXP variant; the camera does not need them, and with the concealment they left
+  guests without location (issue #438).
 
   Each patch's own version gate still decides whether it lands on this pairing of
   iPhone base and cloudOS.
@@ -95,6 +100,16 @@
 			<string>kernelcache_frida.vm_map_delete_immutable_code</string>
 			<string>kernelcache_exp.hv_vmm</string>
 			<string>hv_vmm_dsc</string>
+			<string>watchdogd.hv_vmm_cache</string>
+			<string>devicetree.target_sub_type</string>
+			<string>devicetree.compatible_secondary</string>
+			<string>devicetree.product.fdr_product_type</string>
+			<string>devicetree.product.sub_product_type</string>
+			<string>devicetree.product.unique_model</string>
+			<string>devicetree.product.gestalt_variants_rename</string>
+			<string>devicetree.arm_io.device_type</string>
+			<string>devicetree.arm_io.soc_generation</string>
+			<string>preboot_devicetree.identity</string>
 		</array>
 	</dict>
 </dict>

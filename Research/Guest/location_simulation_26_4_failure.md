@@ -1,5 +1,18 @@
 # iOS 26.4 VM location simulation failure
 
+> **Superseded (2026-09-28): the app hook is gone.** `libvlocation.dylib` and
+> its SystemHook load were removed, and `location.set` / `location.clear` /
+> `location.current` are IcliKit's `simulateLocation` / `clearSimulatedLocation`
+> / `currentLocation` again, which prove a request by reading the fix back (see
+> `Research/vphoned_http_api.md`). The 2.0.4 bundle used below was the first
+> with the former EXP patches in the JB flow (228326d), including the
+> `hv_vmm_present` concealment. With it on, bluetoothd crash-loops and locationd
+> blocks on the throttled Bluetooth service (issue #438), which fits the
+> `invalid location` / `invalid latest selected hypothesis` fusion failure
+> recorded here. `standard` now leaves the concealment and the iPhone17,3
+> identity rewrites off; only the camera patches remain from EXP. Re-run the
+> reproduction below on a VM restored with `standard` to confirm.
+
 ## Reproduction (2026-09-25)
 
 The running `26.4` VM uses the `jb` firmware variant and iOS 26.4.0. Its

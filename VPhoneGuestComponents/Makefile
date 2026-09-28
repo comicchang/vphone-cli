@@ -28,8 +28,6 @@ CAMFIX_SOURCES := $(call find_sources,$(CAMFIX_DIRS))
 CAMFIX_INPUTS := $(call find_headers,CamFix $(VCAM_HEADER_DIRS)) \
 	$(call find_folders,CamFix $(VCAM_HEADER_DIRS))
 CAMFIX_INCLUDE_FLAGS := $(addprefix -I,$(call find_folders,CamFix) $(VCAM_HEADER_DIRS))
-LOCATIONFIX := $(STAGE)/locationfix/libvlocation.dylib
-LOCATIONFIX_SOURCES := $(call find_sources,LocationFix)
 VCAMCAPTURED := $(STAGE)/vcamcaptured/libvcamcaptured.dylib
 VCAMCAPTURED_DIRS := VCamCaptured $(VCAM_SHARED_DIRS)
 VCAMCAPTURED_SOURCES := $(call find_sources,$(VCAMCAPTURED_DIRS))
@@ -69,7 +67,7 @@ GPU_DYNAMIC_LOOKUP_SYMS := \
 	-Wl,-U,_MTLMetalFunctionCreate \
 	-Wl,-U,_MTLMetalLibInsertFunction \
 	-Wl,-U,_MTLWriteMetalLibToMemoryBuffer
-ARTIFACTS := $(CAMFIX) $(LOCATIONFIX) $(VCAMCAPTURED) $(LAUNCHHOOK) $(SYSTEMHOOK) $(GPU_PLUGIN)
+ARTIFACTS := $(CAMFIX) $(VCAMCAPTURED) $(LAUNCHHOOK) $(SYSTEMHOOK) $(GPU_PLUGIN)
 PLISTS := $(STAGE)/camfix/libcamfix.plist $(STAGE)/vcamcaptured/libvcamcaptured.plist
 GPU_PROVENANCE := $(STAGE)/gpu/README.md
 
@@ -83,7 +81,7 @@ gpu: $(GPU_PLUGIN)
 
 package: all
 	@rm -f $(ARCHIVE)
-	@/usr/bin/tar -cf $(ARCHIVE) -C $(STAGE) camfix locationfix vcamcaptured launchhook systemhook gpu
+	@/usr/bin/tar -cf $(ARCHIVE) -C $(STAGE) camfix vcamcaptured launchhook systemhook gpu
 	@echo "Packaged $(ARCHIVE)"
 
 test-loader-links:
@@ -103,7 +101,7 @@ test-vcam-dataplane:
 		-framework CoreGraphics
 	@$(OUT)/VCamDataPlaneTests
 
-$(STAGE)/camfix $(STAGE)/locationfix $(STAGE)/vcamcaptured $(STAGE)/launchhook $(STAGE)/systemhook $(STAGE)/gpu:
+$(STAGE)/camfix $(STAGE)/vcamcaptured $(STAGE)/launchhook $(STAGE)/systemhook $(STAGE)/gpu:
 	@mkdir -p $@
 
 $(CAMFIX): $(CAMFIX_SOURCES) $(CAMFIX_INPUTS) | $(STAGE)/camfix
@@ -113,13 +111,6 @@ $(CAMFIX): $(CAMFIX_SOURCES) $(CAMFIX_INPUTS) | $(STAGE)/camfix
 		-framework Foundation -framework AVFoundation -framework ImageIO \
 		-framework IOSurface -framework CoreMedia -framework CoreVideo \
 		-framework CoreGraphics -framework QuartzCore
-	@codesign --force --sign - $@
-
-$(LOCATIONFIX): $(LOCATIONFIX_SOURCES) LocationFix | $(STAGE)/locationfix
-	$(CLANG) $(COMMON_FLAGS) -dynamiclib \
-		-install_name /usr/lib/libvlocation.dylib \
-		-o $@ $(LOCATIONFIX_SOURCES) \
-		-framework Foundation -framework CoreLocation
 	@codesign --force --sign - $@
 
 $(VCAMCAPTURED): $(VCAMCAPTURED_SOURCES) $(VCAMCAPTURED_INPUTS) | $(STAGE)/vcamcaptured
