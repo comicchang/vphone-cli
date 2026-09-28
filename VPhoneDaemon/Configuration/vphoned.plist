@@ -12,5 +12,13 @@
 	<true/>
 	<key>KeepAlive</key>
 	<true/>
+	<key>ThrottleInterval</key>
+	<integer>1</integer>
+	<key>ProcessType</key>
+	<string>Interactive</string>
+	<key>StandardOutPath</key>
+	<string>/var/log/vphoned.log</string>
+	<key>StandardErrorPath</key>
+	<string>/var/log/vphoned.log</string>
 </dict>
 </plist>

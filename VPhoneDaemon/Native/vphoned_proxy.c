@@ -61,8 +61,11 @@ int vp_native_watch_proxy(void) {
     return result == 0 ? 0 : -1;
 }
 
-static void pause_before_retry(unsigned seconds) {
-    struct timespec remaining = {.tv_sec = seconds, .tv_nsec = 0};
+static void pause_before_retry(void) {
+    // A fixed delay, however often the worker fails: during boot the worker
+    // can exit several times, and a growing backoff kept the API down for
+    // tens of seconds after the guest was otherwise ready.
+    struct timespec remaining = {.tv_sec = 1, .tv_nsec = 0};
     while (!stopping && nanosleep(&remaining, &remaining) < 0 && errno == EINTR) {}
 }
 
@@ -89,7 +92,6 @@ int vp_native_run_proxy(void) {
     sigaction(SIGTERM, &action, NULL);
     sigaction(SIGINT, &action, NULL);
 
-    unsigned retry_delay = 1;
     while (!stopping) {
         int pipe_fds[2];
         if (pipe(pipe_fds) != 0) return 1;
@@ -118,7 +120,7 @@ int vp_native_run_proxy(void) {
         if (error != 0) {
             fprintf(stderr, "vphoned proxy: posix_spawn failed: %s\n", strerror(error));
             close(pipe_fds[1]);
-            pause_before_retry(retry_delay);
+            pause_before_retry();
         } else {
             if (stopping) {
                 stop_worker(child, pipe_fds[1]);
@@ -145,10 +147,15 @@ int vp_native_run_proxy(void) {
                 // start falls back to the bundled binary.
                 return 1;
             }
-            fprintf(stderr, "vphoned proxy: worker exited; retrying\n");
-            pause_before_retry(retry_delay);
+            if (waited != child) {
+                fprintf(stderr, "vphoned proxy: waitpid %d failed: %s; retrying\n", child, strerror(errno));
+            } else if (WIFSIGNALED(status)) {
+                fprintf(stderr, "vphoned proxy: worker %d killed by signal %d; retrying\n", child, WTERMSIG(status));
+            } else {
+                fprintf(stderr, "vphoned proxy: worker %d exited with status %d; retrying\n", child, WEXITSTATUS(status));
+            }
+            pause_before_retry();
         }
-        if (retry_delay < 10) retry_delay *= 2;
     }
     return 0;
 }

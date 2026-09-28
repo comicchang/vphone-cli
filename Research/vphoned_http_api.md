@@ -330,9 +330,17 @@ A dropped HTTP or WebSocket connection closes only that request channel. The
 guest launchd plist starts a small vphoned proxy. It uses `posix_spawn` to
 start the same signed executable with `--io`, then waits for and reaps that
 worker. The worker owns VSOCK 1338 and 1339 and all API state. The proxy
-restarts an unexpectedly exited worker with bounded backoff, and forwards
-shutdown to it. A pipe makes the worker exit if launchd kills the proxy, so
-the old worker cannot retain the ports after launchd starts a replacement.
+restarts an unexpectedly exited worker after a fixed one-second pause, for
+as long as it runs, and forwards shutdown to it. The previous exponential
+backoff kept a 26.4 guest's API down until about 24 s after launchd started
+the proxy: early-boot workers exited, and the proxy waited 1, 2, 4 and 8 s
+between them. The proxy logs each worker exit with its status or signal to
+`/var/log/vphoned.log`, which the plist names as stdout and stderr. The plist
+also sets `ThrottleInterval` to 1 so launchd restarts the proxy itself one
+second after it exits, not the default ten, and `ProcessType` to
+`Interactive` so boot-time CPU and I/O throttling does not apply. A pipe
+makes the worker exit if launchd kills the proxy, so the old worker cannot
+retain the ports after launchd starts a replacement.
 The proxy never initializes NIO, IcliKit, or the camera server under its
 6 MB per-process Jetsam limit. A successful `agent.apply_update` worker exit
 makes the proxy exit so launchd can restart the updated cached binary. If a
