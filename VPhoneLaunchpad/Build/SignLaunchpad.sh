@@ -6,8 +6,8 @@
 #
 #   zsh VPhoneLaunchpad/Build/SignLaunchpad.sh <path/to/vphone-launchpad.app> "Developer ID Application: …"
 #
-# The helper is signed before the app that seals it. Neither gets
-# entitlements. Afterwards the helper is checked against the app's
+# The helper and the command line tool are signed before the app that seals
+# them. None of them gets entitlements. Afterwards the helper is checked against the app's
 # SMPrivilegedExecutables requirement, which is what SMJobBless enforces.
 set -euo pipefail
 
@@ -23,6 +23,8 @@ if [[ $requirement == *'subject.OU] = ""'* ]]; then
 fi
 
 codesign --force --options runtime --timestamp --sign "$identity" "$helper"
+codesign --force --options runtime --timestamp --identifier com.vphone.launchpad.cli \
+  --sign "$identity" "$app/Contents/MacOS/vphone-launchpad-cli"
 codesign --force --options runtime --timestamp --sign "$identity" "$app"
 
 codesign --verify --strict --deep "$app"
