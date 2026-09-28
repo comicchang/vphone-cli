@@ -163,7 +163,7 @@ nonisolated struct VPhoneLaunchpadControlCommand: Sendable {
         Self(name: "vm.wait", arguments: ["name"], options: ["root", "timeout"], flags: [],
              summary: "Wait until vphoned answers on the machine's vphone.sock."),
         Self(name: "vm.log", arguments: ["name"], options: ["root", "lines", "kind"], flags: [],
-             summary: "The last lines of the console log (--kind create or dfu for those logs)."),
+             summary: "The last lines of the console log (--kind create, dfu or patch for those logs)."),
         Self(name: "vm.create", arguments: ["name"], options: [
             "root", "iphone-source", "cloudos-source", "cpu", "memory", "disk-size", "network", "preset", "from",
         ], flags: ["force-dsc-maxslide", "keep-artifacts", "no-wait"],

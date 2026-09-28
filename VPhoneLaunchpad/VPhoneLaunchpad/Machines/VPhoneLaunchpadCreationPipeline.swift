@@ -195,7 +195,38 @@ final class VPhoneLaunchpadCreationPipeline {
                 return
             }
         }
+        if !options.keepArtifacts {
+            await removeRestoreFiles()
+        }
         append("● \(options.name) is ready.")
+    }
+
+    /// Removes the `iPhone*_Restore` tree once the machine has booted, as
+    /// `cfw install` does without `--keep-artifacts`. Only a real folder is
+    /// removed; a link by that name is left alone. A failure here does not
+    /// fail the creation.
+    private func removeRestoreFiles() async {
+        let bundle = machine.url
+        let lines = await Task.detached { () -> [String] in
+            let manager = FileManager.default
+            let entries = (try? manager.contentsOfDirectory(atPath: bundle.path)) ?? []
+            var lines: [String] = []
+            for name in entries where name.hasPrefix("iPhone") && name.hasSuffix("_Restore") {
+                let url = bundle.appendingPathComponent(name)
+                let values = try? url.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey])
+                guard values?.isDirectory == true, values?.isSymbolicLink == false else {
+                    continue
+                }
+                do {
+                    try manager.removeItem(at: url)
+                    lines.append("removed restore files \(name)/ to save space")
+                } catch {
+                    lines.append("warning: could not remove \(name)/: \(error.localizedDescription)")
+                }
+            }
+            return lines
+        }.value
+        lines.forEach(append)
     }
 
     private func append(_ line: String) {
@@ -214,9 +245,9 @@ final class VPhoneLaunchpadCreationPipeline {
         let log = log
         let output: @Sendable (String) -> Void = { line in log.write(line) }
 
-        func run(_ arguments: [String]) async throws {
-            append("$ \(VPhoneLaunchpadCommandLine.display(arguments))")
-            try await commandLine.runChecked(arguments, onLine: output)
+        func run(_ arguments: [String], onLine: @escaping @Sendable (String) -> Void = output) async throws {
+            onLine("$ \(VPhoneLaunchpadCommandLine.display(arguments))")
+            try await commandLine.runChecked(arguments, onLine: onLine)
         }
 
         switch step {
@@ -235,11 +266,19 @@ final class VPhoneLaunchpadCreationPipeline {
         case .patch:
             // The preset rides on `fw patch` itself; per-patch overrides are
             // recorded first, the way `vm config` follows `vm new` above. Both
-            // lines reach the log.
-            if options.patches.hasOverrides {
-                try await run(["fw", "set-patches", name] + options.patches.setPatchesArguments + library)
+            // lines reach the log. The creation log starts over on a retry, so
+            // the patch output is also kept in a log of its own for later
+            // diagnosis.
+            let patchLog = VPhoneLaunchpadLogWriter(url: VPhoneLaunchpadMachineLibrary.consoleLog(machine, suffix: "-patch"))
+            patchLog.write("# \(options.name), \(Date().formatted(.iso8601)), Core Bundle \(bundles.activeVersion ?? "?")")
+            let tee: @Sendable (String) -> Void = { line in
+                log.write(line)
+                patchLog.write(line)
             }
-            try await run(patchArguments + library)
+            if options.patches.hasOverrides {
+                try await run(["fw", "set-patches", name] + options.patches.setPatchesArguments + library, onLine: tee)
+            }
+            try await run(patchArguments + library, onLine: tee)
 
         case .bootDFU:
             let arguments = ["vm", "launch", name, "--dfu"] + library
@@ -309,7 +348,10 @@ final class VPhoneLaunchpadCreationPipeline {
                 machineName: name,
                 libraryRoot: Self.canonicalPath(URL(fileURLWithPath: options.libraryRoot, isDirectory: true)),
                 forceDyldSharedCacheMaxSlide: options.forceDyldSharedCacheMaxSlide,
-                keepArtifacts: options.keepArtifacts,
+                // The restore tree stays until first boot succeeds, so a
+                // failed boot can still be restored again without preparing
+                // the firmware anew. `removeRestoreFiles()` reclaims it then.
+                keepArtifacts: true,
                 onLine: output,
             )
             guard status == 0 else {

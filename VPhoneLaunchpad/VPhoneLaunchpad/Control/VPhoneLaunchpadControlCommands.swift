@@ -400,7 +400,8 @@ struct VPhoneLaunchpadControlCommands {
         case nil, "console": ""
         case "create": "-create"
         case "dfu": "-dfu"
-        case let kind?: throw VPhoneLaunchpadError("--kind is console, create or dfu, not \(kind).")
+        case "patch": "-patch"
+        case let kind?: throw VPhoneLaunchpadError("--kind is console, create, dfu or patch, not \(kind).")
         }
         var count = 200
         if let text = request.option("lines") {

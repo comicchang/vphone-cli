@@ -205,6 +205,10 @@ struct VPhoneLaunchpadMachinesView: View {
             Button("Show Console Log") {
                 NSWorkspace.shared.open(VPhoneLaunchpadMachineLibrary.consoleLog(machine.path))
             }
+            Button("Show Patch Log") {
+                NSWorkspace.shared.open(VPhoneLaunchpadMachineLibrary.consoleLog(machine.path, suffix: "-patch"))
+            }
+            .disabled(!FileManager.default.fileExists(atPath: VPhoneLaunchpadMachineLibrary.consoleLog(machine.path, suffix: "-patch").path))
             Divider()
             Button("Delete…", role: .destructive) { deletion = machine.path }
                 .disabled(!isStopped)
