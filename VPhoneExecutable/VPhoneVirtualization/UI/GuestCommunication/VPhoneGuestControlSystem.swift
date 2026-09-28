@@ -38,14 +38,4 @@ extension VPhoneGuestControl {
             throw ControlError.guestError("low_power_mode: failed to set state on guest")
         }
     }
-
-    // MARK: - Accessibility
-
-    func accessibilityTree(depth: Int = -1) async throws -> [String: Any] {
-        guard guestCapabilities.contains("ui_inspection") else {
-            throw ControlError.unsupportedCapability("ui_inspection")
-        }
-        let (resp, _) = try await sendRequest(["t": "accessibility_tree", "depth": depth])
-        return resp
-    }
 }

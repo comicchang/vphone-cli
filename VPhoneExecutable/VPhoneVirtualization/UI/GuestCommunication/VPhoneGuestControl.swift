@@ -250,7 +250,6 @@ final class VPhoneGuestControl {
         case "settings_get": method = "settings.get"
         case "settings_set": method = "settings.set"
         case "low_power_mode": method = "power.low_power_mode"
-        case "accessibility_tree": method = "accessibility.tree"
         default: throw ControlError.protocolError("unknown operation \(type)")
         }
         var params = request

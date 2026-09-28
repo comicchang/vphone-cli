@@ -11,7 +11,6 @@ enum VPhoneGuestPanel: CaseIterable {
     case console
     case crashLogs
     case services
-    case uiInspector
     case controls
 
     /// The `/v1/health` capability an agent must report before the panel can
@@ -22,7 +21,6 @@ enum VPhoneGuestPanel: CaseIterable {
         case .processes: "processes"
         case .console, .crashLogs: "logs"
         case .services: "services"
-        case .uiInspector: "ui_inspection"
         case .controls: "display"
         }
     }
@@ -90,14 +88,6 @@ final class VPhoneGuestPanelsWindowController {
                 size: NSSize(width: 1000, height: 680),
                 minSize: NSSize(width: 760, height: 480),
             ) { VPhoneServicesView(model: model) }
-        case .uiInspector:
-            let model = VPhoneUIInspectorModel(control: control)
-            return VPhoneGuestToolWindow(
-                title: String(localized: "UI Inspector", bundle: VPhoneLocalization.bundle),
-                autosaveName: "vphone-panel-ui-inspector",
-                size: NSSize(width: 1080, height: 720),
-                minSize: NSSize(width: 840, height: 540),
-            ) { VPhoneUIInspectorView(model: model) }
         case .controls:
             let model = VPhoneControlsModel(control: control)
             return VPhoneGuestToolWindow(
