@@ -72,7 +72,9 @@ enum GuestLocationSimulation {
         }
         var openFD = fd
         defer {
-            if openFD >= 0 { close(openFD) }
+            if openFD >= 0 {
+                close(openFD)
+            }
             unlink(temporary)
         }
         try data.withUnsafeBytes { buffer in

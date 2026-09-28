@@ -26,8 +26,7 @@ struct VPhoneLaunchpadStatusIcon: View {
     private var symbol: some View {
         switch status {
         case .running:
-            ProgressView()
-                .controlSize(.mini)
+            VPhoneLaunchpadSpinner()
         case .passed:
             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
         case .warning:
@@ -37,5 +36,22 @@ struct VPhoneLaunchpadStatusIcon: View {
         case .pending:
             Image(systemName: "circle.dashed").foregroundStyle(.secondary)
         }
+    }
+}
+
+/// A spinner drawn by SwiftUI on every frame. The system one wraps an
+/// NSProgressIndicator, which stops turning when a Form or Table row is
+/// redrawn around it, so a long step looked stuck.
+struct VPhoneLaunchpadSpinner: View {
+    var body: some View {
+        TimelineView(.animation) { context in
+            let turn = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1)
+            Circle()
+                .trim(from: 0, to: 0.7)
+                .stroke(.secondary, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .rotationEffect(.degrees(turn * 360))
+                .padding(2)
+        }
+        .accessibilityLabel(Text("In progress"))
     }
 }

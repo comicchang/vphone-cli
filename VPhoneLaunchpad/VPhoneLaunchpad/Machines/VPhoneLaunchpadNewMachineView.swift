@@ -26,7 +26,7 @@ struct VPhoneLaunchpadNewMachineView: View {
     @State private var patches = VPhoneLaunchpadPatchSelection()
     @State private var patchCatalog: VPhoneLaunchpadPatchCatalog?
     @State private var patchCatalogError: String?
-    @State private var showsPatchSettings = false
+    @State private var showsAdvanced = false
     @State private var forceMaxSlide = false
     @State private var keepArtifacts = false
 
@@ -86,102 +86,74 @@ struct VPhoneLaunchpadNewMachineView: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                TextField("Name", text: $name, prompt: Text(verbatim: Self.defaultName))
-                locationPicker
-            } footer: {
-                if let problem = nameProblem ?? locationProblem {
-                    Text(problem).foregroundStyle(.red)
+        VPhoneLaunchpadSheet(Text("New Machine")) {
+            Form {
+                Section {
+                    TextField("Name", text: $name, prompt: Text(verbatim: Self.defaultName))
+                    locationPicker
+                } footer: {
+                    if let problem = nameProblem ?? locationProblem {
+                        Text(problem).foregroundStyle(.red)
+                    }
                 }
-            }
 
-            firmware
+                firmware
 
-            Section("Hardware") {
-                Stepper("CPU: \(cpu) cores", value: $cpu, in: 1 ... ProcessInfo.processInfo.activeProcessorCount)
-                Stepper("Memory: \(memoryMB) MB", value: $memoryMB, in: 2048 ... 65536, step: 1024)
-                Stepper("Disk: \(diskSizeGB) GB", value: $diskSizeGB, in: 32 ... 512, step: 16)
-                Picker("Network", selection: $network) {
-                    Text("NAT").tag("nat")
-                    Text("Bridged").tag("bridged")
-                    Text("None").tag("none")
+                Section {
+                    Stepper("CPU: \(cpu) cores", value: $cpu, in: 1 ... ProcessInfo.processInfo.activeProcessorCount)
+                    Stepper("Memory: \(memoryMB) MB", value: $memoryMB, in: 2048 ... 65536, step: 1024)
+                    Stepper("Disk: \(diskSizeGB) GB", value: $diskSizeGB, in: 32 ... 512, step: 16)
+                } header: {
+                    Text("Hardware")
+                } footer: {
+                    Text(spaceNote).foregroundStyle(.secondary)
                 }
-            }
 
-            patchSection
-
-            Section {
-                Toggle("Disable dyld shared cache randomization", isOn: $forceMaxSlide)
-                Toggle("Keep prepared restore files", isOn: $keepArtifacts)
-            } header: {
-                Text("Options")
-            } footer: {
-                Text(spaceNote).foregroundStyle(.secondary)
+                advancedSection
             }
+            .formStyle(.grouped)
+        } actions: {
+            Button("Cancel") { dismiss() }
+                .keyboardShortcut(.cancelAction)
+            Button("Create") { create() }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!canCreate)
         }
-        .formStyle(.grouped)
-        .navigationTitle("New Machine")
-        .frame(width: 560, height: 780)
-        .sheet(isPresented: $showsPatchSettings) {
-            VPhoneLaunchpadPatchSettingsView(machine: nil, initial: patches) { selection in
-                patches = selection
-                Task { await loadPatchCatalog() }
-            }
+        .frame(width: 560)
+        .fixedSize(horizontal: false, vertical: true)
+        .sheet(isPresented: $showsAdvanced) {
+            VPhoneLaunchpadNewMachineAdvancedView(
+                network: $network,
+                patches: $patches,
+                forceMaxSlide: $forceMaxSlide,
+                keepArtifacts: $keepArtifacts,
+                patchCatalog: patchCatalog,
+                patchCatalogError: patchCatalogError,
+                reloadPatches: { Task { await loadPatchCatalog() } },
+            )
             .environment(model)
-        }
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Create") { create() }
-                    .disabled(!canCreate)
-            }
         }
         .task { await loadCatalog() }
         .task { await loadPatchCatalog() }
         .onAppear { location = model.machines.preferredRoot }
     }
 
-    // MARK: - Patches
+    // MARK: - Advanced
 
-    private var patchSection: some View {
+    /// Network, patches and restore options, which rarely change, behind one row.
+    private var advancedSection: some View {
         Section {
-            if let patchCatalog {
-                Picker("Preset", selection: presetBinding) {
-                    ForEach(patchCatalog.presets) { preset in
-                        Text(verbatim: preset.title).tag(preset.identifier)
-                    }
-                }
-                Button("Patch Settings…") { showsPatchSettings = true }
-            } else if let patchCatalogError {
-                Label(patchCatalogError, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.secondary)
-            } else {
-                HStack {
-                    ProgressView().controlSize(.small)
-                    Text("Reading the bundle's patches…").foregroundStyle(.secondary)
+            LabeledContent("Advanced") {
+                HStack(spacing: 8) {
+                    Text(verbatim: advancedSummary)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Button("Edit…") { showsAdvanced = true }
                 }
             }
-        } header: {
-            Text("Patches")
         } footer: {
-            patchNote
-        }
-    }
-
-    @ViewBuilder
-    private var patchNote: some View {
-        let essentialOff = patchCatalog.map { patches.bootEssentialOff(in: $0) } ?? []
-        VStack(alignment: .leading, spacing: 4) {
-            if let summary = patchCatalog?.preset(patches.preset)?.summary, !summary.isEmpty {
-                Text(verbatim: summary).foregroundStyle(.secondary)
-            }
-            if patches.hasOverrides {
-                Text("Differs from the preset: \(patches.blocked.count) off, \(patches.allowed.count) on.")
-                    .foregroundStyle(.secondary)
-            }
+            let essentialOff = patchCatalog.map { patches.bootEssentialOff(in: $0) } ?? []
             if !essentialOff.isEmpty {
                 Label {
                     Text("^[\(essentialOff.count) boot-essential patch](inflect: true) off: \(essentialOff.map(\.identifier).joined(separator: ", "))")
@@ -193,19 +165,13 @@ struct VPhoneLaunchpadNewMachineView: View {
         }
     }
 
-    /// Switching preset here re-bases the overrides for the same reason the editor
-    /// does: they are read as a difference from whichever preset is active.
-    private var presetBinding: Binding<String> {
-        Binding(
-            get: { patches.preset },
-            set: { identifier in
-                guard identifier != patches.preset else {
-                    return
-                }
-                patches = VPhoneLaunchpadPatchSelection(preset: identifier)
-                Task { await loadPatchCatalog() }
-            },
-        )
+    /// The network mode and the patch preset, the two choices most likely to matter.
+    private var advancedSummary: String {
+        let network = VPhoneLaunchpadNewMachineAdvancedView.networkTitle(network)
+        guard let preset = patchCatalog?.preset(patches.preset)?.title else {
+            return network
+        }
+        return "\(network) · \(preset)"
     }
 
     // MARK: - Location
@@ -415,69 +381,58 @@ struct VPhoneLaunchpadCreationView: View {
     @State private var showsLog = false
 
     var body: some View {
-        Form {
-            Section {
-                ForEach(VPhoneLaunchpadCreationPipeline.Step.allCases) { step in
-                    stepRow(step)
-                }
-            } footer: {
-                if creation.isRunning {
-                    Text("Creation continues if you close this window.").foregroundStyle(.secondary)
-                }
-            }
-            Section {
-                Button {
-                    showsLog = true
-                } label: {
-                    Label("Open Log", systemImage: "arrow.up.right")
+        VPhoneLaunchpadSheet(Text("Creating \(creation.options.name)")) {
+            Form {
+                Section {
+                    ForEach(VPhoneLaunchpadCreationPipeline.Step.allCases) { step in
+                        stepRow(step)
+                    }
+                } footer: {
+                    if creation.isRunning {
+                        Text("Creation continues if you close this window.").foregroundStyle(.secondary)
+                    }
                 }
             }
+            .formStyle(.grouped)
+        } accessory: {
+            Button("Open Log") { showsLog = true }
+        } actions: {
+            if creation.isRunning {
+                Button("Stop Creating", role: .destructive) { creation.cancel() }
+            }
+            if !creation.isRunning, let step = creation.failedStep {
+                Button("Retry from \(step.title)") { creation.start(from: step) }
+            }
+            Button("Close") { dismiss() }
+                .keyboardShortcut(.cancelAction)
         }
-        .formStyle(.grouped)
-        .navigationTitle("Creating \(creation.options.name)")
-        .frame(width: 720, height: 640)
+        .frame(width: 720)
+        .fixedSize(horizontal: false, vertical: true)
         .sheet(isPresented: $showsLog) {
             VPhoneLaunchpadConsoleView(title: "\(creation.options.name) Creation Log", url: creation.logFile)
-        }
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Close") { dismiss() }
-            }
-            ToolbarItem(placement: .destructiveAction) {
-                if creation.isRunning {
-                    Button("Stop Creating", role: .destructive) { creation.cancel() }
-                }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                if !creation.isRunning, let step = creation.failedStep {
-                    Button("Retry from \(step.title)") { creation.start(from: step) }
-                }
-            }
         }
     }
 
     private func stepRow(_ step: VPhoneLaunchpadCreationPipeline.Step) -> some View {
         LabeledContent {
-            Text(creation.durations[step].map(Self.duration) ?? "")
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                if let duration = creation.durations[step] {
+                    Text(Self.duration(duration))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                VPhoneLaunchpadCommandInfoButton(command: "vphone-cli \(creation.command(for: step))")
+            }
         } label: {
             Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 4) {
-                        Text(step.title)
-                        if step.needsRoot {
-                            Image(systemName: "lock.fill")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .help("Runs as root through the privileged helper")
-                        }
+                HStack(spacing: 4) {
+                    Text(step.title)
+                    if step.needsRoot {
+                        Image(systemName: "lock.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .help("Runs as root through the privileged helper")
                     }
-                    Text(verbatim: "vphone-cli \(creation.command(for: step))")
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
                 }
             } icon: {
                 VPhoneLaunchpadStatusIcon(status: creation.status(step))

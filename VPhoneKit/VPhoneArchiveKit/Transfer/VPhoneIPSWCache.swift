@@ -127,7 +127,7 @@ public enum VPhoneIPSWCache {
     }
 
     /// The cached archive when it is readable; an unreadable one is removed.
-    private static func reuse(_ cache: URL, in cacheDirectory: URL) throws -> Archive? {
+    private static func reuse(_ cache: URL, in _: URL) throws -> Archive? {
         guard FileManager.default.fileExists(atPath: cache.path) else { return nil }
         guard let valid = try? inspect(cache) else {
             try FileManager.default.removeItem(at: cache)

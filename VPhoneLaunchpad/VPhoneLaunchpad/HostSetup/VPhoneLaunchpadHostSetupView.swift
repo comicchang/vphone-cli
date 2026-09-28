@@ -11,6 +11,32 @@ struct VPhoneLaunchpadHostSetupView: View {
 
     var body: some View {
         @Bindable var host = host
+        VPhoneLaunchpadSheet(Text("Host Setup")) {
+            form
+        } accessory: {
+            Button("Check Again") {
+                Task { await model.refreshHost() }
+            }
+            .help("Run every check again")
+            .disabled(host.isChecking)
+        } actions: {
+            // Straight on to the next stage while it is not ready.
+            if host.requiredPassed, !model.bundles.isReady {
+                Button("Continue") { model.panel = .coreBundle }
+                    .keyboardShortcut(.defaultAction)
+            } else {
+                Button("Done") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .frame(width: 600, height: 600)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            host.refreshDeveloperTools()
+        }
+        .errorAlert($host.actionError)
+    }
+
+    private var form: some View {
         Form {
             Section {
                 ForEach(host.required) { check in
@@ -54,29 +80,6 @@ struct VPhoneLaunchpadHostSetupView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("Host Setup")
-        .frame(width: 600, height: 560)
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            host.refreshDeveloperTools()
-        }
-        .errorAlert($host.actionError)
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button("Check Again") {
-                    Task { await model.refreshHost() }
-                }
-                .help("Run every check again")
-                .disabled(host.isChecking)
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                // Straight on to the next stage while it is not ready.
-                if host.requiredPassed, !model.bundles.isReady {
-                    Button("Continue") { model.panel = .coreBundle }
-                } else {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
     }
 
     /// Icon, title, then detail and any action pinned to the trailing edge.

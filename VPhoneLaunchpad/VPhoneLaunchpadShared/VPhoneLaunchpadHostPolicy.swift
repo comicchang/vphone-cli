@@ -40,8 +40,8 @@ nonisolated enum VPhoneLaunchpadHostPolicy {
         return try activeConfiguration(query: query)
     }
 
-    // Keep the ABI boundary injectable so missing symbols and syscall failures
-    // can be tested without altering the host's security configuration.
+    /// Keep the ABI boundary injectable so missing symbols and syscall failures
+    /// can be tested without altering the host's security configuration.
     static func activeConfiguration(query: CSRQuery?) throws -> UInt32 {
         guard let query else {
             throw VPhoneLaunchpadHostPolicyError("Unable to check current host security settings: csr_get_active_config is unavailable.")

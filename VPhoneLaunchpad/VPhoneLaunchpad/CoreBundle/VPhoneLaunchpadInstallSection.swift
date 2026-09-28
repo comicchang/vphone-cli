@@ -14,6 +14,11 @@ struct VPhoneLaunchpadInstallSection: View {
         if let progress = bundles.progress {
             Section {
                 summary(progress)
+                // Under the summary, so the download moves while collapsed too.
+                if progress.status(.download) == .running {
+                    ProgressView(value: Double(progress.received), total: Double(max(progress.size, 1)))
+                        .labelsHidden()
+                }
                 if model.isInstallExpanded {
                     details(progress)
                 }
@@ -83,10 +88,6 @@ struct VPhoneLaunchpadInstallSection: View {
                         .foregroundStyle(.secondary)
                 }
             }
-        }
-        if progress.status(.download) == .running {
-            ProgressView(value: Double(progress.received), total: Double(max(progress.size, 1)))
-                .labelsHidden()
         }
         if let error = progress.error {
             VStack(alignment: .leading, spacing: 4) {

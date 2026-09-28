@@ -699,8 +699,12 @@ enum GuestIrisinInstaller {
         var buffer = [UInt8](repeating: 0, count: 1024)
         while true {
             let count = read(outputPipe[0], &buffer, buffer.count)
-            if count < 0, errno == EINTR { continue }
-            if count <= 0 { break }
+            if count < 0, errno == EINTR {
+                continue
+            }
+            if count <= 0 {
+                break
+            }
             if output.count < 4096 {
                 output.append(contentsOf: buffer.prefix(min(count, 4096 - output.count)))
             }

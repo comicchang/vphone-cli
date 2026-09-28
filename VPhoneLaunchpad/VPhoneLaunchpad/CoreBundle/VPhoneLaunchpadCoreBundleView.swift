@@ -23,50 +23,39 @@ struct VPhoneLaunchpadCoreBundleView: View {
 
     var body: some View {
         @Bindable var bundles = bundles
-        Form {
-            if bundles.isInstalling {
-                Section {
-                    Text("An install is in progress. Follow it in the inspector.")
-                        .foregroundStyle(.secondary)
+        VPhoneLaunchpadSheet(Text("Core Bundle")) {
+            Form {
+                if bundles.isInstalling {
+                    Section {
+                        Text("An install is in progress. Follow it in the inspector.")
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                if !bundles.installed.isEmpty {
+                    installedSection
+                }
+                availableSection
             }
-            if !bundles.installed.isEmpty {
-                installedSection
+            .formStyle(.grouped)
+        } accessory: {
+            Button("Install Local Build…") {
+                chooseLocalBuild()
             }
-            availableSection
+            .help(model.canInstallBundles
+                ? "Install a VPhone.bundle folder or .zip built on this Mac."
+                : "Installing needs the privileged helper and Developer Tools access.")
+            .disabled(!model.canInstallBundles)
+            Button("Check for Updates") {
+                Task { await bundles.refresh() }
+            }
+            .help("Reload releases and builds, and run host preflight again.")
+            .disabled(bundles.isInstalling)
+        } actions: {
+            Button("Done") { dismiss() }
+                .keyboardShortcut(.defaultAction)
         }
-        .formStyle(.grouped)
-        .navigationTitle("Core Bundle")
-        .frame(width: 640, height: 480)
+        .frame(width: 640, height: 520)
         .errorAlert($bundles.actionError)
-        #if DEBUG
-            .onAppear {
-                if VPhoneLaunchpadPreview.isActive {
-                    source = VPhoneLaunchpadPreview.coreBundleSource
-                }
-            }
-        #endif
-            .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button("Install Local Build…") {
-                    chooseLocalBuild()
-                }
-                .help(model.canInstallBundles
-                    ? "Install a VPhone.bundle folder or .zip built on this Mac."
-                    : "Installing needs the privileged helper and Developer Tools access.")
-                .disabled(!model.canInstallBundles)
-            }
-            ToolbarItem(placement: .automatic) {
-                Button("Check for Updates") {
-                    Task { await bundles.refresh() }
-                }
-                .help("Reload releases and builds, and run host preflight again.")
-                .disabled(bundles.isInstalling)
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Done") { dismiss() }
-            }
-        }
         .confirmationDialog(
             "Remove VPhone.bundle \(removal ?? "")?",
             isPresented: Binding(get: { removal != nil }, set: {
@@ -83,6 +72,13 @@ struct VPhoneLaunchpadCoreBundleView: View {
         } message: {
             Text("Machines are not affected. You can install this version again later.")
         }
+        #if DEBUG
+        .onAppear {
+            if VPhoneLaunchpadPreview.isActive {
+                source = VPhoneLaunchpadPreview.coreBundleSource
+            }
+        }
+        #endif
     }
 
     // MARK: - Installed

@@ -82,6 +82,18 @@
                 await shot("06-machines-creating", suffix)
 
                 await sheet(.newMachine, "07-new-machine", suffix)
+                await standalone("07b-new-machine-advanced", suffix, size: NSSize(width: 520, height: 560)) {
+                    VPhoneLaunchpadNewMachineAdvancedView(
+                        network: .constant("nat"),
+                        patches: .constant(VPhoneLaunchpadPatchSelection()),
+                        forceMaxSlide: .constant(false),
+                        keepArtifacts: .constant(false),
+                        patchCatalog: nil,
+                        patchCatalogError: nil,
+                        reloadPatches: {},
+                    )
+                    .environment(model)
+                }
                 await sheet(.creation(path("ios27-rc")), "08-creation-progress", suffix)
                 creation.applyPreview(failed: true)
                 await sheet(.creation(path("ios27-rc")), "08b-creation-failed", suffix)

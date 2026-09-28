@@ -17,36 +17,34 @@ struct VPhoneLaunchpadMachineSettingsView: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                Stepper("CPU: \(cpu) cores", value: $cpu, in: 1 ... ProcessInfo.processInfo.activeProcessorCount)
-                Stepper("Memory: \(memoryMB) MB", value: $memoryMB, in: 2048 ... 65536, step: 1024)
-            } header: {
-                Text("Hardware")
-            }
-            Section("Network") {
-                Picker("Mode", selection: $network) {
-                    Text("NAT").tag("nat")
-                    Text("Bridged").tag("bridged")
-                    Text("None").tag("none")
+        VPhoneLaunchpadSheet(Text("\(machine.name) Settings")) {
+            Form {
+                Section {
+                    Stepper("CPU: \(cpu) cores", value: $cpu, in: 1 ... ProcessInfo.processInfo.activeProcessorCount)
+                    Stepper("Memory: \(memoryMB) MB", value: $memoryMB, in: 2048 ... 65536, step: 1024)
+                } header: {
+                    Text("Hardware")
                 }
-                if network == "bridged" {
-                    TextField("Interface", text: $bridgeInterface, prompt: Text("First available"))
+                Section("Network") {
+                    Picker("Mode", selection: $network) {
+                        Text("NAT").tag("nat")
+                        Text("Bridged").tag("bridged")
+                        Text("None").tag("none")
+                    }
+                    if network == "bridged" {
+                        TextField("Interface", text: $bridgeInterface, prompt: Text("First available"))
+                    }
                 }
             }
+            .formStyle(.grouped)
+        } actions: {
+            Button("Cancel") { dismiss() }
+                .keyboardShortcut(.cancelAction)
+            Button("Save") { save() }
+                .keyboardShortcut(.defaultAction)
         }
-        .formStyle(.grouped)
-        .navigationTitle("\(machine.name) Settings")
         .frame(width: 440)
         .fixedSize(horizontal: false, vertical: true)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }
-            }
-        }
         .onAppear {
             cpu = machine.cpuCount
             memoryMB = machine.memoryMB
@@ -91,35 +89,33 @@ struct VPhoneLaunchpadNameSheet: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                TextField("Name", text: $name)
-            } footer: {
-                if fitsLocation {
-                    Text("Use letters, numbers, periods, hyphens, and underscores.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("The path is too long. Use a shorter name, or a location with a shorter path.")
-                        .foregroundStyle(.red)
+        VPhoneLaunchpadSheet(Text(title)) {
+            Form {
+                Section {
+                    TextField("Name", text: $name)
+                } footer: {
+                    if fitsLocation {
+                        Text("Use letters, numbers, periods, hyphens, and underscores.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("The path is too long. Use a shorter name, or a location with a shorter path.")
+                            .foregroundStyle(.red)
+                    }
                 }
             }
+            .formStyle(.grouped)
+        } actions: {
+            Button("Cancel") { dismiss() }
+                .keyboardShortcut(.cancelAction)
+            Button(action) {
+                onConfirm(name)
+                dismiss()
+            }
+            .keyboardShortcut(.defaultAction)
+            .disabled(!isValid)
         }
-        .formStyle(.grouped)
-        .navigationTitle(title)
         .frame(width: 420)
         .fixedSize(horizontal: false, vertical: true)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button(action) {
-                    onConfirm(name)
-                    dismiss()
-                }
-                .disabled(!isValid)
-            }
-        }
         .onAppear { name = initial }
     }
 }
@@ -138,29 +134,27 @@ struct VPhoneLaunchpadExportView: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                Toggle("Maximum compression", isOn: $densest)
-                Toggle("Include the restore IPSW directory", isOn: $includeIPSW)
-            } footer: {
-                Text(densest
-                    ? "Creates a smaller .txz archive. Export takes much longer."
-                    : "Creates a .tzst archive.")
-                    .foregroundStyle(.secondary)
+        VPhoneLaunchpadSheet(Text("Export \(name)")) {
+            Form {
+                Section {
+                    Toggle("Maximum compression", isOn: $densest)
+                    Toggle("Include the restore IPSW directory", isOn: $includeIPSW)
+                } footer: {
+                    Text(densest
+                        ? "Creates a smaller .txz archive. Export takes much longer."
+                        : "Creates a .tzst archive.")
+                        .foregroundStyle(.secondary)
+                }
             }
+            .formStyle(.grouped)
+        } actions: {
+            Button("Cancel") { dismiss() }
+                .keyboardShortcut(.cancelAction)
+            Button("Choose Location…") { choose() }
+                .keyboardShortcut(.defaultAction)
         }
-        .formStyle(.grouped)
-        .navigationTitle("Export \(name)")
         .frame(width: 420)
         .fixedSize(horizontal: false, vertical: true)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Choose Location…") { choose() }
-            }
-        }
     }
 
     private func choose() {

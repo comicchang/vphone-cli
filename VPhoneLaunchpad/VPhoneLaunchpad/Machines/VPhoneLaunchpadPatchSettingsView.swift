@@ -52,24 +52,27 @@ struct VPhoneLaunchpadPatchSettingsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            list
-            Divider()
-            footer
-        }
-        .navigationTitle(machine.map { Text("\($0.name) Patches") } ?? Text("Patches"))
-        .frame(width: 920, height: 640)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+        VPhoneLaunchpadSheet(machine.map { Text("\($0.name) Patches") } ?? Text("Patches")) {
+            VStack(spacing: 0) {
+                header
+                Divider()
+                list
+                Divider()
+                detailPane
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button(machine == nil ? "Done" : "Save") { commit() }
-                    .disabled(catalog == nil)
-            }
+        } accessory: {
+            Text(status)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        } actions: {
+            Button("Cancel") { dismiss() }
+                .keyboardShortcut(.cancelAction)
+            Button(machine == nil ? "Done" : "Save") { commit() }
+                .keyboardShortcut(.defaultAction)
+                .disabled(catalog == nil)
         }
+        .frame(width: 920, height: 680)
         .confirmationDialog(
             "Leave ^[\(essentialOff.count) boot-essential patch](inflect: true) off?",
             isPresented: $confirmsBootEssential,
@@ -212,7 +215,7 @@ struct VPhoneLaunchpadPatchSettingsView: View {
 
     // MARK: - Detail
 
-    private var footer: some View {
+    private var detailPane: some View {
         VStack(alignment: .leading, spacing: 8) {
             if !essentialOff.isEmpty {
                 Label {
@@ -225,9 +228,6 @@ struct VPhoneLaunchpadPatchSettingsView: View {
                 .font(.callout)
             }
             detail
-            Text(status)
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)

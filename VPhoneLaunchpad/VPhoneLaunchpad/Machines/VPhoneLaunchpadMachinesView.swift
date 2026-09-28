@@ -64,6 +64,14 @@ struct VPhoneLaunchpadMachinesView: View {
                 }
             }
             .inspectorColumnWidth(min: 300, ideal: 360, max: 520)
+            // The toggle belongs to the inspector's own toolbar section. Put in
+            // the content's toolbar, the section and its background were set up
+            // at launch but not again after the inspector was hidden and shown.
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    inspectorToggle
+                }
+            }
         }
         .toolbar { toolbar }
         #if DEBUG
@@ -113,8 +121,8 @@ struct VPhoneLaunchpadMachinesView: View {
         let selected = library.selected
         let state = selected.map { library.state(of: $0.path) }
         // Host Setup and Core Bundle hold the leading edge; the space pushes
-        // everything here to the trailing edge, in three groups: the selected
-        // machine, the library, and the inspector toggle above the inspector.
+        // everything here to the trailing edge, in two groups: the selected
+        // machine and the library. The inspector toggle is in the inspector.
         ToolbarItem(placement: .automatic) {
             Spacer()
         }
@@ -159,13 +167,6 @@ struct VPhoneLaunchpadMachinesView: View {
             }
             .help("Create a machine")
             .disabled(model.bundles.activeVersion == nil)
-        }
-        // Adjacent items share one background on macOS 26.
-        if #available(macOS 26.0, *) {
-            ToolbarSpacer(.fixed)
-        }
-        ToolbarItem(placement: .automatic) {
-            inspectorToggle
         }
     }
 
