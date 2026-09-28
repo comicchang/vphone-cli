@@ -43,8 +43,12 @@ public struct VPhonePatchApplicability: Sendable, Hashable, Codable {
     /// patch's plist entry stays empty rather than carrying two `Any` dicts.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        if iOSBase != .any { try container.encode(iOSBase, forKey: .iOSBase) }
-        if cloudOS != .any { try container.encode(cloudOS, forKey: .cloudOS) }
+        if iOSBase != .any {
+            try container.encode(iOSBase, forKey: .iOSBase)
+        }
+        if cloudOS != .any {
+            try container.encode(cloudOS, forKey: .cloudOS)
+        }
     }
 }
 

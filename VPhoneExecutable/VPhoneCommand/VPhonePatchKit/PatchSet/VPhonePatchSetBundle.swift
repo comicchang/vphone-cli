@@ -115,9 +115,9 @@ public struct VPhonePatchSetBundle: Sendable {
             throw VPhonePatchSetError.notABundle(path: resolved.path)
         }
         do {
-            return VPhonePatchSetBundle(
+            return try VPhonePatchSetBundle(
                 url: resolved,
-                manifest: try VPhonePatchSetManifest.read(fromBundle: resolved),
+                manifest: VPhonePatchSetManifest.read(fromBundle: resolved),
             )
         } catch {
             throw VPhonePatchSetError.manifestUnreadable(

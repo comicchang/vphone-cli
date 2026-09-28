@@ -251,7 +251,9 @@ extension VPhonePatchPlan {
         for set in ordered {
             for patch in set.patches {
                 guard selection.includes(patch.identifier) else {
-                    if patch.bootEssential { droppedBootEssentials.append(patch.identifier) }
+                    if patch.bootEssential {
+                        droppedBootEssentials.append(patch.identifier)
+                    }
                     continue
                 }
                 if patch.applicability.matches(iOSBase: iOSBase, cloudOS: cloudOS) {

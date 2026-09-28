@@ -25,7 +25,7 @@ public enum VPhoneVersionRequirement: Sendable, Hashable {
 
 // MARK: - Matching
 
-extension VPhoneVersionRequirement {
+public extension VPhoneVersionRequirement {
     /// Whether `version` satisfies the requirement.
     ///
     /// A version the pipeline could not read satisfies only ``any``: a patch gated
@@ -33,8 +33,10 @@ extension VPhoneVersionRequirement {
     ///
     /// Only major and minor are compared. A gate names a release, not a point
     /// update, so 18.6.2 satisfies `.major(18)` and `.atLeast(18, 6)` alike.
-    public func matches(_ version: VPhoneVersion?) -> Bool {
-        if case .any = self { return true }
+    func matches(_ version: VPhoneVersion?) -> Bool {
+        if case .any = self {
+            return true
+        }
         guard let version else { return false }
         switch self {
         case .any:
@@ -75,16 +77,16 @@ extension VPhoneVersionRequirement: Codable {
         case .any:
             self = .any
         case .major:
-            self = .major(try container.decode(Int.self, forKey: .major))
+            self = try .major(container.decode(Int.self, forKey: .major))
         case .release:
-            self = .release(
-                major: try container.decode(Int.self, forKey: .major),
-                minor: try container.decode(Int.self, forKey: .minor),
+            self = try .release(
+                major: container.decode(Int.self, forKey: .major),
+                minor: container.decode(Int.self, forKey: .minor),
             )
         case .atLeast:
-            self = .atLeast(
-                major: try container.decode(Int.self, forKey: .major),
-                minor: try container.decode(Int.self, forKey: .minor),
+            self = try .atLeast(
+                major: container.decode(Int.self, forKey: .major),
+                minor: container.decode(Int.self, forKey: .minor),
             )
         case .oneOf:
             let options = try container.decode([VPhoneVersionRequirement].self, forKey: .options)

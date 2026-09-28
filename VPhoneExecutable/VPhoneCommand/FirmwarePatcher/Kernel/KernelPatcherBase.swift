@@ -28,7 +28,9 @@ open class KernelPatcherBase {
     ///
     /// ``BufferedPatcher`` is how the pipeline reads a component's result, so the
     /// three concrete kernel patchers satisfy it from here.
-    public var patchedData: Data { buffer.data }
+    public var patchedData: Data {
+        buffer.data
+    }
 
     /// Base virtual address of the kernelcache __TEXT segment.
     public var baseVA: UInt64 = 0

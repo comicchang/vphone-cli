@@ -36,38 +36,46 @@ public protocol BufferedPatcher: Patcher {
     var patchedData: Data { get }
 }
 
-extension Patcher {
+public extension Patcher {
     /// Log a message if verbose mode is enabled.
-    public func log(_ message: String) {
+    func log(_ message: String) {
         if verbose {
             print(message)
         }
     }
 
     /// Every patch applies unless the patcher says otherwise.
-    public var gate: VPhonePatchGate { .unrestricted }
+    var gate: VPhonePatchGate {
+        .unrestricted
+    }
 
     /// Whether the site emitting `recordIdentifier` should be written.
-    public func gateAllows(_ recordIdentifier: String) -> Bool {
+    func gateAllows(_ recordIdentifier: String) -> Bool {
         gate.allowsReporting(record: recordIdentifier, component: component, verbose: verbose)
     }
 }
 
-extension VPhonePatchGate {
+public extension VPhonePatchGate {
     /// ``allows(record:)`` with the log line that explains the decision.
     ///
     /// The undeclared case is a manifest gap: the patch still applies, because
     /// dropping bytes over a missing declaration would change the firmware
     /// silently, and its warning prints whether or not verbose is on, so the gap
     /// shows up in an ordinary run.
-    public func allowsReporting(record recordIdentifier: String, component: String, verbose: Bool) -> Bool {
-        if isUnrestricted { return true }
+    func allowsReporting(record recordIdentifier: String, component: String, verbose: Bool) -> Bool {
+        if isUnrestricted {
+            return true
+        }
         if isUndeclared(record: recordIdentifier) {
             print("  [!] \(component): \(recordIdentifier) is declared by no patch set; applying it anyway")
             return true
         }
-        if allows(record: recordIdentifier) { return true }
-        if verbose { print("  [·] \(recordIdentifier): off in this preset") }
+        if allows(record: recordIdentifier) {
+            return true
+        }
+        if verbose {
+            print("  [·] \(recordIdentifier): off in this preset")
+        }
         return false
     }
 }

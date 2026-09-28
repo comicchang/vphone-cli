@@ -87,7 +87,9 @@ public struct VPhonePatchGate: Sendable, Hashable {
 
     /// True when the gate turns nothing off, so a caller can skip reporting.
     public var isUnrestricted: Bool {
-        if case .unrestricted = policy { return true }
+        if case .unrestricted = policy {
+            return true
+        }
         return false
     }
 

@@ -93,7 +93,7 @@ public enum VPhonePatchSetStore {
         for name in names.sorted()
             where name.hasSuffix("." + VPhonePatchSetBundle.pathExtension)
         {
-            sets.append(try VPhonePatchSetBundle.inspect(
+            try sets.append(VPhonePatchSetBundle.inspect(
                 at: directory.appendingPathComponent(name, isDirectory: true),
             ))
         }
@@ -138,11 +138,11 @@ public enum VPhonePatchSetStore {
         try installed.validate(expecting: candidate.manifest.identifier)
 
         var records = imported()
-        records[installed.manifest.identifier] = VPhoneImportedPatchSet(
+        records[installed.manifest.identifier] = try VPhoneImportedPatchSet(
             identifier: installed.manifest.identifier,
             name: installed.manifest.name,
             version: installed.manifest.version,
-            codeDirectoryHash: try installed.codeDirectoryHash(),
+            codeDirectoryHash: installed.codeDirectoryHash(),
             importedAt: Date(),
         )
         try write(records)

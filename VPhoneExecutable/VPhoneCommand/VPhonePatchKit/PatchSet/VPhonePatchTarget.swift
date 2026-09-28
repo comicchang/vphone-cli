@@ -59,7 +59,7 @@ extension VPhonePatchTarget: Codable {
         let kind = try container.decode(Kind.self, forKey: .kind)
         switch kind {
         case .firmware:
-            self = .firmware(try container.decode(VPhoneFirmwareComponent.self, forKey: .component))
+            self = try .firmware(container.decode(VPhoneFirmwareComponent.self, forKey: .component))
         case .dyldSharedCache:
             self = .dyldSharedCache
         case .prebootDeviceTree:

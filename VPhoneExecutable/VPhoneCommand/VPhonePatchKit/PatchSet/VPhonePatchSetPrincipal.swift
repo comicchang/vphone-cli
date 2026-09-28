@@ -105,8 +105,8 @@ open class VPhonePatchSetPrincipal {
     /// alone.
     open func makePatcher(
         for component: VPhoneFirmwareComponent,
-        data: Data,
-        context: VPhonePatchSetContext,
+        data _: Data,
+        context _: VPhonePatchSetContext,
     ) throws -> any BufferedPatcher {
         throw VPhonePatchSetError.componentUnsupported(
             principal: String(describing: type(of: self)),

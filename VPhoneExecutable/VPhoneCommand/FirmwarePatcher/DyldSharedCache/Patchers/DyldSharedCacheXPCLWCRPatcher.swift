@@ -385,7 +385,7 @@ public enum DyldSharedCacheXPCLWCRPatcher {
     static func register(
         _ insn: ARM64Instruction,
         _ index: Int,
-        _ disassembler: ARM64Disassembler,
+        _: ARM64Disassembler,
     ) -> String? {
         guard let operands = insn.detail?.operands, index < operands.count else { return nil }
         let operand = operands[index]

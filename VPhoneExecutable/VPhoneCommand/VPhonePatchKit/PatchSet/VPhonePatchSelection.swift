@@ -16,10 +16,10 @@ public enum VPhonePatchSelection: Sendable, Hashable {
     case block(Set<String>)
 }
 
-extension VPhonePatchSelection {
+public extension VPhonePatchSelection {
     /// Whether the selection names this patch as enabled, before the version
     /// gate is consulted.
-    public func includes(_ identifier: String) -> Bool {
+    func includes(_ identifier: String) -> Bool {
         switch self {
         case .all: true
         case let .allow(identifiers): identifiers.contains(identifier)
@@ -30,7 +30,7 @@ extension VPhonePatchSelection {
     /// The identifiers the selection names, whichever way it names them.
     /// The resolver checks these against the declared patches so a typo is an
     /// error rather than an allow list that turns nothing on.
-    public var namedIdentifiers: Set<String> {
+    var namedIdentifiers: Set<String> {
         switch self {
         case .all: []
         case let .allow(identifiers), let .block(identifiers): identifiers
@@ -41,7 +41,7 @@ extension VPhonePatchSelection {
     ///
     /// Half of how a VM's own checkmarks compose with a preset: unchecking a patch
     /// narrows an allow list and widens a block list.
-    public func blocking(_ identifiers: Set<String>) -> VPhonePatchSelection {
+    func blocking(_ identifiers: Set<String>) -> VPhonePatchSelection {
         guard !identifiers.isEmpty else { return self }
         switch self {
         case .all:
@@ -59,7 +59,7 @@ extension VPhonePatchSelection {
     /// and narrows a block list. It changes only the selection — a patch whose
     /// version gate rules it out here still does not apply, so checking a box can
     /// never put a patch somewhere it was never meant to run.
-    public func allowing(_ identifiers: Set<String>) -> VPhonePatchSelection {
+    func allowing(_ identifiers: Set<String>) -> VPhonePatchSelection {
         guard !identifiers.isEmpty else { return self }
         switch self {
         case .all:
@@ -92,9 +92,9 @@ extension VPhonePatchSelection: Codable {
         case .all:
             self = .all
         case .allow:
-            self = .allow(Set(try container.decode([String].self, forKey: .patches)))
+            self = try .allow(Set(container.decode([String].self, forKey: .patches)))
         case .block:
-            self = .block(Set(try container.decode([String].self, forKey: .patches)))
+            self = try .block(Set(container.decode([String].self, forKey: .patches)))
         }
     }
 

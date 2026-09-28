@@ -17,8 +17,8 @@ import VPhonePatchKit
 
 @Suite("Bundled patch set catalogue")
 struct FirmwarePatchSetCatalogTests {
-    @Test("Every bundled set has a unique identifier and no duplicate patches")
-    func identifiersAreUnique() {
+    @Test
+    func `Every bundled set has a unique identifier and no duplicate patches`() {
         let setIdentifiers = FirmwarePatchSetCatalog.bundled.map(\.identifier)
         #expect(Set(setIdentifiers).count == setIdentifiers.count)
 
@@ -26,8 +26,8 @@ struct FirmwarePatchSetCatalogTests {
         #expect(Set(patchIdentifiers).count == patchIdentifiers.count)
     }
 
-    @Test("No patch identifier is a record-site prefix of another")
-    func noAmbiguousPrefixes() {
+    @Test
+    func `No patch identifier is a record-site prefix of another`() {
         // Two declarations where one is a site of the other would make record
         // attribution depend on the order they happen to be checked in. The
         // resolver picks the longest, but a catalogue that needs that rule to
@@ -41,8 +41,8 @@ struct FirmwarePatchSetCatalogTests {
         }
     }
 
-    @Test("Every patch has a title, and a summary if it is boot-essential")
-    func patchesAreDescribed() {
+    @Test
+    func `Every patch has a title, and a summary if it is boot-essential`() {
         for patch in FirmwarePatchSetCatalog.allDeclarations {
             #expect(!patch.title.isEmpty, "\(patch.identifier) has no title")
             // The editor shows these beside a checkbox someone may untick. A
@@ -53,8 +53,8 @@ struct FirmwarePatchSetCatalogTests {
         }
     }
 
-    @Test("Every shipped preset resolves on each supported base")
-    func presetsResolve() throws {
+    @Test
+    func `Every shipped preset resolves on each supported base`() throws {
         for preset in FirmwarePatchSetCatalog.builtInPresets {
             for base in ["18.6.2", "26.0", "26.4", "27.0"] {
                 for cloud in ["26.1", "26.4"] {
@@ -76,8 +76,8 @@ struct FirmwarePatchSetCatalogTests {
         }
     }
 
-    @Test("A preset resolves even when no version could be read")
-    func presetsResolveWithoutVersions() throws {
+    @Test
+    func `A preset resolves even when no version could be read`() throws {
         // `fw patch` can run against a tree whose manifests it could not parse.
         // Resolution must still succeed; the version-gated patches simply skip.
         let plan = try VPhonePatchPlan.resolve(
@@ -90,8 +90,8 @@ struct FirmwarePatchSetCatalogTests {
         #expect(!plan.skippedByVersion.isEmpty)
     }
 
-    @Test("Standard leaves every manual-only patch off, on every base")
-    func standardExcludesManualOnly() throws {
+    @Test
+    func `Standard leaves every manual-only patch off, on every base`() throws {
         for base in ["18.6.2", "26.4", "27.0"] {
             let plan = try VPhonePatchPlan.resolve(
                 preset: FirmwarePatchSetCatalog.standardPreset,
@@ -105,8 +105,8 @@ struct FirmwarePatchSetCatalogTests {
         }
     }
 
-    @Test("Extended is standard plus the manual-only patches, and nothing else")
-    func extendedDiffersOnlyByManualOnly() throws {
+    @Test
+    func `Extended is standard plus the manual-only patches, and nothing else`() throws {
         let standard = try VPhonePatchPlan.resolve(
             preset: FirmwarePatchSetCatalog.standardPreset,
             patchSets: FirmwarePatchSetCatalog.bundled,
@@ -123,8 +123,8 @@ struct FirmwarePatchSetCatalogTests {
         #expect(standard.enabled.subtracting(extended.enabled).isEmpty)
     }
 
-    @Test("The two patches pinned by release are off everywhere else")
-    func versionPinnedPatchesAreOffByDefault() throws {
+    @Test
+    func `The two patches pinned by release are off everywhere else`() throws {
         // These two were flags once (`--force-exc-guard`, `--force-dsc-maxslide`).
         // They are now pinned to the release that needs them, so a base that does
         // not need them never gets them from a preset.
@@ -145,8 +145,8 @@ struct FirmwarePatchSetCatalogTests {
         }
     }
 
-    @Test("The Frida relaxations need cloudOS 26.4")
-    func fridaNeedsCapableCloudOS() throws {
+    @Test
+    func `The Frida relaxations need cloudOS 26.4`() throws {
         for cloud in ["26.1", "26.4"] {
             let plan = try VPhonePatchPlan.resolve(
                 preset: FirmwarePatchSetCatalog.extendedPreset,
@@ -161,8 +161,8 @@ struct FirmwarePatchSetCatalogTests {
         }
     }
 
-    @Test("The hv_vmm_present halves move together, and only extended has them")
-    func hypervisorConcealmentIsOptInAsAPair() throws {
+    @Test
+    func `The hv_vmm_present halves move together, and only extended has them`() throws {
         // Two patches, one behaviour: the kernel OID rename and the shared-cache
         // mangle. A plan holding one without the other is broken either way round —
         // the rename alone breaks the graphics and ML paths, the mangle alone does
@@ -199,23 +199,23 @@ struct FirmwarePatchSetCatalogTests {
         }
     }
 
-    @Test("Every set's manifest survives a plist round trip")
-    func manifestsRoundTrip() throws {
+    @Test
+    func `Every set's manifest survives a plist round trip`() throws {
         for manifest in FirmwarePatchSetCatalog.bundled {
             let decoded = try VPhonePatchSetManifest.decode(manifest.encodedPlist())
             #expect(decoded == manifest, "\(manifest.identifier) did not round trip")
         }
     }
 
-    @Test("Every built-in preset survives a plist round trip")
-    func presetsRoundTrip() throws {
+    @Test
+    func `Every built-in preset survives a plist round trip`() throws {
         for preset in FirmwarePatchSetCatalog.builtInPresets {
             #expect(try VPhonePatchPreset.decode(preset.encodedPlist()) == preset)
         }
     }
 
-    @Test("The shipped preset plists match the built-in copies")
-    func shippedPresetsMatchBuiltIns() throws {
+    @Test
+    func `The shipped preset plists match the built-in copies`() throws {
         // The bundle reads the plists; a dev build falls back to the Swift copies.
         // They have to agree, or a VM built from an Xcode build and a VM built from
         // a staged bundle would get different patches.
@@ -233,13 +233,13 @@ struct FirmwarePatchSetCatalogTests {
         }
     }
 
-    @Test("Standard comes first in a picker")
-    func standardSortsFirst() throws {
+    @Test
+    func `Standard comes first in a picker`() {
         #expect(FirmwarePatchSetCatalog.builtInPresets.first?.isStandard == true)
     }
 
-    @Test("No bundled set is external, so root cfw install never loads a file")
-    func bundledSetsOnly() {
+    @Test
+    func `No bundled set is external, so root cfw install never loads a file`() {
         for preset in FirmwarePatchSetCatalog.builtInPresets {
             #expect(!preset.usesExternalPatchSets)
         }

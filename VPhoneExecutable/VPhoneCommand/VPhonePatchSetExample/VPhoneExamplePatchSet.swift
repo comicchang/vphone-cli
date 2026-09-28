@@ -52,7 +52,7 @@ public final class VPhoneExamplePatchSet: VPhonePatchSetPrincipal {
     /// The preset parameter naming what to put there.
     public static let replaceParameter = "ExampleReplaceString"
 
-    public override func makePatcher(
+    override public func makePatcher(
         for component: VPhoneFirmwareComponent,
         data: Data,
         context: VPhonePatchSetContext,
@@ -93,7 +93,9 @@ public final class VPhoneExampleStringPatcher: BufferedPatcher {
     public let gate: VPhonePatchGate
 
     public let buffer: BinaryBuffer
-    public var patchedData: Data { buffer.data }
+    public var patchedData: Data {
+        buffer.data
+    }
 
     private let find: String
     private let replace: String
@@ -155,7 +157,9 @@ public final class VPhoneExampleStringPatcher: BufferedPatcher {
 
     @discardableResult
     public func apply() throws -> Int {
-        if found.isEmpty { _ = try findAll() }
+        if found.isEmpty {
+            _ = try findAll()
+        }
         for record in found {
             buffer.writeBytes(at: record.fileOffset, bytes: record.patchedBytes)
             log("  [+] \(record)")

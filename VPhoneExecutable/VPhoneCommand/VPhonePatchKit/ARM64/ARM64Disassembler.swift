@@ -153,14 +153,14 @@ extension ARM64Operand {
 
 // MARK: - Register Identity
 
-extension ARM64Register {
-    public static let invalid = ARM64Register(rawValue: AARCH64_REG_INVALID.rawValue)
-    public static let sp = ARM64Register(rawValue: AARCH64_REG_SP.rawValue)
-    public static let wzr = ARM64Register(rawValue: AARCH64_REG_WZR.rawValue)
-    public static let xzr = ARM64Register(rawValue: AARCH64_REG_XZR.rawValue)
+public extension ARM64Register {
+    static let invalid = ARM64Register(rawValue: AARCH64_REG_INVALID.rawValue)
+    static let sp = ARM64Register(rawValue: AARCH64_REG_SP.rawValue)
+    static let wzr = ARM64Register(rawValue: AARCH64_REG_WZR.rawValue)
+    static let xzr = ARM64Register(rawValue: AARCH64_REG_XZR.rawValue)
 
     /// The 64-bit general register `x<number>`; x29 and x30 are FP and LR.
-    public static func x(_ number: Int) -> ARM64Register {
+    static func x(_ number: Int) -> ARM64Register {
         precondition((0 ... 30).contains(number), "x\(number) is not a general register")
         return switch number {
         case 29: ARM64Register(rawValue: AARCH64_REG_FP.rawValue)
@@ -170,13 +170,13 @@ extension ARM64Register {
     }
 
     /// The 32-bit general register `w<number>`.
-    public static func w(_ number: Int) -> ARM64Register {
+    static func w(_ number: Int) -> ARM64Register {
         precondition((0 ... 30).contains(number), "w\(number) is not a general register")
         return ARM64Register(rawValue: AARCH64_REG_W0.rawValue + UInt32(number))
     }
 
     /// Canonical register name, such as "x0", "w1" or "wzr".
-    public var name: String? {
+    var name: String? {
         guard let name = cs_reg_name(registerNameHandle, rawValue) else { return nil }
         return String(cString: name)
     }

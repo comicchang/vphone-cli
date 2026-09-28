@@ -313,7 +313,7 @@ public enum DyldSharedCacheIOMFBSwapEndPatcher {
     /// a change in how an operand renders cannot move the site.
     static func movRegisterImmediate(
         _ instruction: ARM64Instruction,
-        disassembler: ARM64Disassembler,
+        disassembler _: ARM64Disassembler,
     ) -> (register: String, immediate: Int64)? {
         guard instruction.mnemonic == "mov" else { return nil }
         guard let operands = instruction.detail?.operands, operands.count == 2,

@@ -50,7 +50,7 @@ private enum ExamplePatchSet {
         )
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try? FileManager.default.removeItem(at: copy)
-        try FileManager.default.copyItem(at: try url(), to: copy)
+        try FileManager.default.copyItem(at: url(), to: copy)
         try codesign(copy)
         return copy
     }
@@ -78,9 +78,9 @@ private enum ExamplePatchSet {
 
 @Suite("Patch set bundles are read before they are loaded")
 struct PatchSetInspectionTests {
-    @Test("The manifest comes out of the bundle without loading any code")
-    func inspect() throws {
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+    @Test
+    func `The manifest comes out of the bundle without loading any code`() throws {
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         #expect(set.manifest.identifier == ExamplePatchSet.identifier)
         #expect(set.manifest.patches.count == 1)
         let patch = try #require(set.manifest.patches.first)
@@ -91,16 +91,16 @@ struct PatchSetInspectionTests {
         #expect(patch.applicability.matches(iOSBase: VPhoneVersion("27.0"), cloudOS: nil))
     }
 
-    @Test("Anything that is not a patch set bundle is refused")
-    func notABundle() throws {
+    @Test
+    func `Anything that is not a patch set bundle is refused`() throws {
         let plain = URL(fileURLWithPath: "/usr/bin/codesign")
         #expect(throws: VPhonePatchSetError.notABundle(path: plain.path)) {
             try VPhonePatchSetBundle.inspect(at: plain)
         }
     }
 
-    @Test("A path with the right extension but no manifest is refused")
-    func missingManifest() throws {
+    @Test
+    func `A path with the right extension but no manifest is refused`() throws {
         let directory = ExamplePatchSet.temporaryDirectory()
         let empty = directory.appendingPathComponent(
             "Empty.\(VPhonePatchSetBundle.pathExtension)",
@@ -129,9 +129,9 @@ struct PatchSetInspectionTests {
 
 @Suite("What a patch set has to satisfy before it is loaded")
 struct PatchSetValidationTests {
-    @Test("The identifier the preset pinned has to be the one the manifest declares")
-    func identifierMismatch() throws {
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+    @Test
+    func `The identifier the preset pinned has to be the one the manifest declares`() throws {
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         #expect(throws: VPhonePatchSetError.identifierMismatch(
             path: set.url.path,
             expected: "com.example.other",
@@ -143,9 +143,9 @@ struct PatchSetValidationTests {
         }
     }
 
-    @Test("A set built against a newer PatchKit is refused")
-    func patchKitTooOld() throws {
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+    @Test
+    func `A set built against a newer PatchKit is refused`() throws {
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         let ancient = try #require(VPhoneVersion("0.1"))
         #expect(throws: VPhonePatchSetError.patchKitTooOld(
             patchSet: ExamplePatchSet.identifier,
@@ -158,8 +158,8 @@ struct PatchSetValidationTests {
         #expect(set.manifest.minimumPatchKitVersion <= .currentPatchKit)
     }
 
-    @Test("An ad hoc signed copy passes every check the loader makes")
-    func sealedCopyValidates() throws {
+    @Test
+    func `An ad hoc signed copy passes every check the loader makes`() throws {
         let directory = ExamplePatchSet.temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let copy = try ExamplePatchSet.sealedCopy(into: directory)
@@ -171,8 +171,8 @@ struct PatchSetValidationTests {
         #expect(try !set.codeDirectoryHash().isEmpty)
     }
 
-    @Test("A set altered after signing no longer validates")
-    func tamperedCopyFails() throws {
+    @Test
+    func `A set altered after signing no longer validates`() throws {
         let directory = ExamplePatchSet.temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let copy = try ExamplePatchSet.sealedCopy(into: directory)
@@ -206,9 +206,9 @@ struct PatchSetValidationTests {
         }
     }
 
-    @Test("A boot-chain-only set has no guest-side patch to refuse")
-    func bootChainOnly() throws {
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+    @Test
+    func `A boot-chain-only set has no guest-side patch to refuse`() throws {
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         let guestSide = set.manifest.patches.filter { !$0.target.isBootChain }
         #expect(guestSide.isEmpty)
         // The refusal itself is the resolver's rule and is covered where the
@@ -243,8 +243,8 @@ struct PatchSetLoadingTests {
         )
     }
 
-    @Test("The exported factory loads and resolves VPhonePatchKit at runtime")
-    func loadPrincipal() throws {
+    @Test
+    func `The exported factory loads and resolves VPhonePatchKit at runtime`() throws {
         // Two things are load-bearing here. The link: the bundle's executable names
         // `@rpath/VPhonePatchKit.framework`, and dyld has to find the same framework
         // this process already has — a second copy would make the cast inside
@@ -252,17 +252,17 @@ struct PatchSetLoadingTests {
         // different types. And the entry point: the set is reached through the C
         // symbol it exports, not through `NSPrincipalClass`, which cannot work for a
         // class whose superclass is resilient.
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         let principal = try set.loadPrincipal()
         #expect(String(describing: type(of: principal)) == "VPhoneExamplePatchSet")
         // Loading twice hands back a second principal rather than failing: dlopen on
         // a mapped image returns its handle.
-        #expect(String(describing: type(of: try set.loadPrincipal())) == "VPhoneExamplePatchSet")
+        #expect(try String(describing: type(of: set.loadPrincipal())) == "VPhoneExamplePatchSet")
     }
 
-    @Test("A component the manifest never declared is a loud error")
-    func componentUnsupported() throws {
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+    @Test
+    func `A component the manifest never declared is a loud error`() throws {
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         let principal = try set.loadPrincipal()
         var thrown: (any Error)?
         do {
@@ -283,9 +283,9 @@ struct PatchSetLoadingTests {
         #expect(component == VPhoneFirmwareComponent.kernelcache.rawValue)
     }
 
-    @Test("The loaded patcher rewrites the string the preset named")
-    func patcherRewritesString() throws {
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+    @Test
+    func `The loaded patcher rewrites the string the preset named`() throws {
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         let principal = try set.loadPrincipal()
         let original = Self.syntheticIBEC(anchor: "VPHONE-ANCHOR")
 
@@ -308,14 +308,14 @@ struct PatchSetLoadingTests {
         let buffer = BinaryBuffer(patched)
         #expect(buffer.findAll(Data("VPHONE-ANCHOR".utf8)).isEmpty)
         let sites = buffer.findAll(Data("vphone-patch".utf8))
-        #expect(sites == [try #require(records.first).fileOffset])
+        #expect(try sites == [#require(records.first).fileOffset])
         // The byte the shorter replacement freed is a NUL, not the old tail.
-        #expect(patched[try #require(sites.first) + 12] == 0)
+        #expect(try patched[#require(sites.first) + 12] == 0)
     }
 
-    @Test("A replacement longer than the anchor is refused rather than shifting bytes")
-    func replacementCannotGrow() throws {
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+    @Test
+    func `A replacement longer than the anchor is refused rather than shifting bytes`() throws {
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         let principal = try set.loadPrincipal()
         let patcher = try principal.makePatcher(
             for: .iBEC,
@@ -328,9 +328,9 @@ struct PatchSetLoadingTests {
         #expect(throws: (any Error).self) { try patcher.findAll() }
     }
 
-    @Test("A patcher whose patch the plan turned off writes nothing")
-    func gateTurnsThePatchOff() throws {
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+    @Test
+    func `A patcher whose patch the plan turned off writes nothing`() throws {
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         let principal = try set.loadPrincipal()
         let original = Self.syntheticIBEC(anchor: "VPHONE-ANCHOR")
         let parameters = [
@@ -370,9 +370,9 @@ struct PatchSetLoadingTests {
         #expect(on.patchedData != original)
     }
 
-    @Test("Without the preset's parameters the set patches nothing")
-    func noParametersNoPatch() throws {
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+    @Test
+    func `Without the preset's parameters the set patches nothing`() throws {
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         let principal = try set.loadPrincipal()
         let original = Self.syntheticIBEC(anchor: "VPHONE-ANCHOR")
         let patcher = try principal.makePatcher(
@@ -402,9 +402,9 @@ struct PatchSetPlanIntegrationTests {
         )
     }
 
-    @Test("A preset naming the set by path resolves to its manifest")
-    func resolvesExternalReference() throws {
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+    @Test
+    func `A preset naming the set by path resolves to its manifest`() throws {
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         let plan = try VPhonePatchPlan.resolve(
             preset: preset(path: set.url.path),
             patchSets: [set.manifest],
@@ -418,9 +418,9 @@ struct PatchSetPlanIntegrationTests {
         #expect(set.enabledComponents(in: plan) == [.iBEC])
     }
 
-    @Test("A set whose every patch is off is asked for no patcher at all")
-    func allPatchesOffContributesNothing() throws {
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+    @Test
+    func `A set whose every patch is off is asked for no patcher at all`() throws {
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         let plan = try VPhonePatchPlan.resolve(
             preset: preset(
                 path: set.url.path,
@@ -434,8 +434,8 @@ struct PatchSetPlanIntegrationTests {
         #expect(set.enabledComponents(in: plan).isEmpty)
     }
 
-    @Test("The pipeline loads the set the preset names and runs it over iBEC")
-    func pipelineRunsAnExternalSet() throws {
+    @Test
+    func `The pipeline loads the set the preset names and runs it over iBEC`() throws {
         // The whole path, without a restore tree: resolvePlan opens the bundle the
         // preset names — signature required, identifier pinned — buildComponentList
         // appends its patcher to the iBEC component, and patchData runs it.
@@ -490,16 +490,16 @@ struct PatchSetPlanIntegrationTests {
         #expect(patched.count == anchored.count)
     }
 
-    @Test("A set the preset pins but never imported stops the run")
-    func unsignedExternalSetIsRefused() throws {
+    @Test
+    func `A set the preset pins but never imported stops the run`() throws {
         // The built product is linker-signed with no sealed resources, which is what
         // a set nobody imported looks like. resolvePlan has to refuse it rather than
         // load it, and the message has to point at `patchset import`.
-        let pipeline = FirmwarePipeline(
+        let pipeline = try FirmwarePipeline(
             vmDirectory: URL(fileURLWithPath: NSTemporaryDirectory()),
             variant: .jb,
             verbose: false,
-            preset: preset(path: try ExamplePatchSet.url().path),
+            preset: preset(path: ExamplePatchSet.url().path),
             patchSets: FirmwarePatchSetCatalog.bundled,
         )
         var thrown: (any Error)?
@@ -517,9 +517,9 @@ struct PatchSetPlanIntegrationTests {
         }
     }
 
-    @Test("The preset has to name the identifier the file declares")
-    func presetPinsIdentity() throws {
-        let set = try VPhonePatchSetBundle.inspect(at: try ExamplePatchSet.url())
+    @Test
+    func `The preset has to name the identifier the file declares`() throws {
+        let set = try VPhonePatchSetBundle.inspect(at: ExamplePatchSet.url())
         // What `resolvePlan` does with a preset whose pinned identifier does not
         // match the bundle at the path: refuse before loading, so swapping the file
         // cannot silently change which patches apply.

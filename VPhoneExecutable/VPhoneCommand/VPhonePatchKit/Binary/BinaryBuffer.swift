@@ -2,10 +2,10 @@
 
 import Foundation
 
-extension Data {
+public extension Data {
     /// Load a little-endian integer without assuming the buffer is naturally aligned.
     @inlinable
-    public func loadLE<T: FixedWidthInteger>(_: T.Type, at offset: Int) -> T {
+    func loadLE<T: FixedWidthInteger>(_: T.Type, at offset: Int) -> T {
         precondition(offset >= 0 && offset + MemoryLayout<T>.size <= count)
         var value: T = .zero
         _ = Swift.withUnsafeMutableBytes(of: &value) { dst in

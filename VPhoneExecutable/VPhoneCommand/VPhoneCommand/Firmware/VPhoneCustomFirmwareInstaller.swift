@@ -415,11 +415,21 @@ struct VPhoneCustomFirmwareInstaller {
         // The version branches stay: they and the declarations' applicability say
         // the same thing, and this is what a VM with no plan still follows.
         if version.hasPrefix("27.") {
-            if on("iomfb_force_kern") { try patch("patch-iomfb-force-kern", [dsc]) }
-            if on("dsc_maxslide.zero") { try patch("patch-dsc-maxslide", [dsc]) }
-            if on("lsd_embedded_reg.entitlement_gate") { try patch("patch-lsd-embedded-reg", [dsc]) }
-            if on("xpc_lwcr") { try patch("patch-xpc-lwcr", [dsc]) }
-            if on("lockdown_mode.sysctl_error_gate") { try patch("patch-lockdown-mode", [dsc]) }
+            if on("iomfb_force_kern") {
+                try patch("patch-iomfb-force-kern", [dsc])
+            }
+            if on("dsc_maxslide.zero") {
+                try patch("patch-dsc-maxslide", [dsc])
+            }
+            if on("lsd_embedded_reg.entitlement_gate") {
+                try patch("patch-lsd-embedded-reg", [dsc])
+            }
+            if on("xpc_lwcr") {
+                try patch("patch-xpc-lwcr", [dsc])
+            }
+            if on("lockdown_mode.sysctl_error_gate") {
+                try patch("patch-lockdown-mode", [dsc])
+            }
         } else if version.hasPrefix("26.0") || version.hasPrefix("18.") {
             if on("dsc.iomfb_swapend") {
                 try patch("patch-iomfb-swapend", [dsc, "--target-size", "0x560"])
@@ -427,11 +437,15 @@ struct VPhoneCustomFirmwareInstaller {
         } else if forceDyldSharedCacheMaxSlide {
             // Superseded by the plan: `dsc_maxslide.zero` is pinned to iOS 27, so
             // a VM with a plan cannot force it onto a 26.x base any more.
-            if on("dsc_maxslide.zero") { try patch("patch-dsc-maxslide", [dsc, "--force"]) }
+            if on("dsc_maxslide.zero") {
+                try patch("patch-dsc-maxslide", [dsc, "--force"])
+            }
         }
         // These former EXP patches pair with the kernel OID rename and the
         // camera DeviceTree additions in the public JB firmware pipeline.
-        if on("hv_vmm_dsc") { try patch("patch-hv-vmm-dsc", [dsc]) }
+        if on("hv_vmm_dsc") {
+            try patch("patch-hv-vmm-dsc", [dsc])
+        }
         if on("camera_dsc") {
             try patch("patch-camera-dsc", [dsc, (dsc as NSString).appendingPathComponent("dyld_shared_cache_arm64e")])
         }
@@ -464,7 +478,9 @@ struct VPhoneCustomFirmwareInstaller {
                 preserveEntitlements: true,
             )
         }
-        if on("guest.gigalocker_rename") { try renameGigalocker(data: data) }
+        if on("guest.gigalocker_rename") {
+            try renameGigalocker(data: data)
+        }
         if on("guest.gpu_bundle") {
             try installGPUBundle(restore: restore, system: system, owner: owner)
         }
@@ -485,9 +501,15 @@ struct VPhoneCustomFirmwareInstaller {
                 verb: "patch-mobileactivationd",
             )
         }
-        if on("watchdogd.hv_vmm_cache") { try patchWatchdog(system: system, work: work) }
-        if on("guest.vphoned") { try installVphoned(system: system, work: work) }
-        if on("guest.environment") { try installEnvironment(system: system) }
+        if on("watchdogd.hv_vmm_cache") {
+            try patchWatchdog(system: system, work: work)
+        }
+        if on("guest.vphoned") {
+            try installVphoned(system: system, work: work)
+        }
+        if on("guest.environment") {
+            try installEnvironment(system: system)
+        }
         if on("launchd_jetsam.panic_guard_bypass") {
             try patchMachO(
                 system: system,
@@ -498,7 +520,9 @@ struct VPhoneCustomFirmwareInstaller {
                 injectedDylibPath: "/vh",
             )
         }
-        if on("guest.debugserver") { try patchDebugserver(system: system, work: work) }
+        if on("guest.debugserver") {
+            try patchDebugserver(system: system, work: work)
+        }
         if version.hasPrefix("27."), on("campo.entitlements") {
             try patchCampo(system: system, work: work)
         }

@@ -14,8 +14,8 @@ import VPhonePatchKit
 
 @Suite("Version requirements")
 struct VPhoneVersionRequirementTests {
-    @Test("A product version splits into major, minor and patch")
-    func parsing() {
+    @Test
+    func `A product version splits into major, minor and patch`() {
         #expect(VPhoneVersion("27")?.major == 27)
         #expect(VPhoneVersion("27")?.minor == 0)
         #expect(VPhoneVersion("26.4")?.minor == 4)
@@ -28,15 +28,15 @@ struct VPhoneVersionRequirementTests {
         #expect(VPhoneVersion("1.2.3.4") == nil)
     }
 
-    @Test("Trailing zeros do not change a version")
-    func trailingZeros() {
+    @Test
+    func `Trailing zeros do not change a version`() throws {
         #expect(VPhoneVersion("27") == VPhoneVersion("27.0"))
         #expect(VPhoneVersion("27.0") == VPhoneVersion("27.0.0"))
-        #expect(VPhoneVersion("26.4")! < VPhoneVersion("26.4.1")!)
+        #expect(try #require(VPhoneVersion("26.4")) < VPhoneVersion("26.4.1")!)
     }
 
-    @Test("Each requirement matches exactly the releases it names")
-    func matching() {
+    @Test
+    func `Each requirement matches exactly the releases it names`() {
         let eighteen = VPhoneVersion("18.6.2")
         let twentySixZero = VPhoneVersion("26.0")
         let twentySixFour = VPhoneVersion("26.4")
@@ -59,8 +59,8 @@ struct VPhoneVersionRequirementTests {
         #expect(!either.matches(twentySixFour))
     }
 
-    @Test("A version gate never matches an unreadable version")
-    func unknownVersion() {
+    @Test
+    func `A version gate never matches an unreadable version`() {
         // The one case that must not fail open: a patch pinned to a release must
         // not apply when nothing knows which release this is.
         for requirement: VPhoneVersionRequirement in [
@@ -73,8 +73,8 @@ struct VPhoneVersionRequirementTests {
         }
     }
 
-    @Test("A requirement survives a plist round trip")
-    func coding() throws {
+    @Test
+    func `A requirement survives a plist round trip`() throws {
         let cases: [VPhoneVersionRequirement] = [
             .any,
             .major(27),
@@ -91,8 +91,8 @@ struct VPhoneVersionRequirementTests {
         }
     }
 
-    @Test("An empty OneOf is refused, because it would match nothing")
-    func emptyOneOf() throws {
+    @Test
+    func `An empty OneOf is refused, because it would match nothing`() throws {
         let plist = """
         <?xml version="1.0" encoding="UTF-8"?>
         <plist version="1.0"><array><dict>
@@ -113,8 +113,8 @@ struct VPhoneVersionRequirementTests {
 
 @Suite("Patch selection")
 struct VPhonePatchSelectionTests {
-    @Test("All, allow and block each answer for a patch nobody named")
-    func includes() {
+    @Test
+    func `All, allow and block each answer for a patch nobody named`() {
         #expect(VPhonePatchSelection.all.includes("anything"))
         #expect(VPhonePatchSelection.allow(["a"]).includes("a"))
         #expect(!VPhonePatchSelection.allow(["a"]).includes("b"))
@@ -122,8 +122,8 @@ struct VPhonePatchSelectionTests {
         #expect(VPhonePatchSelection.block(["a"]).includes("b"))
     }
 
-    @Test("Unchecking a box narrows every kind of selection")
-    func blocking() {
+    @Test
+    func `Unchecking a box narrows every kind of selection`() {
         #expect(VPhonePatchSelection.all.blocking(["a"]) == .block(["a"]))
         #expect(VPhonePatchSelection.allow(["a", "b"]).blocking(["a"]) == .allow(["b"]))
         #expect(VPhonePatchSelection.block(["a"]).blocking(["b"]) == .block(["a", "b"]))
@@ -131,15 +131,15 @@ struct VPhonePatchSelectionTests {
         #expect(VPhonePatchSelection.allow(["a"]).blocking([]) == .allow(["a"]))
     }
 
-    @Test("Checking a box widens every kind of selection")
-    func allowing() {
+    @Test
+    func `Checking a box widens every kind of selection`() {
         #expect(VPhonePatchSelection.all.allowing(["a"]) == .all)
         #expect(VPhonePatchSelection.allow(["a"]).allowing(["b"]) == .allow(["a", "b"]))
         #expect(VPhonePatchSelection.block(["a", "b"]).allowing(["a"]) == .block(["b"]))
     }
 
-    @Test("A selection survives a plist round trip")
-    func coding() throws {
+    @Test
+    func `A selection survives a plist round trip`() throws {
         for selection: VPhonePatchSelection in [.all, .allow(["a", "b"]), .block(["c"])] {
             let encoder = PropertyListEncoder()
             encoder.outputFormat = .xml
@@ -157,8 +157,8 @@ struct VPhonePatchDeclarationTests {
         VPhonePatchDeclaration(identifier: identifier, title: identifier, target: .firmware(.kernelcache))
     }
 
-    @Test("A declaration covers its own record and its per-site records")
-    func covers() {
+    @Test
+    func `A declaration covers its own record and its per-site records`() {
         let kcall = declaration("jb.kcall10")
         #expect(kcall.covers(recordIdentifier: "jb.kcall10"))
         #expect(kcall.covers(recordIdentifier: "jb.kcall10.sy_call"))
@@ -170,15 +170,15 @@ struct VPhonePatchDeclarationTests {
         #expect(sandbox.covers(recordIdentifier: "sandbox_ext_267"))
     }
 
-    @Test("A bare textual prefix is not a site")
-    func doesNotOverreach() {
+    @Test
+    func `A bare textual prefix is not a site`() {
         let debugger = declaration("kernel.debugger")
         #expect(!debugger.covers(recordIdentifier: "kernel.debuggerless"))
         #expect(!debugger.covers(recordIdentifier: "kernel.debug"))
     }
 
-    @Test("A declaration survives a plist round trip, including its target")
-    func coding() throws {
+    @Test
+    func `A declaration survives a plist round trip, including its target`() throws {
         let cases: [VPhonePatchTarget] = [
             .firmware(.kernelcache),
             .dyldSharedCache,
@@ -203,8 +203,8 @@ struct VPhonePatchDeclarationTests {
         }
     }
 
-    @Test("A guest path must be absolute inside the guest")
-    func relativeGuestPathRefused() throws {
+    @Test
+    func `A guest path must be absolute inside the guest`() throws {
         let plist = """
         <?xml version="1.0" encoding="UTF-8"?>
         <plist version="1.0"><array><dict>
@@ -269,8 +269,8 @@ struct VPhonePatchPlanTests {
         )
     }
 
-    @Test("A resolved plan turns on what the selection and the version gate agree on")
-    func enabled() throws {
+    @Test
+    func `A resolved plan turns on what the selection and the version gate agree on`() throws {
         let sets = [set("a", patches: [
             patch("always"),
             patch("only27", applicability: VPhonePatchApplicability(iOSBase: .major(27))),
@@ -290,8 +290,8 @@ struct VPhonePatchPlanTests {
         #expect(!plan.isEnabled("only27"))
     }
 
-    @Test("A VM's own boxes compose onto the preset")
-    func overrides() throws {
+    @Test
+    func `A VM's own boxes compose onto the preset`() throws {
         let sets = [set("a", patches: [patch("one"), patch("two"), patch("three")])]
         let plan = try VPhonePatchPlan.resolve(
             preset: preset(["a"], selection: .block(["two", "three"])),
@@ -304,8 +304,8 @@ struct VPhonePatchPlanTests {
         #expect(plan.enabled == ["two"])
     }
 
-    @Test("Checking a box cannot defeat a version gate")
-    func overrideRespectsVersion() throws {
+    @Test
+    func `Checking a box cannot defeat a version gate`() throws {
         let sets = [set("a", patches: [
             patch("only27", applicability: VPhonePatchApplicability(iOSBase: .major(27))),
         ])]
@@ -320,8 +320,8 @@ struct VPhonePatchPlanTests {
         #expect(plan.skippedByVersion == ["only27"])
     }
 
-    @Test("A record maps back to the declaration that owns it")
-    func recordAttribution() throws {
+    @Test
+    func `A record maps back to the declaration that owns it`() throws {
         let sets = [set("a", patches: [patch("kernel.sandbox"), patch("kernel.sandbox.mount_check_mount")])]
         let plan = try VPhonePatchPlan.resolve(
             preset: preset(["a"], selection: .allow(["kernel.sandbox"])),
@@ -342,8 +342,8 @@ struct VPhonePatchPlanTests {
         #expect(!plan.isRecordEnabled("something.else"))
     }
 
-    @Test("A preset naming an absent set is an error")
-    func unknownPatchSet() {
+    @Test
+    func `A preset naming an absent set is an error`() {
         #expect(throws: VPhonePatchPlanError.unknownPatchSet(preset: "test", patchSet: "b")) {
             try VPhonePatchPlan.resolve(
                 preset: preset(["b"]),
@@ -354,8 +354,8 @@ struct VPhonePatchPlanTests {
         }
     }
 
-    @Test("A selection naming a patch nothing declares is an error")
-    func unknownPatch() {
+    @Test
+    func `A selection naming a patch nothing declares is an error`() {
         // The point of checking: a typo in a prewritten preset would otherwise be
         // an allow list that turns nothing on, or a block list that blocks nothing.
         #expect(throws: VPhonePatchPlanError.unknownPatch(preset: "test", identifier: "typo")) {
@@ -368,8 +368,8 @@ struct VPhonePatchPlanTests {
         }
     }
 
-    @Test("Two sets declaring the same patch is an error")
-    func duplicatePatch() {
+    @Test
+    func `Two sets declaring the same patch is an error`() {
         #expect(throws: (any Error).self) {
             try VPhonePatchPlan.resolve(
                 preset: preset(["a", "b"]),
@@ -383,8 +383,8 @@ struct VPhonePatchPlanTests {
         }
     }
 
-    @Test("An unmet requirement is an error")
-    func missingRequirement() {
+    @Test
+    func `An unmet requirement is an error`() {
         #expect(throws: VPhonePatchPlanError.missingRequirement(patchSet: "b", capability: "cap.a")) {
             try VPhonePatchPlan.resolve(
                 preset: preset(["b"]),
@@ -398,8 +398,8 @@ struct VPhonePatchPlanTests {
         }
     }
 
-    @Test("A conflict is an error from either side")
-    func conflictIsSymmetric() throws {
+    @Test
+    func `A conflict is an error from either side`() throws {
         let a = set("a", patches: [patch("one")], provides: ["cap.a"])
         let bDeclares = set("b", patches: [patch("two")], conflictsWith: ["cap.a"])
         let bSilent = set("b", patches: [patch("two")], provides: ["cap.b"])
@@ -426,8 +426,8 @@ struct VPhonePatchPlanTests {
         }
     }
 
-    @Test("A set needing a newer PatchKit is refused")
-    func patchKitTooOld() {
+    @Test
+    func `A set needing a newer PatchKit is refused`() {
         #expect(throws: (any Error).self) {
             try VPhonePatchPlan.resolve(
                 preset: preset(["a"]),
@@ -442,8 +442,8 @@ struct VPhonePatchPlanTests {
         }
     }
 
-    @Test("After puts the sets in order, and a cycle is an error")
-    func ordering() throws {
+    @Test
+    func `After puts the sets in order, and a cycle is an error`() throws {
         let plan = try VPhonePatchPlan.resolve(
             preset: preset(["c", "b", "a"]),
             patchSets: [
@@ -469,8 +469,8 @@ struct VPhonePatchPlanTests {
         }
     }
 
-    @Test("A blocked boot-essential patch is reported, not refused")
-    func droppedBootEssentials() throws {
+    @Test
+    func `A blocked boot-essential patch is reported, not refused`() throws {
         // Blocking one is allowed: that is how an external set replaces it. It
         // must never be quiet, though.
         let plan = try VPhonePatchPlan.resolve(
@@ -483,8 +483,8 @@ struct VPhonePatchPlanTests {
         #expect(plan.enabled == ["other"])
     }
 
-    @Test("A plan knows whether a component has anything left to do")
-    func componentExpectations() throws {
+    @Test
+    func `A plan knows whether a component has anything left to do`() throws {
         let sets = [VPhonePatchSetManifest(
             identifier: "a",
             name: "a",
@@ -508,23 +508,23 @@ struct VPhonePatchPlanTests {
 
 @Suite("Patch gate")
 struct VPhonePatchGateTests {
-    @Test("An unrestricted gate applies everything")
-    func unrestricted() {
+    @Test
+    func `An unrestricted gate applies everything`() {
         let gate = VPhonePatchGate.unrestricted
         #expect(gate.isUnrestricted)
         #expect(gate.allows(record: "anything"))
         #expect(!gate.isUndeclared(record: "anything"))
     }
 
-    @Test("A gate answers about record identifiers, not just declarations")
-    func records() {
+    @Test
+    func `A gate answers about record identifiers, not just declarations`() {
         let gate = VPhonePatchGate(declared: ["jb.kcall10", "sandbox_ext"], enabled: ["jb.kcall10"])
         #expect(gate.allows(record: "jb.kcall10.sy_call"))
         #expect(!gate.allows(record: "sandbox_ext_267"))
     }
 
-    @Test("An undeclared record applies, and says so")
-    func undeclaredFailsOpen() {
+    @Test
+    func `An undeclared record applies, and says so`() {
         // Dropping bytes over a missing declaration would change the firmware
         // silently. Applying it and flagging the gap is the safer failure.
         let gate = VPhonePatchGate(declared: ["known"], enabled: [])
@@ -534,8 +534,8 @@ struct VPhonePatchGateTests {
         #expect(!gate.allows(record: "known"))
     }
 
-    @Test("The longest declaration owns a record")
-    func longestWins() {
+    @Test
+    func `The longest declaration owns a record`() {
         let gate = VPhonePatchGate(
             declared: ["kernel.sandbox", "kernel.sandbox.mount_check_mount"],
             enabled: ["kernel.sandbox"],

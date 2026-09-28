@@ -31,7 +31,9 @@ public struct VPhonePatchSetManifest: Sendable, Hashable, Codable, Identifiable 
     /// Sets or capabilities that must run before this one, when both are present.
     public var after: [String]
 
-    public var id: String { identifier }
+    public var id: String {
+        identifier
+    }
 
     public init(
         identifier: String,
@@ -122,24 +124,34 @@ public struct VPhonePatchSetManifest: Sendable, Hashable, Codable, Identifiable 
         try container.encode(identifier, forKey: .identifier)
         try container.encode(name, forKey: .name)
         try container.encode(version, forKey: .version)
-        if !summary.isEmpty { try container.encode(summary, forKey: .summary) }
+        if !summary.isEmpty {
+            try container.encode(summary, forKey: .summary)
+        }
         try container.encode(minimumPatchKitVersion, forKey: .minimumPatchKitVersion)
         try container.encode(patches, forKey: .patches)
-        if !requires.isEmpty { try container.encode(requires, forKey: .requires) }
-        if !provides.isEmpty { try container.encode(provides, forKey: .provides) }
-        if !conflictsWith.isEmpty { try container.encode(conflictsWith, forKey: .conflictsWith) }
-        if !after.isEmpty { try container.encode(after, forKey: .after) }
+        if !requires.isEmpty {
+            try container.encode(requires, forKey: .requires)
+        }
+        if !provides.isEmpty {
+            try container.encode(provides, forKey: .provides)
+        }
+        if !conflictsWith.isEmpty {
+            try container.encode(conflictsWith, forKey: .conflictsWith)
+        }
+        if !after.isEmpty {
+            try container.encode(after, forKey: .after)
+        }
     }
 }
 
 // MARK: - Plist IO
 
-extension VPhonePatchSetManifest {
+public extension VPhonePatchSetManifest {
     /// The path a patch-set bundle keeps its manifest at.
-    public static let resourceName = "Manifest.plist"
+    static let resourceName = "Manifest.plist"
 
     /// Read a manifest from a `.vphonepatchset` bundle directory.
-    public static func read(fromBundle bundle: URL) throws -> VPhonePatchSetManifest {
+    static func read(fromBundle bundle: URL) throws -> VPhonePatchSetManifest {
         let url = bundle
             .appendingPathComponent("Contents", isDirectory: true)
             .appendingPathComponent("Resources", isDirectory: true)
@@ -150,12 +162,12 @@ extension VPhonePatchSetManifest {
         return try decode(Data(contentsOf: url))
     }
 
-    public static func decode(_ data: Data) throws -> VPhonePatchSetManifest {
+    static func decode(_ data: Data) throws -> VPhonePatchSetManifest {
         try PropertyListDecoder().decode(VPhonePatchSetManifest.self, from: data)
     }
 
     /// Encode as an XML plist, the form a patch set checks into source control.
-    public func encodedPlist() throws -> Data {
+    func encodedPlist() throws -> Data {
         let encoder = PropertyListEncoder()
         encoder.outputFormat = .xml
         return try encoder.encode(self)

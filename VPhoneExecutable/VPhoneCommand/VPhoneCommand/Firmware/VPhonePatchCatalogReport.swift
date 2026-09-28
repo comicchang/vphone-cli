@@ -176,8 +176,12 @@ public struct VPhonePatchCatalogReport: Sendable {
             }
             let box = entry.enabled ? "[x]" : "[ ]"
             var notes: [String] = []
-            if entry.applicability != "any" { notes.append(entry.applicability) }
-            if entry.bootEssential { notes.append("boot-essential") }
+            if entry.applicability != "any" {
+                notes.append(entry.applicability)
+            }
+            if entry.bootEssential {
+                notes.append("boot-essential")
+            }
             let suffix = notes.isEmpty ? "" : "  (\(notes.joined(separator: ", ")))"
             lines.append("    \(box) \(entry.identifier)\(suffix)")
         }

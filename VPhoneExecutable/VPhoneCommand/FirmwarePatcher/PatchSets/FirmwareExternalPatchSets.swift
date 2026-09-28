@@ -27,16 +27,18 @@ final class FirmwareExternalPatchSets {
 
     private var loaded: [String: Loaded] = [:]
 
-    var isEmpty: Bool { loaded.isEmpty }
+    var isEmpty: Bool {
+        loaded.isEmpty
+    }
 
     /// Map the set's executable and keep its principal for the rest of the run.
     ///
     /// The caller has already validated the manifest; this is the step that starts
     /// running the set's code.
     func add(_ bundle: VPhonePatchSetBundle) throws {
-        loaded[bundle.manifest.identifier] = Loaded(
+        loaded[bundle.manifest.identifier] = try Loaded(
             bundle: bundle,
-            principal: try bundle.loadPrincipal(),
+            principal: bundle.loadPrincipal(),
         )
     }
 

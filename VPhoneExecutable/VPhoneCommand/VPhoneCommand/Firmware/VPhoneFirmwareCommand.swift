@@ -371,7 +371,7 @@ struct VPhoneFirmwarePatchesCommand: ParsableCommand {
         if let name {
             let resolvedName = try VPhoneVirtualMachineSelection.resolveExisting(name, in: lib.library)
             vmName = resolvedName
-            selection = VPhonePatchPresetStore.selection(forVM: try lib.library.bundle(named: resolvedName).url)
+            selection = try VPhonePatchPresetStore.selection(forVM: lib.library.bundle(named: resolvedName).url)
         }
         if let preset {
             selection.presetIdentifier = preset
@@ -392,7 +392,7 @@ struct VPhoneFirmwarePatchesCommand: ParsableCommand {
             presets: presets,
         )
         if json {
-            print(try report.jsonText())
+            try print(report.jsonText())
         } else {
             print(report.text())
         }

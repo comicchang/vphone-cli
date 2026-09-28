@@ -27,9 +27,9 @@ public enum VPhonePatchSetReference: Sendable, Hashable {
     case external(identifier: String, path: String)
 }
 
-extension VPhonePatchSetReference {
+public extension VPhonePatchSetReference {
     /// The set identity this reference expects, whichever way it points at it.
-    public var identifier: String {
+    var identifier: String {
         switch self {
         case let .bundled(identifier): identifier
         case let .external(identifier, _): identifier
@@ -51,7 +51,9 @@ public struct VPhonePatchPreset: Sendable, Hashable, Codable, Identifiable {
     /// Free-form knobs a patch set reads, such as a size override.
     public var parameters: [String: String]
 
-    public var id: String { identifier }
+    public var id: String {
+        identifier
+    }
 
     public init(
         identifier: String,
@@ -73,12 +75,20 @@ public struct VPhonePatchPreset: Sendable, Hashable, Codable, Identifiable {
     public static let standardIdentifier = "standard"
 
     /// Whether this is the preset a VM gets by default.
-    public var isStandard: Bool { identifier == Self.standardIdentifier }
+    public var isStandard: Bool {
+        identifier == Self.standardIdentifier
+    }
 
     /// True when the preset draws on a set from outside the bundle. Root
     /// `cfw install` refuses such a preset unless the set was imported first.
     public var usesExternalPatchSets: Bool {
-        patchSets.contains { if case .external = $0 { true } else { false } }
+        patchSets.contains {
+            if case .external = $0 {
+                true
+            } else {
+                false
+            }
+        }
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -111,10 +121,14 @@ public struct VPhonePatchPreset: Sendable, Hashable, Codable, Identifiable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(identifier, forKey: .identifier)
         try container.encode(title, forKey: .title)
-        if !summary.isEmpty { try container.encode(summary, forKey: .summary) }
+        if !summary.isEmpty {
+            try container.encode(summary, forKey: .summary)
+        }
         try container.encode(patchSets, forKey: .patchSets)
         try container.encode(selection, forKey: .selection)
-        if !parameters.isEmpty { try container.encode(parameters, forKey: .parameters) }
+        if !parameters.isEmpty {
+            try container.encode(parameters, forKey: .parameters)
+        }
     }
 }
 
@@ -136,11 +150,11 @@ extension VPhonePatchSetReference: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(Kind.self, forKey: .kind) {
         case .bundled:
-            self = .bundled(try container.decode(String.self, forKey: .identifier))
+            self = try .bundled(container.decode(String.self, forKey: .identifier))
         case .external:
-            self = .external(
-                identifier: try container.decode(String.self, forKey: .identifier),
-                path: try container.decode(String.self, forKey: .path),
+            self = try .external(
+                identifier: container.decode(String.self, forKey: .identifier),
+                path: container.decode(String.self, forKey: .path),
             )
         }
     }
@@ -170,30 +184,32 @@ extension VPhonePatchSetReference: CustomStringConvertible {
 
 // MARK: - Plist IO
 
-extension VPhonePatchPreset {
+public extension VPhonePatchPreset {
     /// The bundle subdirectory holding the shipped presets.
-    public static let resourceDirectoryName = "patches_presets"
+    static let resourceDirectoryName = "patches_presets"
 
     /// Read every preset in a `patches_presets` directory, sorted by identifier
     /// with `standard` first so a picker's order is stable.
-    public static func readAll(fromDirectory directory: URL) throws -> [VPhonePatchPreset] {
+    static func readAll(fromDirectory directory: URL) throws -> [VPhonePatchPreset] {
         let names = try FileManager.default.contentsOfDirectory(atPath: directory.path)
         var presets: [VPhonePatchPreset] = []
         for name in names.sorted() where name.hasSuffix(".plist") {
             let url = directory.appendingPathComponent(name)
-            presets.append(try decode(Data(contentsOf: url)))
+            try presets.append(decode(Data(contentsOf: url)))
         }
         return presets.sorted {
-            if $0.isStandard != $1.isStandard { return $0.isStandard }
+            if $0.isStandard != $1.isStandard {
+                return $0.isStandard
+            }
             return $0.identifier < $1.identifier
         }
     }
 
-    public static func decode(_ data: Data) throws -> VPhonePatchPreset {
+    static func decode(_ data: Data) throws -> VPhonePatchPreset {
         try PropertyListDecoder().decode(VPhonePatchPreset.self, from: data)
     }
 
-    public func encodedPlist() throws -> Data {
+    func encodedPlist() throws -> Data {
         let encoder = PropertyListEncoder()
         encoder.outputFormat = .xml
         return try encoder.encode(self)

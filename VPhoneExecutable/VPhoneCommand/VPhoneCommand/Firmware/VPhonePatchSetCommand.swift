@@ -119,15 +119,23 @@ struct VPhonePatchSetInfoCommand: ParsableCommand {
         print("Identifier:  \(manifest.identifier)")
         print("Name:        \(manifest.name)")
         print("Version:     \(manifest.version)")
-        if !manifest.summary.isEmpty { print("Summary:     \(manifest.summary)") }
+        if !manifest.summary.isEmpty {
+            print("Summary:     \(manifest.summary)")
+        }
         print("Needs:       PatchKit \(manifest.minimumPatchKitVersion)"
             + " (this is \(VPhoneVersion.currentPatchKit))")
-        if !manifest.provides.isEmpty { print("Provides:    \(manifest.provides.joined(separator: ", "))") }
-        if !manifest.requires.isEmpty { print("Requires:    \(manifest.requires.joined(separator: ", "))") }
+        if !manifest.provides.isEmpty {
+            print("Provides:    \(manifest.provides.joined(separator: ", "))")
+        }
+        if !manifest.requires.isEmpty {
+            print("Requires:    \(manifest.requires.joined(separator: ", "))")
+        }
         if !manifest.conflictsWith.isEmpty {
             print("Conflicts:   \(manifest.conflictsWith.joined(separator: ", "))")
         }
-        if !manifest.after.isEmpty { print("After:       \(manifest.after.joined(separator: ", "))") }
+        if !manifest.after.isEmpty {
+            print("After:       \(manifest.after.joined(separator: ", "))")
+        }
         print("\nPatches (\(manifest.patches.count)):")
         for patch in manifest.patches {
             let essential = patch.bootEssential ? "  [boot-essential]" : ""
@@ -186,7 +194,7 @@ struct VPhonePatchSetImportCommand: ParsableCommand {
         print("[patchset import] \(installed.manifest.identifier) \(installed.manifest.version)"
             + " — \(installed.manifest.patches.count) patches")
         print("  \(installed.url.path)")
-        print("  cdhash \(try installed.codeDirectoryHash())")
+        try print("  cdhash \(installed.codeDirectoryHash())")
         // The real directory, not `~/.vphone`: a run with VPHONE_ROOT set reads its
         // presets from there, and a hint naming the wrong path is worse than none.
         print("\nName it from a preset in \(VPhonePatchPresetStore.userPresetsDirectory().path)/ as:")

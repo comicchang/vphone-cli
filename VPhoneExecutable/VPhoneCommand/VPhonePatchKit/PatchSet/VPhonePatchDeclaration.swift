@@ -25,7 +25,9 @@ public struct VPhonePatchDeclaration: Sendable, Hashable, Codable, Identifiable 
     /// which essentials a plan dropped.
     public var bootEssential: Bool
 
-    public var id: String { identifier }
+    public var id: String {
+        identifier
+    }
 
     public init(
         identifier: String,
@@ -76,14 +78,20 @@ public struct VPhonePatchDeclaration: Sendable, Hashable, Codable, Identifiable 
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(identifier, forKey: .identifier)
         try container.encode(title, forKey: .title)
-        if !summary.isEmpty { try container.encode(summary, forKey: .summary) }
+        if !summary.isEmpty {
+            try container.encode(summary, forKey: .summary)
+        }
         try container.encode(target, forKey: .target)
-        if applicability != .always { try container.encode(applicability, forKey: .applicability) }
-        if bootEssential { try container.encode(bootEssential, forKey: .bootEssential) }
+        if applicability != .always {
+            try container.encode(applicability, forKey: .applicability)
+        }
+        if bootEssential {
+            try container.encode(bootEssential, forKey: .bootEssential)
+        }
     }
 }
 
-extension VPhonePatchDeclaration {
+public extension VPhonePatchDeclaration {
     /// Whether `recordIdentifier` came from this patch.
     ///
     /// A record either is the declaration itself or sits under it as
@@ -92,7 +100,7 @@ extension VPhonePatchDeclaration {
     /// way — `jb.kcall10.sy_call` with a dot, `llb.rootfs_cbz_0x3b7` and
     /// `sandbox_ext_267` with an underscore. A bare textual prefix does not
     /// match, so `kernel.debuggerless` is not a site of `kernel.debugger`.
-    public func covers(recordIdentifier record: String) -> Bool {
+    func covers(recordIdentifier record: String) -> Bool {
         record == identifier
             || record.hasPrefix(identifier + ".")
             || record.hasPrefix(identifier + "_")
