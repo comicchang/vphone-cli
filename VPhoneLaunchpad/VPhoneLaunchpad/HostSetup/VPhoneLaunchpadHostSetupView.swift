@@ -22,7 +22,7 @@ struct VPhoneLaunchpadHostSetupView: View {
         } actions: {
             // Straight on to the next stage while it is not ready.
             if host.requiredPassed, !model.bundles.isReady {
-                Button("Continue") { model.panel = .coreBundle }
+                Button("Continue") { model.present(.coreBundle) }
                     .keyboardShortcut(.defaultAction)
             } else {
                 Button("Done") { dismiss() }

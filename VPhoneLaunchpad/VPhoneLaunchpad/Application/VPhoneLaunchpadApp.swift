@@ -17,8 +17,8 @@ struct VPhoneLaunchpadApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {}
             CommandGroup(after: .appSettings) {
-                Button("Host Setup…") { model.panel = .hostSetup }
-                Button("Core Bundle…") { model.panel = .coreBundle }
+                Button("Host Setup…") { model.present(.hostSetup) }
+                Button("Core Bundle…") { model.present(.coreBundle) }
             }
         }
 

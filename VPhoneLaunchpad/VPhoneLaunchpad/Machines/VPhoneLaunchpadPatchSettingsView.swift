@@ -91,7 +91,7 @@ struct VPhoneLaunchpadPatchSettingsView: View {
             HStack(spacing: 12) {
                 Picker("Preset", selection: presetBinding) {
                     ForEach(catalog?.presets ?? []) { preset in
-                        Text(verbatim: preset.title).tag(preset.identifier)
+                        Text(verbatim: preset.displayTitle).tag(preset.identifier)
                     }
                 }
                 .disabled(catalog == nil || isLoading)
@@ -104,7 +104,7 @@ struct VPhoneLaunchpadPatchSettingsView: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 200)
             }
-            if let summary = catalog?.preset(selection.preset)?.summary, !summary.isEmpty {
+            if let summary = catalog?.preset(selection.preset)?.displaySummary, !summary.isEmpty {
                 Text(verbatim: summary)
                     .font(.callout)
                     .foregroundStyle(.secondary)

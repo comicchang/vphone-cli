@@ -65,7 +65,7 @@ struct VPhoneLaunchpadNewMachineAdvancedView: View {
             if let patchCatalog {
                 Picker("Preset", selection: presetBinding) {
                     ForEach(patchCatalog.presets) { preset in
-                        Text(verbatim: preset.title).tag(preset.identifier)
+                        Text(verbatim: preset.displayTitle).tag(preset.identifier)
                     }
                 }
                 LabeledContent("Patches") {
@@ -92,7 +92,7 @@ struct VPhoneLaunchpadNewMachineAdvancedView: View {
     private var patchNote: some View {
         let essentialOff = patchCatalog.map { patches.bootEssentialOff(in: $0) } ?? []
         VStack(alignment: .leading, spacing: 4) {
-            if let summary = patchCatalog?.preset(patches.preset)?.summary, !summary.isEmpty {
+            if let summary = patchCatalog?.preset(patches.preset)?.displaySummary, !summary.isEmpty {
                 Text(verbatim: summary).foregroundStyle(.secondary)
             }
             if patches.hasOverrides {

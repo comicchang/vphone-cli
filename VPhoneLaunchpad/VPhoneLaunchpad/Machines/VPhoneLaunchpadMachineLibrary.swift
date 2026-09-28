@@ -32,7 +32,7 @@ final class VPhoneLaunchpadMachineLibrary {
     /// Folders chosen in New Machine, in the order they were added. The
     /// default library is not among them.
     private(set) var addedRoots: [String]
-    var selection: Path?
+    var selection: Set<Path> = []
     var actionError: VPhoneLaunchpadError?
 
     /// The default library, canonical. Import writes here.
@@ -66,8 +66,15 @@ final class VPhoneLaunchpadMachineLibrary {
         [libraryRoot] + addedRoots
     }
 
+    /// The selected machines, in list order.
+    var selectedMachines: [VPhoneLaunchpadMachine] {
+        machines.filter { selection.contains($0.id) }
+    }
+
+    /// The selected machine when exactly one is selected.
     var selected: VPhoneLaunchpadMachine? {
-        machines.first { $0.id == selection }
+        let selected = selectedMachines
+        return selected.count == 1 ? selected[0] : nil
     }
 
     var runningCount: Int {
@@ -188,8 +195,9 @@ final class VPhoneLaunchpadMachineLibrary {
         listError = errors.first
         hasListed = true
         forgetEmptyLocations(listed: listed)
-        if selection == nil || !machines.contains(where: { $0.id == selection }) {
-            selection = machines.first?.id
+        selection.formIntersection(machines.map(\.id))
+        if selection.isEmpty, let first = machines.first {
+            selection = [first.id]
         }
         let paths = machines.map(\.path)
         externallyRunning = await Task.detached { Self.machinesHoldingDisks(paths) }.value
@@ -333,13 +341,13 @@ final class VPhoneLaunchpadMachineLibrary {
 
     func rename(_ machine: Path, to newName: String) async {
         if await perform(String(localized: "Renaming…"), on: machine, ["vm", "rename", machine.name, newName] + machine.libraryArguments) {
-            selection = Path(libraryRoot: machine.libraryRoot, name: newName)
+            selection = [Path(libraryRoot: machine.libraryRoot, name: newName)]
         }
     }
 
     func clone(_ machine: Path, as newName: String) async {
         if await perform(String(localized: "Cloning…"), on: machine, ["vm", "clone", machine.name, newName] + machine.libraryArguments) {
-            selection = Path(libraryRoot: machine.libraryRoot, name: newName)
+            selection = [Path(libraryRoot: machine.libraryRoot, name: newName)]
         }
     }
 
@@ -426,7 +434,7 @@ final class VPhoneLaunchpadMachineLibrary {
             externallyRunning = [VPhoneLaunchpadPreview.path("research-01")]
             startedAt = [VPhoneLaunchpadPreview.path("research-01"): Date().addingTimeInterval(-6130)]
             creations = [creation.machine: creation]
-            selection = VPhoneLaunchpadPreview.path("research-01")
+            selection = [VPhoneLaunchpadPreview.path("research-01")]
         }
     }
 #endif

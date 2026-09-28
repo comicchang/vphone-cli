@@ -144,7 +144,7 @@ struct VPhoneLaunchpadCoreBundleView: View {
                 Button("Remove…", role: .destructive) { removal = bundle.version }
                     .disabled(bundles.isInstalling)
             } label: {
-                Image(systemName: "ellipsis.circle")
+                Image(systemName: "ellipsis")
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)

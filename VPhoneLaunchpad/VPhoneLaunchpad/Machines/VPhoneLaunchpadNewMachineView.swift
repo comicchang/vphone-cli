@@ -43,33 +43,36 @@ struct VPhoneLaunchpadNewMachineView: View {
         return selectedPairing.map { ($0.ios.url, $0.recommendedCloudOS.url) }
     }
 
-    /// Used when the name field is left empty. It is refused only when a
-    /// machine or folder of that name already exists.
-    private static let defaultName = "research-01"
-
     private var effectiveName: String {
-        let name = name.trimmingCharacters(in: .whitespaces)
-        return name.isEmpty ? Self.defaultName : name
+        name.trimmingCharacters(in: .whitespaces)
     }
 
     private var machine: VPhoneLaunchpadMachinePath {
         VPhoneLaunchpadMachinePath(libraryRoot: location, name: effectiveName)
     }
 
+    private func isTaken(_ machine: VPhoneLaunchpadMachinePath) -> Bool {
+        model.machines.machines.contains(where: { $0.path == machine })
+            || model.machines.creations[machine] != nil
+            || FileManager.default.fileExists(atPath: machine.url.path)
+    }
+
+    /// The first `pcc-research-NN` free in `root`, filled into the field when
+    /// the sheet opens.
+    private func suggestedName(in root: String) -> String {
+        let names = (1 ... 99).lazy.map { String(format: "pcc-research-%02d", $0) }
+        return names.first { !isTaken(VPhoneLaunchpadMachinePath(libraryRoot: root, name: $0)) } ?? "pcc-research"
+    }
+
     private var nameProblem: String? {
-        let isDefault = name.trimmingCharacters(in: .whitespaces).isEmpty
         if !VPhoneLaunchpadNames.isValidMachineName(effectiveName) {
             return String(localized: "Use letters, numbers, periods, hyphens, and underscores.")
         }
         if model.machines.machines.contains(where: { $0.path == machine }) || model.machines.creations[machine]?.isRunning == true {
-            return isDefault
-                ? String(localized: "\(Self.defaultName) already exists. Enter another name.")
-                : String(localized: "A machine with this name already exists.")
+            return String(localized: "A machine with this name already exists.")
         }
         if FileManager.default.fileExists(atPath: machine.url.path) {
-            return isDefault
-                ? String(localized: "A folder named \(Self.defaultName) already exists in this location. Enter another name.")
-                : String(localized: "A folder with this name already exists in this location.")
+            return String(localized: "A folder with this name already exists in this location.")
         }
         if !VPhoneLaunchpadMachineLocations.socketPathFits(root: location, name: effectiveName) {
             return String(localized: "The path is too long. Use a shorter name, or a location with a shorter path.")
@@ -89,7 +92,7 @@ struct VPhoneLaunchpadNewMachineView: View {
         VPhoneLaunchpadSheet(Text("New Machine")) {
             Form {
                 Section {
-                    TextField("Name", text: $name, prompt: Text(verbatim: Self.defaultName))
+                    TextField("Name", text: $name)
                     locationPicker
                 } footer: {
                     if let problem = nameProblem ?? locationProblem {
@@ -135,7 +138,11 @@ struct VPhoneLaunchpadNewMachineView: View {
         }
         .task { await loadCatalog() }
         .task { await loadPatchCatalog() }
-        .onAppear { location = model.machines.preferredRoot }
+        .onAppear {
+            let root = model.machines.preferredRoot
+            location = root
+            name = suggestedName(in: root)
+        }
     }
 
     // MARK: - Advanced
@@ -168,7 +175,7 @@ struct VPhoneLaunchpadNewMachineView: View {
     /// The network mode and the patch preset, the two choices most likely to matter.
     private var advancedSummary: String {
         let network = VPhoneLaunchpadNewMachineAdvancedView.networkTitle(network)
-        guard let preset = patchCatalog?.preset(patches.preset)?.title else {
+        guard let preset = patchCatalog?.preset(patches.preset)?.displayTitle else {
             return network
         }
         return "\(network) · \(preset)"
@@ -276,11 +283,34 @@ struct VPhoneLaunchpadNewMachineView: View {
         }
     }
 
+    private static func isIPSWFile(_ path: String) -> Bool {
+        var isDirectory: ObjCBool = false
+        return path.hasPrefix("/") && path.lowercased().hasSuffix(".ipsw")
+            && FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && !isDirectory.boolValue
+    }
+
     private func sourceField(_ title: LocalizedStringKey, _ text: Binding<String>) -> some View {
         LabeledContent(title) {
             HStack {
-                TextField(title, text: text, prompt: Text("URL or path"))
-                    .labelsHidden()
+                // A chosen file shows only its name; a URL or a path still
+                // being typed stays editable.
+                if Self.isIPSWFile(text.wrappedValue) {
+                    Text(verbatim: URL(fileURLWithPath: text.wrappedValue).lastPathComponent)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(text.wrappedValue)
+                    Button {
+                        text.wrappedValue = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .help("Clear")
+                } else {
+                    TextField(title, text: text, prompt: Text("URL or path"))
+                        .labelsHidden()
+                }
                 Button("Choose…") {
                     let panel = NSOpenPanel()
                     panel.canChooseDirectories = false
@@ -366,7 +396,7 @@ struct VPhoneLaunchpadNewMachineView: View {
             keepArtifacts: keepArtifacts,
         )
         let pipeline = model.machines.create(options)
-        model.machines.selection = pipeline.machine
+        model.machines.selection = [pipeline.machine]
         onCreate(pipeline.machine)
     }
 }

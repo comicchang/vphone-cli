@@ -16,6 +16,24 @@ nonisolated struct VPhoneLaunchpadPatchCatalog: Decodable, Sendable {
         var id: String {
             identifier
         }
+
+        /// The bundle writes its built-in presets in English. Launchpad
+        /// translates those two; any other preset shows its own text.
+        var displayTitle: String {
+            switch identifier {
+            case "standard": String(localized: "Standard", comment: "The built-in patch preset")
+            case "extended": String(localized: "Extended", comment: "The built-in patch preset")
+            default: title
+            }
+        }
+
+        var displaySummary: String {
+            switch identifier {
+            case "standard": String(localized: "The patches every vphone VM needs to boot, jailbroken, with a working display and camera.")
+            case "extended": String(localized: "Every patch this bundle declares, including the Frida Stalker relaxations and the hv_vmm_present concealment that a freshly restored 26.4 guest does not survive.")
+            default: summary
+            }
+        }
     }
 
     struct Patch: Decodable, Hashable, Identifiable, Sendable {

@@ -66,7 +66,7 @@
 
                 await panel(model, .hostSetup, "04-host-setup-passed", suffix)
 
-                model.machines.selection = path("research-01")
+                model.machines.selection = [path("research-01")]
                 await shot("05-machines", suffix)
                 model.showsInspector = false
                 await shot("05a-machines-no-inspector", suffix)
@@ -78,7 +78,7 @@
                     }
                 }
 
-                model.machines.selection = path("ios27-rc")
+                model.machines.selection = [path("ios27-rc")]
                 await shot("06-machines-creating", suffix)
 
                 await sheet(.newMachine, "07-new-machine", suffix)
@@ -101,7 +101,7 @@
                 await standalone("08c-creation-log", suffix, size: NSSize(width: 960, height: 700)) {
                     VPhoneLaunchpadConsoleView(title: "ios27-rc Creation Log", url: creation.logFile)
                 }
-                model.machines.selection = labMachine
+                model.machines.selection = [labMachine]
                 if let machine = model.machines.selected {
                     await sheet(.settings(machine), "09-machine-settings", suffix)
                 }

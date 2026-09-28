@@ -32,6 +32,8 @@ final class VPhoneLaunchpadModel {
     let machines: VPhoneLaunchpadMachineLibrary
 
     var panel: Panel?
+    /// The panel to open once the sheet on screen has closed.
+    private var queuedPanel: Panel?
     private(set) var isStarted = false
 
     init() {
@@ -39,6 +41,28 @@ final class VPhoneLaunchpadModel {
         host = VPhoneLaunchpadHostSetup(helper: helper, libraryRoot: libraryRoot)
         bundles = VPhoneLaunchpadCoreBundle(helper: helper, history: history)
         machines = VPhoneLaunchpadMachineLibrary(bundles: bundles, helper: helper)
+    }
+
+    // MARK: - Panels
+
+    /// Opens `next`. Another panel on screen closes first, so `next` arrives
+    /// as a sheet of its own instead of replacing that sheet's content.
+    func present(_ next: Panel) {
+        guard let current = panel, current != next else {
+            panel = next
+            return
+        }
+        queuedPanel = next
+        self.panel = nil
+    }
+
+    /// Called when a panel's sheet has closed.
+    func panelDidDismiss() {
+        guard let next = queuedPanel else {
+            return
+        }
+        queuedPanel = nil
+        panel = next
     }
 
     // MARK: - Attention

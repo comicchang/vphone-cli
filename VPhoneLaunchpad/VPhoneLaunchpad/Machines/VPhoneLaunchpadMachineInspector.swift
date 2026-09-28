@@ -31,6 +31,7 @@ struct VPhoneLaunchpadMachineInspector: View {
     let onShowProgress: (VPhoneLaunchpadMachinePath) -> Void
     let onOpenConsole: (VPhoneLaunchpadMachinePath) -> Void
     @Environment(VPhoneLaunchpadModel.self) private var model
+    @State private var showsCommands = false
 
     private var library: VPhoneLaunchpadMachineLibrary {
         model.machines
@@ -85,18 +86,22 @@ struct VPhoneLaunchpadMachineInspector: View {
             }
 
             Section("Console") {
-                Button {
-                    onOpenConsole(machine.path)
-                } label: {
-                    Label("Open Console", systemImage: "arrow.up.right")
+                HStack {
+                    Button {
+                        onOpenConsole(machine.path)
+                    } label: {
+                        Label("Open Console", systemImage: "arrow.up.right")
+                    }
+                    Spacer()
+                    Button("Recent Commands") { showsCommands = true }
                 }
-            }
-
-            Section("Recent Commands") {
-                commands
             }
         }
         .formStyle(.grouped)
+        .sheet(isPresented: $showsCommands) {
+            VPhoneLaunchpadCommandHistoryView()
+                .environment(model)
+        }
     }
 
     private func value(_ title: LocalizedStringKey, _ value: String) -> some View {
@@ -111,7 +116,9 @@ struct VPhoneLaunchpadMachineInspector: View {
 
     private func creationSummary(_ creation: VPhoneLaunchpadCreationPipeline) -> some View {
         LabeledContent {
-            Button("Show Progress") { onShowProgress(creation.machine) }
+            Button(creation.isRunning ? LocalizedStringKey("Show Progress") : LocalizedStringKey("View Details")) {
+                onShowProgress(creation.machine)
+            }
         } label: {
             if creation.isRunning {
                 Label { Text("Creating: \(creation.current?.title ?? "")") } icon: { VPhoneLaunchpadStatusIcon(status: .running) }
@@ -119,33 +126,6 @@ struct VPhoneLaunchpadMachineInspector: View {
                 Label { Text("Created") } icon: { VPhoneLaunchpadStatusIcon(status: .passed) }
             } else {
                 Label { Text(creation.failure?.message ?? String(localized: "Creation stopped")) } icon: { VPhoneLaunchpadStatusIcon(status: .failed) }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var commands: some View {
-        let entries = Array(model.history.entries.suffix(12).reversed())
-        if entries.isEmpty {
-            Text("Commands that Launchpad runs appear here.")
-                .foregroundStyle(.secondary)
-        }
-        ForEach(entries) { entry in
-            Label {
-                Text(entry.text)
-                    .font(.system(.callout, design: .monospaced))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .textSelection(.enabled)
-                    .help(entry.text)
-            } icon: {
-                VPhoneLaunchpadStatusIcon(status: entry.status.map { $0 == 0 ? .passed : .failed } ?? .running)
-            }
-            .contextMenu {
-                Button("Copy Command") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(entry.text, forType: .string)
-                }
             }
         }
     }

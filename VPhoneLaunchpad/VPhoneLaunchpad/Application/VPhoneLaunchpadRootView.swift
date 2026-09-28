@@ -17,7 +17,7 @@ struct VPhoneLaunchpadRootView: View {
             }
             .navigationTitle("Machines")
             .task { await model.start() }
-            .sheet(item: $model.panel) { panel in
+            .sheet(item: $model.panel, onDismiss: model.panelDidDismiss) { panel in
                 Group {
                     switch panel {
                     case .hostSetup:
@@ -36,7 +36,7 @@ struct VPhoneLaunchpadRootView: View {
 
     private func panelButton(_ panel: VPhoneLaunchpadModel.Panel, systemImage: String, needsAttention: Bool) -> some View {
         Button {
-            model.panel = panel
+            model.present(panel)
         } label: {
             Label {
                 Text(panel.title)

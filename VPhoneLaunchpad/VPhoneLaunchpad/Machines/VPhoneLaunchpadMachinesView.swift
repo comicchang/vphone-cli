@@ -30,7 +30,8 @@ struct VPhoneLaunchpadMachinesView: View {
 
     @Environment(VPhoneLaunchpadModel.self) private var model
     @State private var sheet: Sheet?
-    @State private var deletion: MachinePath?
+    /// The machines the delete confirmation is for; empty when it is closed.
+    @State private var deletion: [MachinePath] = []
 
     private var library: VPhoneLaunchpadMachineLibrary {
         model.machines
@@ -54,6 +55,8 @@ struct VPhoneLaunchpadMachinesView: View {
                         onShowProgress: { path in sheet = .creation(path) },
                         onOpenConsole: { path in sheet = .console(path) },
                     )
+                } else if library.selection.count > 1 {
+                    ContentUnavailableView("\(library.selection.count) Machines Selected", systemImage: "iphone")
                 } else if model.bundles.progress != nil {
                     Form {
                         VPhoneLaunchpadInstallSection()
@@ -84,20 +87,27 @@ struct VPhoneLaunchpadMachinesView: View {
                     .environment(model)
             }
             .confirmationDialog(
-                "Delete \(deletion?.name ?? "")?",
-                isPresented: Binding(get: { deletion != nil }, set: {
+                deletion.count == 1 ? "Delete \(deletion[0].name)?" : "Delete \(deletion.count) Machines?",
+                isPresented: Binding(get: { !deletion.isEmpty }, set: {
                     if !$0 {
-                        deletion = nil
+                        deletion = []
                     }
                 }),
             ) {
                 Button("Delete", role: .destructive) {
-                    if let machine = deletion {
-                        Task { await library.delete(machine) }
+                    let machines = deletion
+                    Task {
+                        for machine in machines {
+                            await library.delete(machine)
+                        }
                     }
                 }
             } message: {
-                Text("The machine's disk, firmware and settings are removed. This cannot be undone.")
+                if deletion.count == 1 {
+                    Text("The machine's disk, firmware and settings are removed. This cannot be undone.")
+                } else {
+                    Text("Their disks, firmware and settings are removed. This cannot be undone.")
+                }
             }
             .alert(
                 library.actionError?.message ?? "",
@@ -118,48 +128,35 @@ struct VPhoneLaunchpadMachinesView: View {
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        let selected = library.selected
-        let state = selected.map { library.state(of: $0.path) }
+        let selected = library.selectedMachines
+        let stopped = selected.filter { library.state(of: $0.path) == .stopped }
+        let running = selected.filter { library.state(of: $0.path) == .running }
         // Host Setup and Core Bundle hold the leading edge; the space pushes
-        // everything here to the trailing edge, in two groups: the selected
-        // machine and the library. The inspector toggle is in the inspector.
+        // everything here to the trailing edge: Start or Stop for the
+        // selection, then New Machine and the actions menu. The inspector
+        // toggle is in the inspector.
         ToolbarItem(placement: .automatic) {
             Spacer()
         }
-        ToolbarItemGroup(placement: .automatic) {
-            if state == .running, let selected {
+        ToolbarItem(placement: .automatic) {
+            if stopped.isEmpty, !running.isEmpty {
                 Button {
-                    Task { await library.stop(selected.path) }
+                    stop(running)
                 } label: {
                     Label("Stop", systemImage: "stop.fill")
                 }
-                .help("Stop \(selected.name)")
+                .help("Stop \(running.map(\.name).joined(separator: ", "))")
             } else {
                 Button {
-                    if let selected {
-                        library.start(selected.path)
-                    }
+                    start(stopped)
                 } label: {
                     Label("Start", systemImage: "play.fill")
                 }
                 .help("Start the selected machine")
-                .disabled(state != .stopped)
+                .disabled(stopped.isEmpty)
             }
-            Menu {
-                machineActions(selected)
-            } label: {
-                Label("Actions", systemImage: "ellipsis.circle")
-            }
-            .disabled(selected == nil)
         }
         ToolbarItemGroup(placement: .automatic) {
-            Button {
-                chooseImport()
-            } label: {
-                Label("Import", systemImage: "square.and.arrow.down")
-            }
-            .help("Import an exported machine")
-            .disabled(library.globalActivity != nil || model.bundles.activeVersion == nil)
             Button {
                 sheet = .newMachine
             } label: {
@@ -167,6 +164,32 @@ struct VPhoneLaunchpadMachinesView: View {
             }
             .help("Create a machine")
             .disabled(model.bundles.activeVersion == nil)
+            Menu {
+                machineActions(selected)
+                if !selected.isEmpty {
+                    Divider()
+                }
+                Button("Import…") { chooseImport() }
+                    .disabled(library.globalActivity != nil || model.bundles.activeVersion == nil)
+            } label: {
+                Label("Actions", systemImage: "ellipsis")
+            }
+        }
+    }
+
+    private func start(_ machines: [VPhoneLaunchpadMachine], headless: Bool = false) {
+        for machine in machines {
+            library.start(machine.path, headless: headless)
+        }
+    }
+
+    private func stop(_ machines: [VPhoneLaunchpadMachine]) {
+        Task {
+            await withTaskGroup(of: Void.self) { group in
+                for machine in machines {
+                    group.addTask { await library.stop(machine.path) }
+                }
+            }
         }
     }
 
@@ -180,9 +203,26 @@ struct VPhoneLaunchpadMachinesView: View {
     }
 
     /// The same actions in the toolbar menu and the table's context menu.
+    /// Several machines get the actions that apply to each of them.
     @ViewBuilder
-    private func machineActions(_ machine: VPhoneLaunchpadMachine?) -> some View {
-        if let machine {
+    private func machineActions(_ machines: [VPhoneLaunchpadMachine]) -> some View {
+        if machines.count > 1 {
+            let stopped = machines.filter { library.state(of: $0.path) == .stopped }
+            let running = machines.filter { library.state(of: $0.path) == .running }
+            Button("Start") { start(stopped) }
+                .disabled(stopped.isEmpty)
+            Button("Start Headless") { start(stopped, headless: true) }
+                .disabled(stopped.isEmpty)
+            Button("Stop") { stop(running) }
+                .disabled(running.isEmpty)
+            Divider()
+            Button("Show in Finder") {
+                NSWorkspace.shared.activateFileViewerSelecting(machines.map(\.path.url))
+            }
+            Divider()
+            Button("Delete…", role: .destructive) { deletion = machines.map(\.path) }
+                .disabled(stopped.count != machines.count)
+        } else if let machine = machines.first {
             let isStopped = library.state(of: machine.path) == .stopped
             Button("Start Headless") { library.start(machine.path, headless: true) }
                 .disabled(!isStopped)
@@ -210,14 +250,14 @@ struct VPhoneLaunchpadMachinesView: View {
             }
             .disabled(!FileManager.default.fileExists(atPath: VPhoneLaunchpadMachineLibrary.consoleLog(machine.path, suffix: "-patch").path))
             Divider()
-            Button("Delete…", role: .destructive) { deletion = machine.path }
+            Button("Delete…", role: .destructive) { deletion = [machine.path] }
                 .disabled(!isStopped)
         }
     }
 
     // MARK: - Table
 
-    private func table(selection: Binding<MachinePath?>) -> some View {
+    private func table(selection: Binding<Set<MachinePath>>) -> some View {
         Table(library.machines, selection: selection) {
             TableColumn("Name", value: \.name)
                 .width(min: 90, ideal: 110)
@@ -252,11 +292,9 @@ struct VPhoneLaunchpadMachinesView: View {
             .width(64)
         }
         .contextMenu(forSelectionType: MachinePath.self) { paths in
-            machineActions(library.machines.first { paths.contains($0.path) })
+            machineActions(library.machines.filter { paths.contains($0.path) })
         } primaryAction: { paths in
-            if let path = paths.first, library.state(of: path) == .stopped {
-                library.start(path)
-            }
+            start(library.machines.filter { paths.contains($0.path) && library.state(of: $0.path) == .stopped })
         }
     }
 
@@ -268,7 +306,7 @@ struct VPhoneLaunchpadMachinesView: View {
             } description: {
                 Text("Install a VPhone.bundle to create and run machines.")
             } actions: {
-                Button("Set Up…") { model.panel = model.host.requiredPassed ? .coreBundle : .hostSetup }
+                Button("Set Up…") { model.present(model.host.requiredPassed ? .coreBundle : .hostSetup) }
                     .buttonStyle(.borderedProminent)
             }
         } else if !library.hasListed {

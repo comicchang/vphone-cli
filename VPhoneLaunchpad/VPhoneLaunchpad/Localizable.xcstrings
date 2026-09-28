@@ -1,40 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "%@ already exists. Enter another name." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ already exists. Enter another name."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ は既に存在します。別の名前を入力してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@이(가) 이미 있습니다. 다른 이름을 입력하십시오."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ đã tồn tại. Hãy nhập tên khác."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ 已存在。请输入其他名称。"
-          }
-        }
-      }
-    },
     "%@ Console" : {
       "localizations" : {
         "en" : {
@@ -829,6 +795,40 @@
         }
       }
     },
+    "%lld Machines Selected" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Machines Selected"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 台のマシンを選択中"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "머신 %lld대 선택됨"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã chọn %lld máy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已选择 %lld 台虚拟机"
+          }
+        }
+      }
+    },
     "%lld of %lld passed" : {
       "localizations" : {
         "en" : {
@@ -893,40 +893,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "所有必需检查通过后，即可安装核心 Bundle。"
-          }
-        }
-      }
-    },
-    "A folder named %@ already exists in this location. Enter another name." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A folder named %@ already exists in this location. Enter another name."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "この場所には %@ という名前のフォルダが既に存在します。別の名前を入力してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 위치에 %@(이)라는 이름의 폴더가 이미 있습니다. 다른 이름을 입력하십시오."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vị trí này đã có thư mục tên %@. Hãy nhập tên khác."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此位置已存在名为 %@ 的文件夹。请输入其他名称。"
           }
         }
       }
@@ -2223,6 +2189,40 @@
         }
       }
     },
+    "Clear" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "消去"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지우기"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除"
+          }
+        }
+      }
+    },
     "Clone" : {
       "localizations" : {
         "en" : {
@@ -2593,6 +2593,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Launchpad 运行的命令会显示在这里。"
+          }
+        }
+      }
+    },
+    "Command" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コマンド"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "명령"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lệnh"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "命令"
           }
         }
       }
@@ -3459,6 +3493,40 @@
         }
       }
     },
+    "Delete %lld Machines?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete %lld Machines?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 台のマシンを削除しますか？"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "머신 %lld대를 삭제하겠습니까?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa %lld máy?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除 %lld 台虚拟机？"
+          }
+        }
+      }
+    },
     "Delete %@?" : {
       "localizations" : {
         "en" : {
@@ -4071,6 +4139,40 @@
         }
       }
     },
+    "Every patch this bundle declares, including the Frida Stalker relaxations and the hv_vmm_present concealment that a freshly restored 26.4 guest does not survive." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every patch this bundle declares, including the Frida Stalker relaxations and the hv_vmm_present concealment that a freshly restored 26.4 guest does not survive."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このバンドルが宣言するすべてのパッチ。Frida Stalker 向けの制限緩和と、復元直後の 26.4 ゲストでは起動できなくなる hv_vmm_present の隠蔽を含みます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 번들이 선언하는 모든 패치입니다. Frida Stalker용 제한 완화와, 새로 복원한 26.4 게스트가 부팅하지 못하는 hv_vmm_present 은폐를 포함합니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mọi bản vá mà gói này khai báo, bao gồm các nới lỏng cho Frida Stalker và phần che giấu hv_vmm_present mà khách 26.4 vừa khôi phục không khởi động được."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此 Bundle 声明的全部补丁，包括针对 Frida Stalker 的限制放宽，以及刚恢复的 26.4 客户机无法承受的 hv_vmm_present 隐藏。"
+          }
+        }
+      }
+    },
     "Every release is installed." : {
       "localizations" : {
         "en" : {
@@ -4305,6 +4407,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在导出"
+          }
+        }
+      }
+    },
+    "Extended" : {
+      "comment" : "The built-in patch preset",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Extended"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拡張"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확장"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở rộng"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "扩展"
           }
         }
       }
@@ -4985,74 +5122,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "身份"
-          }
-        }
-      }
-    },
-    "Import" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Import"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "読み込む"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "가져오기"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nhập"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "导入"
-          }
-        }
-      }
-    },
-    "Import an exported machine" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Import an exported machine"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "書き出したマシンを読み込む"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "내보낸 머신 가져오기"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nhập máy ảo đã xuất"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "导入已导出的虚拟机"
           }
         }
       }
@@ -9851,6 +9920,40 @@
         }
       }
     },
+    "View Details" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View Details"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "詳細を表示"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "세부 정보 보기"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem chi tiết"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看详情"
+          }
+        }
+      }
+    },
     "Show Progress" : {
       "localizations" : {
         "en" : {
@@ -10085,6 +10188,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "来源"
+          }
+        }
+      }
+    },
+    "Standard" : {
+      "comment" : "The built-in patch preset",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "標準"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "표준"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiêu chuẩn"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标准"
           }
         }
       }
@@ -11415,6 +11553,40 @@
         }
       }
     },
+    "The patches every vphone VM needs to boot, jailbroken, with a working display and camera." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The patches every vphone VM needs to boot, jailbroken, with a working display and camera."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべての vphone 仮想マシンが脱獄状態で起動し、画面とカメラを使うために必要なパッチ。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 vphone 가상 머신이 탈옥 상태로 부팅하고 화면과 카메라를 사용하는 데 필요한 패치입니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Các bản vá mà mọi máy ảo vphone cần để khởi động ở trạng thái jailbreak, với màn hình và camera hoạt động."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每台 vphone 虚拟机以越狱状态启动、并正常使用屏幕和摄像头所需的补丁。"
+          }
+        }
+      }
+    },
     "The path is too long. Use a shorter name, or a location with a shorter path." : {
       "localizations" : {
         "en" : {
@@ -11479,6 +11651,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "虚拟机在 vphoned 响应前已退出。"
+          }
+        }
+      }
+    },
+    "Their disks, firmware and settings are removed. This cannot be undone." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Their disks, firmware and settings are removed. This cannot be undone."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "各マシンのディスク、ファームウェア、設定が削除されます。この操作は取り消せません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "각 머신의 디스크, 펌웨어 및 설정이 제거됩니다. 이 작업은 실행 취소할 수 없습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ổ đĩa, firmware và cài đặt của các máy này sẽ bị xóa. Không thể hoàn tác."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这些虚拟机的磁盘、固件和设置都会被移除。此操作无法撤销。"
           }
         }
       }
