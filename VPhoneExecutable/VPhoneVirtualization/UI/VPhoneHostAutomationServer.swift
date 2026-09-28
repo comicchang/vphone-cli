@@ -17,12 +17,16 @@ import ImageIO
 ///   {"t":"tap","x":645,"y":1398}                → tap at pixel coordinates
 ///   {"t":"swipe","x1":645,"y1":2600,"x2":645,"y2":1400,"ms":300}  → swipe
 ///   {"t":"key","name":"home"}                   → hardware key (home/power/volup/voldown)
+///   {"t":"key","name":"cmd+v"}                  → any other name goes to vphoned `input.key`
 ///   {"t":"type","text":"Hello"}                 → set guest clipboard
 ///   {"t":"ping"}                                → vphoned request/response
+///   {"t":"rpc","method":"input.type","params":{"text":"ls\n"}}
+///                                               → any vphoned method; its result is in `"result"`
 ///
-/// All commands except "screenshot" wait briefly then capture a compact screen
-/// image returned as `"image":"<base64>"` in the response.  Pass `"screen":false`
-/// to skip the capture.
+/// All commands except "screenshot" and "rpc" wait briefly then capture a
+/// compact screen image returned as `"image":"<base64>"` in the response.
+/// Pass `"screen":false` to skip the capture; "rpc" captures only when sent
+/// `"screen":true`.
 @MainActor
 class VPhoneHostAutomationServer {
     private let socketPath: String
@@ -39,7 +43,12 @@ class VPhoneHostAutomationServer {
         var error: String?
         var ok = false
         var imageBase64: String?
+        var result: [String: Any]?
     }
+
+    /// Matches vphoned's JSON body limit, so an `rpc` line is never refused
+    /// here that the guest would accept.
+    private nonisolated static let maximumRequestLength = 1 << 20
 
     /// Screen pixel dimensions for coordinate mapping.
     private var screenWidth: Int = 1290
@@ -341,7 +350,7 @@ class VPhoneHostAutomationServer {
 
         case "key":
             guard let name = json["name"] as? String else {
-                writeResponse(fd, ok: false, error: "key requires name (home/power/volup/voldown)")
+                writeResponse(fd, ok: false, error: "key requires name (home/power/volup/voldown, or a keyboard key such as return or cmd+v)")
                 return
             }
             let hidKey: (page: UInt32, usage: UInt32)? = switch name {
@@ -350,10 +359,6 @@ class VPhoneHostAutomationServer {
             case "volup": (0x0C, 0xE9)
             case "voldown": (0x0C, 0xEA)
             default: nil
-            }
-            guard let key = hidKey else {
-                writeResponse(fd, ok: false, error: "unknown key: \(name)")
-                return
             }
             let semaphore = DispatchSemaphore(value: 0)
             let result = ResultBox()
@@ -364,7 +369,18 @@ class VPhoneHostAutomationServer {
                     result.error = "guest not connected"
                     return
                 }
-                ctl.sendHIDPress(page: key.page, usage: key.usage)
+                if let hidKey {
+                    ctl.sendHIDPress(page: hidKey.page, usage: hidKey.usage)
+                } else {
+                    // vphoned's `input.key` owns keyboard names and
+                    // modifier combinations such as "cmd+v".
+                    do {
+                        _ = try await ctl.callAfterQueuedInput("input.key", params: ["name": name])
+                    } catch {
+                        result.error = "\(error)"
+                        return
+                    }
+                }
                 result.ok = true
                 if wantScreen {
                     try? await Task.sleep(nanoseconds: UInt64(screenDelay) * 1_000_000)
@@ -404,6 +420,41 @@ class VPhoneHostAutomationServer {
             semaphore.wait()
             writeResponse(fd, ok: result.ok, error: result.error, image: result.imageBase64)
 
+        case "rpc":
+            guard let method = json["method"] as? String, !method.isEmpty else {
+                writeResponse(fd, ok: false, error: "rpc requires method (a vphoned method such as input.key)")
+                return
+            }
+            let params = json["params"] ?? [String: Any]()
+            guard let params = params as? [String: Any] else {
+                writeResponse(fd, ok: false, error: "rpc params must be an object")
+                return
+            }
+            let wantRPCScreen = json["screen"] as? Bool ?? false
+            let semaphore = DispatchSemaphore(value: 0)
+            let result = ResultBox()
+
+            Task { @MainActor in
+                defer { semaphore.signal() }
+                guard let controller, let ctl = controller.control, ctl.isConnected else {
+                    result.error = "guest not connected"
+                    return
+                }
+                do {
+                    result.result = try await ctl.callAfterQueuedInput(method, params: params)
+                    result.ok = true
+                    if wantRPCScreen {
+                        try? await Task.sleep(nanoseconds: UInt64(screenDelay) * 1_000_000)
+                        result.imageBase64 = await controller.captureCompactScreenshot()
+                    }
+                } catch {
+                    result.error = "\(error)"
+                }
+            }
+
+            semaphore.wait()
+            writeResponse(fd, ok: result.ok, error: result.error, image: result.imageBase64, result: result.result)
+
         default:
             writeResponse(fd, ok: false, error: "unknown command: \(type)")
         }
@@ -415,11 +466,11 @@ class VPhoneHostAutomationServer {
         var buffer = [UInt8](repeating: 0, count: 4096)
         var accumulated = Data()
 
-        while accumulated.count < 4096 {
+        while accumulated.count < maximumRequestLength {
             let n = read(fd, &buffer, buffer.count)
             guard n > 0 else { break }
             accumulated.append(contentsOf: buffer[..<n])
-            if accumulated.contains(0x0A) {
+            if buffer[..<n].contains(0x0A) {
                 break
             }
         }
@@ -436,8 +487,12 @@ class VPhoneHostAutomationServer {
         path: String? = nil,
         error: String? = nil,
         image: String? = nil,
+        result: [String: Any]? = nil,
     ) {
         var dict: [String: Any] = ["ok": ok]
+        if let result {
+            dict["result"] = result
+        }
         if let path {
             dict["path"] = path
         }

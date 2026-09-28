@@ -180,6 +180,13 @@ final class VPhoneGuestControl {
         }
     }
 
+    /// Calls one vphoned operation after the input events already queued, so a
+    /// key or text request cannot overtake a tap sent before it.
+    func callAfterQueuedInput(_ method: String, params: [String: Any] = [:]) async throws -> [String: Any] {
+        await orderedInput?.value
+        return try await call(method, params: params)
+    }
+
     func isDeveloperModeEnabled() async throws -> Bool {
         try await call("developer_mode.status")["enabled"] as? Bool ?? false
     }
