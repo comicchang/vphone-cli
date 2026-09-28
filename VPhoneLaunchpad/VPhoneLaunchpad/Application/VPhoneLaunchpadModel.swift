@@ -73,6 +73,7 @@ final class VPhoneLaunchpadModel {
                 return
             }
         #endif
+        startControl()
         // Host checks, installed bundles and the helper state were read at
         // init. These confirm them without holding up the machine list; the
         // network probe and the GitHub lists come last.
@@ -93,6 +94,25 @@ final class VPhoneLaunchpadModel {
         }
         await bundles.fetchReleases()
         await bundles.fetchArtifacts()
+    }
+
+    // MARK: - Command line
+
+    /// Serves `vphone-launchpad-cli` for as long as the app runs. Without the
+    /// socket the window works as before; the CLI then says it cannot connect.
+    private var control: VPhoneLaunchpadControlServer?
+
+    private func startControl() {
+        let commands = VPhoneLaunchpadControlCommands(model: self)
+        let server = VPhoneLaunchpadControlServer { request, emit in
+            await commands.handle(request, emit: emit)
+        }
+        do {
+            try server.start()
+            control = server
+        } catch {
+            print("[control] \(VPhoneLaunchpadError.message(for: error))")
+        }
     }
 
     func refreshHost() async {
