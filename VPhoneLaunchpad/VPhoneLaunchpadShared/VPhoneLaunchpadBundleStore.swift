@@ -70,7 +70,7 @@ nonisolated struct VPhoneLaunchpadBundleReceipt: Codable, Equatable, Sendable {
 /// checks them to give an early message; the helper checks them because it
 /// must not trust the app.
 nonisolated enum VPhoneLaunchpadNames {
-    static let minimumBundleVersion = "2.0.8"
+    static let minimumBundleVersion = "2.1.0"
 
     static func isValidVersion(_ value: String) -> Bool {
         matches(value, "^[0-9A-Za-z][0-9A-Za-z._-]{0,63}$") && !value.contains("..")
@@ -95,7 +95,7 @@ nonisolated enum VPhoneLaunchpadNames {
         guard parts.count == 3,
               let major = Int(parts[0]), let minor = Int(parts[1]), let patch = Int(parts[2])
         else { return false }
-        return (major, minor, patch) >= (2, 0, 8)
+        return (major, minor, patch) >= (2, 1, 0)
     }
 
     static func isValidMachineName(_ value: String) -> Bool {
