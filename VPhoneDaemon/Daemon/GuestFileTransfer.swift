@@ -46,7 +46,7 @@ enum GuestFileTransfer {
                 switch result {
                 case .success:
                     channel.writeAndFlush(HTTPServerResponsePart.end(nil)).whenComplete { _ in
-                        channel.close(promise: nil)
+                        channel.closeAfterPeer()
                     }
                 case .failure:
                     channel.close(promise: nil)

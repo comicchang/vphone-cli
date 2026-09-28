@@ -275,7 +275,7 @@ final class GuestHyperTextHandler: ChannelInboundHandler, RemovableChannelHandle
             buffer.writeBytes(reply.data)
             channel.write(HTTPServerResponsePart.body(.byteBuffer(buffer)), promise: nil)
             channel.writeAndFlush(HTTPServerResponsePart.end(nil)).whenComplete { _ in
-                channel.close(promise: nil)
+                channel.closeAfterPeer()
             }
         }
         if channel.eventLoop.inEventLoop {

@@ -98,3 +98,23 @@ final class APIEventHub: @unchecked Sendable {
         return !channels.isEmpty
     }
 }
+
+// MARK: - Closing
+
+extension Channel {
+    /// Ends a VSOCK connection whose last write has been flushed. Closing it
+    /// here would lose data: XNU's vsock answers close() and shutdown() with an
+    /// immediate RESET or SHUTDOWN, and drops bytes still queued in the send
+    /// buffer for host credit. A reply of about 8 to 16 KiB is truncated that
+    /// way. The host closes once it has read everything, and NIO then closes
+    /// this channel on EOF. The timer only covers a host that never closes.
+    func closeAfterPeer() {
+        let channel = self
+        let fallback = eventLoop.scheduleTask(in: .seconds(30)) {
+            channel.close(promise: nil)
+        }
+        closeFuture.whenComplete { _ in fallback.cancel() }
+        // EOF is only seen while reading, and a relay may have paused reads.
+        _ = setOption(ChannelOptions.autoRead, value: true)
+    }
+}

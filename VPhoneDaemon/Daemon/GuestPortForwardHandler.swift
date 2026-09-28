@@ -107,7 +107,7 @@ final class GuestPortForwardHandler: ChannelInboundHandler, @unchecked Sendable 
                     ),
                 ),
             ).whenComplete { _ in
-                webSocket.close(promise: nil)
+                webSocket.closeAfterPeer()
             }
         default:
             closeWithError(on: context.channel)
@@ -157,7 +157,7 @@ final class GuestPortForwardHandler: ChannelInboundHandler, @unchecked Sendable 
                 data: data,
             ),
         ).whenComplete { _ in
-            channel.close(promise: nil)
+            channel.closeAfterPeer()
         }
     }
 }
@@ -208,7 +208,9 @@ private final class GuestPortBackendHandler: ChannelInboundHandler, @unchecked S
                 data: data,
             ),
         ).whenComplete { _ in
-            self.webSocket.close(promise: nil)
+            // The last bytes of the guest stream may still be queued for
+            // host credit; closing now would reset them away.
+            self.webSocket.closeAfterPeer()
         }
     }
 }

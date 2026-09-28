@@ -36,7 +36,13 @@ final class GuestWebSocketHandler: ChannelInboundHandler, @unchecked Sendable {
             let pong = WebSocketFrame(fin: true, opcode: .pong, data: frame.unmaskedData)
             context.writeAndFlush(wrapOutboundOut(pong), promise: nil)
         case .connectionClose:
-            context.close(promise: nil)
+            // Echo the close and let the host drop the connection, so replies
+            // still queued ahead of this frame reach it.
+            let channel = context.channel
+            let echo = WebSocketFrame(fin: true, opcode: .connectionClose, data: frame.unmaskedData)
+            context.writeAndFlush(wrapOutboundOut(echo)).whenComplete { _ in
+                channel.closeAfterPeer()
+            }
         default:
             break
         }

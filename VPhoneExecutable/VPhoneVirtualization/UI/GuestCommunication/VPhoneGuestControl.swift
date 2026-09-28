@@ -547,6 +547,9 @@ private final class VPhoneHTTPTransaction: @unchecked Sendable {
     }
 
     func run() throws -> VPhoneHTTPResponse {
+        // vphoned waits for this side to close before it releases the
+        // connection, because its own close would reset unsent reply bytes.
+        defer { connection.close() }
         let fd = connection.fileDescriptor
         guard fcntl(fd, F_SETNOSIGPIPE, 1) != -1 else {
             throw VPhoneGuestControl.ControlError.notConnected
