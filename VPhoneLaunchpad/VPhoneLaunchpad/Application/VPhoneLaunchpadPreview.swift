@@ -103,11 +103,11 @@
                 }
                 model.machines.selection = [labMachine]
                 if let machine = model.machines.selected {
-                    await sheet(.settings(machine), "09-machine-settings", suffix)
+                    await sheet(.settings([machine]), "09-machine-settings", suffix)
                 }
                 await sheet(.patches(labMachine), "09b-patch-settings", suffix)
                 await sheet(.clone(labMachine), "10-clone", suffix)
-                await sheet(.export(labMachine), "11-export", suffix)
+                await sheet(.export([labMachine]), "11-export", suffix)
                 await sheet(.console(path("research-01")), "12-console", suffix)
             }
             NSApp.terminate(nil)

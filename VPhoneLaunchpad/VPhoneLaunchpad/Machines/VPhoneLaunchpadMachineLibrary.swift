@@ -97,6 +97,9 @@ final class VPhoneLaunchpadMachineLibrary {
         if let activity = activities[machine] {
             return .busy(activity)
         }
+        if exports[machine]?.isWaiting == true {
+            return .busy(String(localized: "Waiting to export…"))
+        }
         if launched[machine]?.isRunning == true || externallyRunning.contains(machine) {
             return .running
         }
@@ -355,7 +358,54 @@ final class VPhoneLaunchpadMachineLibrary {
         await perform(String(localized: "Deleting…"), on: machine, ["vm", "delete", machine.name, "--force"] + machine.libraryArguments)
     }
 
-    func export(_ machine: Path, to destination: URL, densest: Bool, includeIPSW: Bool) async {
+    // MARK: - Export
+
+    /// An export queued or under way. `fraction` is nil until the command
+    /// reports progress; `task` is nil while the export waits its turn.
+    struct Export {
+        var fraction: Double?
+        fileprivate var task: Task<Void, Never>?
+
+        var isWaiting: Bool {
+            task == nil
+        }
+    }
+
+    private(set) var exports: [Path: Export] = [:]
+
+    /// Exports each machine to its destination file, one at a time: each
+    /// export reads a whole disk image.
+    func export(_ items: [(machine: Path, destination: URL)], densest: Bool, includeIPSW: Bool) async {
+        for item in items {
+            exports[item.machine] = Export()
+        }
+        for item in items {
+            // Cancelled while it waited.
+            guard exports[item.machine] != nil else {
+                continue
+            }
+            let task = Task {
+                await runExport(item.machine, to: item.destination, densest: densest, includeIPSW: includeIPSW)
+            }
+            exports[item.machine]?.task = task
+            await task.value
+            exports[item.machine] = nil
+        }
+    }
+
+    /// Stops an export under way, or takes a waiting one out of the queue.
+    func cancelExport(_ machine: Path) {
+        guard let export = exports[machine] else {
+            return
+        }
+        if let task = export.task {
+            task.cancel()
+        } else {
+            exports[machine] = nil
+        }
+    }
+
+    private func runExport(_ machine: Path, to destination: URL, densest: Bool, includeIPSW: Bool) async {
         var arguments = ["vm", "export", machine.name, "--out", destination.path] + machine.libraryArguments
         if densest {
             arguments.append("--max")
@@ -363,7 +413,14 @@ final class VPhoneLaunchpadMachineLibrary {
         if includeIPSW {
             arguments.append("--include-ipsw")
         }
-        await perform(String(localized: "Exporting…"), on: machine, arguments)
+        await perform(String(localized: "Exporting…"), on: machine, arguments) { [weak self] fraction in
+            Task { @MainActor in self?.exports[machine]?.fraction = fraction }
+        }
+        // `vm export` writes the archive in place, so a cancelled one leaves
+        // a partial file behind.
+        if Task.isCancelled {
+            try? FileManager.default.removeItem(at: destination)
+        }
     }
 
     func importArchive(_ archive: URL) async {
@@ -374,8 +431,15 @@ final class VPhoneLaunchpadMachineLibrary {
         )
     }
 
+    /// Runs one command with `activity` shown as the machine's state. False
+    /// when it failed, or was cancelled, which is not reported as an error.
     @discardableResult
-    private func perform(_ activity: String, on machine: Path?, _ arguments: [String]) async -> Bool {
+    private func perform(
+        _ activity: String,
+        on machine: Path?,
+        _ arguments: [String],
+        onProgress: (@Sendable (Double) -> Void)? = nil,
+    ) async -> Bool {
         guard let commandLine = bundles.commandLine() else {
             return false
         }
@@ -392,10 +456,14 @@ final class VPhoneLaunchpadMachineLibrary {
             }
         }
         do {
-            try await commandLine.runChecked(arguments)
+            try await commandLine.runChecked(arguments, onProgress: onProgress)
             await refresh()
             return true
         } catch {
+            if error is CancellationError || Task.isCancelled {
+                await refresh()
+                return false
+            }
             actionError = error as? VPhoneLaunchpadError
                 ?? VPhoneLaunchpadError(String(localized: "Unable to Complete Action"), detail: error.localizedDescription)
             await refresh()

@@ -7,22 +7,22 @@ struct VPhoneLaunchpadMachinesView: View {
     enum Sheet: Identifiable {
         case newMachine
         case creation(MachinePath)
-        case settings(VPhoneLaunchpadMachine)
+        case settings([VPhoneLaunchpadMachine])
         case patches(MachinePath)
         case rename(MachinePath)
         case clone(MachinePath)
-        case export(MachinePath)
+        case export([MachinePath])
         case console(MachinePath)
 
         var id: String {
             switch self {
             case .newMachine: "new"
             case let .creation(machine): "creation-\(machine.url.path)"
-            case let .settings(machine): "settings-\(machine.path.url.path)"
+            case let .settings(machines): "settings-\(machines.map(\.path.url.path).joined(separator: "|"))"
             case let .patches(machine): "patches-\(machine.url.path)"
             case let .rename(machine): "rename-\(machine.url.path)"
             case let .clone(machine): "clone-\(machine.url.path)"
-            case let .export(machine): "export-\(machine.url.path)"
+            case let .export(machines): "export-\(machines.map(\.url.path).joined(separator: "|"))"
             case let .console(machine): "console-\(machine.url.path)"
             }
         }
@@ -132,13 +132,30 @@ struct VPhoneLaunchpadMachinesView: View {
         let stopped = selected.filter { library.state(of: $0.path) == .stopped }
         let running = selected.filter { library.state(of: $0.path) == .running }
         // Host Setup and Core Bundle hold the leading edge; the space pushes
-        // everything here to the trailing edge: Start or Stop for the
-        // selection, then New Machine and the actions menu. The inspector
+        // everything here to the trailing edge: New Machine, then Start or
+        // Stop for the selection beside the actions menu. The inspector
         // toggle is in the inspector.
         ToolbarItem(placement: .automatic) {
             Spacer()
         }
         ToolbarItem(placement: .automatic) {
+            Menu {
+                Button("New Machine…") { sheet = .newMachine }
+                Button("Import…") { chooseImport() }
+                    .disabled(library.globalActivity != nil)
+            } label: {
+                Label("New Machine", systemImage: "plus")
+            }
+            .menuIndicator(.hidden)
+            .help("Create a machine")
+            .disabled(model.bundles.activeVersion == nil)
+        }
+        // Without it, macOS 26 draws New Machine in the same glass capsule
+        // as Start.
+        if #available(macOS 26, *) {
+            ToolbarSpacer(.fixed)
+        }
+        ToolbarItemGroup(placement: .automatic) {
             if stopped.isEmpty, !running.isEmpty {
                 Button {
                     stop(running)
@@ -155,25 +172,15 @@ struct VPhoneLaunchpadMachinesView: View {
                 .help("Start the selected machine")
                 .disabled(stopped.isEmpty)
             }
-        }
-        ToolbarItemGroup(placement: .automatic) {
-            Button {
-                sheet = .newMachine
-            } label: {
-                Label("New Machine", systemImage: "plus")
-            }
-            .help("Create a machine")
-            .disabled(model.bundles.activeVersion == nil)
             Menu {
                 machineActions(selected)
-                if !selected.isEmpty {
-                    Divider()
-                }
-                Button("Import…") { chooseImport() }
-                    .disabled(library.globalActivity != nil || model.bundles.activeVersion == nil)
             } label: {
                 Label("Actions", systemImage: "ellipsis")
             }
+            .disabled(selected.isEmpty)
+            // A menu with its arrow gets a capsule of its own; without it the
+            // menu shares Start's.
+            .menuIndicator(.hidden)
         }
     }
 
@@ -203,12 +210,31 @@ struct VPhoneLaunchpadMachinesView: View {
     }
 
     /// The same actions in the toolbar menu and the table's context menu.
-    /// Several machines get the actions that apply to each of them.
+    /// Several machines get the batch actions: one settings edit, export and
+    /// delete, which need every machine stopped, then start and stop.
     @ViewBuilder
     private func machineActions(_ machines: [VPhoneLaunchpadMachine]) -> some View {
+        // Only while one of them is exporting or waiting to.
+        let exporting = machines.filter { library.exports[$0.path] != nil }
+        if !exporting.isEmpty {
+            Button("Cancel Export") {
+                for machine in exporting {
+                    library.cancelExport(machine.path)
+                }
+            }
+            Divider()
+        }
         if machines.count > 1 {
             let stopped = machines.filter { library.state(of: $0.path) == .stopped }
             let running = machines.filter { library.state(of: $0.path) == .running }
+            let allStopped = stopped.count == machines.count
+            Button("Settings…") { sheet = .settings(machines) }
+                .disabled(!allStopped)
+            Button("Export…") { sheet = .export(machines.map(\.path)) }
+                .disabled(!allStopped)
+            Button("Delete…", role: .destructive) { deletion = machines.map(\.path) }
+                .disabled(!allStopped)
+            Divider()
             Button("Start") { start(stopped) }
                 .disabled(stopped.isEmpty)
             Button("Start Headless") { start(stopped, headless: true) }
@@ -219,15 +245,12 @@ struct VPhoneLaunchpadMachinesView: View {
             Button("Show in Finder") {
                 NSWorkspace.shared.activateFileViewerSelecting(machines.map(\.path.url))
             }
-            Divider()
-            Button("Delete…", role: .destructive) { deletion = machines.map(\.path) }
-                .disabled(stopped.count != machines.count)
         } else if let machine = machines.first {
             let isStopped = library.state(of: machine.path) == .stopped
             Button("Start Headless") { library.start(machine.path, headless: true) }
                 .disabled(!isStopped)
             Divider()
-            Button("Settings…") { sheet = .settings(machine) }
+            Button("Settings…") { sheet = .settings([machine]) }
                 .disabled(!isStopped)
             Button("Patch Settings…") { sheet = .patches(machine.path) }
                 .disabled(!isStopped)
@@ -235,7 +258,7 @@ struct VPhoneLaunchpadMachinesView: View {
                 .disabled(!isStopped)
             Button("Clone…") { sheet = .clone(machine.path) }
                 .disabled(!isStopped)
-            Button("Export…") { sheet = .export(machine.path) }
+            Button("Export…") { sheet = .export([machine.path]) }
                 .disabled(!isStopped)
             Divider()
             Button("Show in Finder") {
@@ -275,7 +298,10 @@ struct VPhoneLaunchpadMachinesView: View {
             }
             .width(min: 110, ideal: 120)
             TableColumn("State") { machine in
-                VPhoneLaunchpadMachineStateLabel(state: library.state(of: machine.path))
+                VPhoneLaunchpadMachineStateLabel(
+                    state: library.state(of: machine.path),
+                    progress: library.exports[machine.path]?.fraction,
+                )
             }
             .width(min: 150, ideal: 160)
             TableColumn("CPU") { machine in
@@ -337,8 +363,8 @@ struct VPhoneLaunchpadMachinesView: View {
             if let creation = library.creations[path] {
                 VPhoneLaunchpadCreationView(creation: creation)
             }
-        case let .settings(machine):
-            VPhoneLaunchpadMachineSettingsView(machine: machine)
+        case let .settings(machines):
+            VPhoneLaunchpadMachineSettingsView(machines: machines)
         case let .patches(path):
             // The machine's own record is what the editor starts from, so it reads
             // it back through `fw patches` rather than being handed a copy.
@@ -358,8 +384,8 @@ struct VPhoneLaunchpadMachinesView: View {
             ) { newName in
                 Task { await library.clone(path, as: newName) }
             }
-        case let .export(path):
-            VPhoneLaunchpadExportView(machine: path)
+        case let .export(paths):
+            VPhoneLaunchpadExportView(machines: paths)
         case let .console(path):
             VPhoneLaunchpadConsoleView(title: "\(path.name) Console", url: VPhoneLaunchpadMachineLibrary.consoleLog(path))
         }

@@ -1645,6 +1645,40 @@
         }
       }
     },
+    "Cancel Export" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel Export"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "書き出しをキャンセル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내보내기 취소"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy xuất"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消导出"
+          }
+        }
+      }
+    },
     "Cannot create an authorization (OSStatus %d)." : {
       "localizations" : {
         "en" : {
@@ -3255,6 +3289,40 @@
         }
       }
     },
+    "Creates a .tzst archive for each machine in the folder you choose." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creates a .tzst archive for each machine in the folder you choose."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択したフォルダに、マシンごとの .tzst アーカイブを作成します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "선택한 폴더에 머신마다 .tzst 아카이브를 만듭니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tạo một bản lưu trữ .tzst cho mỗi máy trong thư mục bạn chọn."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在你选择的文件夹中为每台虚拟机创建一个 .tzst 归档。"
+          }
+        }
+      }
+    },
     "Creates a smaller .txz archive. Export takes much longer." : {
       "localizations" : {
         "en" : {
@@ -4275,6 +4343,40 @@
         }
       }
     },
+    "Export" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "書き出す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내보내기"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xuất"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出"
+          }
+        }
+      }
+    },
     "Export %@" : {
       "localizations" : {
         "en" : {
@@ -4339,6 +4441,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在导出…"
+          }
+        }
+      }
+    },
+    "Export %lld Machines" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export %lld Machines"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 台のマシンを書き出す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "머신 %lld대 내보내기"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xuất %lld máy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出 %lld 台虚拟机"
           }
         }
       }
@@ -7540,6 +7676,40 @@
         }
       }
     },
+    "Only the settings you change are applied to each machine." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only the settings you change are applied to each machine."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "変更した設定だけが各マシンに適用されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "변경한 설정만 각 머신에 적용됩니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chỉ những cài đặt bạn thay đổi mới được áp dụng cho từng máy."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只有你更改的设置会应用到每台虚拟机。"
+          }
+        }
+      }
+    },
     "Open Console" : {
       "localizations" : {
         "en" : {
@@ -9746,6 +9916,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "请先设置 VPHONE_LAUNCHPAD_TEAM，重新构建并签名 App，然后再安装辅助工具。"
+          }
+        }
+      }
+    },
+    "Settings for %lld Machines" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings for %lld Machines"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 台のマシンの設定"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "머신 %lld대 설정"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài đặt cho %lld máy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 台虚拟机的设置"
           }
         }
       }
@@ -13147,6 +13351,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在等待管理员…"
+          }
+        }
+      }
+    },
+    "Waiting to export…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting to export…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "書き出し待ち…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내보내기 대기 중…"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang chờ xuất…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待导出…"
           }
         }
       }

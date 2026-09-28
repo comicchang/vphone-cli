@@ -6,6 +6,8 @@ import SwiftUI
 /// A machine's run state as the table and the inspector show it.
 struct VPhoneLaunchpadMachineStateLabel: View {
     let state: VPhoneLaunchpadMachineLibrary.RunState
+    /// An export's progress, shown as a bar in place of the activity text.
+    var progress: Double?
 
     var body: some View {
         let (status, text): (VPhoneLaunchpadStatus, String) = switch state {
@@ -13,10 +15,21 @@ struct VPhoneLaunchpadMachineStateLabel: View {
         case .stopped: (.pending, String(localized: "Stopped"))
         case let .busy(activity): (.running, activity)
         }
-        Label {
-            Text(text).lineLimit(1)
-        } icon: {
-            VPhoneLaunchpadStatusIcon(status: status)
+        if let progress {
+            HStack(spacing: 6) {
+                ProgressView(value: progress)
+                    .controlSize(.small)
+                Text(progress, format: .percent.precision(.fractionLength(0)))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            .help(text)
+        } else {
+            Label {
+                Text(text).lineLimit(1)
+            } icon: {
+                VPhoneLaunchpadStatusIcon(status: status)
+            }
         }
     }
 }
@@ -46,7 +59,10 @@ struct VPhoneLaunchpadMachineInspector: View {
                     creationSummary(creation)
                 }
                 LabeledContent("State") {
-                    VPhoneLaunchpadMachineStateLabel(state: library.state(of: machine.path))
+                    VPhoneLaunchpadMachineStateLabel(
+                        state: library.state(of: machine.path),
+                        progress: library.exports[machine.path]?.fraction,
+                    )
                 }
                 if let started = library.startedAt[machine.path] {
                     LabeledContent("Started", value: started.formatted(date: .omitted, time: .shortened))

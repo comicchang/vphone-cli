@@ -5,9 +5,17 @@ import Foundation
 /// A single-line, redrawing byte progress bar for long transfers. Renders to
 /// stderr only when it is a TTY, so piped/`--json`/GUI-subprocess invocations
 /// (stdout consumed elsewhere) stay clean and the bar simply no-ops.
+///
+/// A caller that reads the output through a pipe, such as vphone-launchpad,
+/// sets `VPHONE_PROGRESS=lines` to get `progress <done> <total>` lines on
+/// stderr instead, at most a few per second.
 final class VPhoneProgressBar {
+    private enum Mode {
+        case off, bar, lines
+    }
+
     private let label: String
-    private let enabled: Bool
+    private let mode: Mode
     private let start = Date()
     private let width = 28
     private var lastRender = Date.distantPast
@@ -15,27 +23,44 @@ final class VPhoneProgressBar {
 
     init(label: String) {
         self.label = label
-        enabled = isatty(FileHandle.standardError.fileDescriptor) != 0
+        mode = if isatty(FileHandle.standardError.fileDescriptor) != 0 {
+            .bar
+        } else if ProcessInfo.processInfo.environment["VPHONE_PROGRESS"] == "lines" {
+            .lines
+        } else {
+            .off
+        }
     }
 
     func update(done: Int64, total: Int64) {
-        guard enabled else { return }
+        guard mode != .off else { return }
         self.total = total
         let now = Date()
-        if done < total, now.timeIntervalSince(lastRender) < 0.066 {
+        let interval = mode == .bar ? 0.066 : 0.25 // ~15 fps, or 4 lines a second
+        if done < total, now.timeIntervalSince(lastRender) < interval {
             return
-        } // ~15 fps
+        }
         lastRender = now
         render(done: done, now: now)
     }
 
     func finish() {
-        guard enabled else { return }
-        render(done: total, now: Date())
-        FileHandle.standardError.write(Data("\n".utf8))
+        switch mode {
+        case .off:
+            return
+        case .bar:
+            render(done: total, now: Date())
+            FileHandle.standardError.write(Data("\n".utf8))
+        case .lines:
+            render(done: total, now: Date())
+        }
     }
 
     private func render(done: Int64, now: Date) {
+        if mode == .lines {
+            FileHandle.standardError.write(Data("progress \(done) \(total)\n".utf8))
+            return
+        }
         let frac = total > 0 ? min(1.0, Double(done) / Double(total)) : 0
         let filled = Int(frac * Double(width))
         let bar = String(repeating: "█", count: filled) + String(repeating: "░", count: width - filled)

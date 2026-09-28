@@ -67,6 +67,11 @@ final nonisolated class VPhoneLaunchpadChildProcess: @unchecked Sendable {
             let pipe = Pipe()
             process.standardOutput = pipe
             process.standardError = pipe
+            // Transfers report `progress <done> <total>` lines instead of a
+            // terminal bar, which the pipe would drop.
+            var environment = ProcessInfo.processInfo.environment
+            environment["VPHONE_PROGRESS"] = "lines"
+            process.environment = environment
             try process.run()
             let reader = pipe.fileHandleForReading
             Thread.detachNewThread { [self] in

@@ -108,16 +108,32 @@ struct VPhoneLaunchpadCommandLine {
         return plain && !argument.isEmpty ? argument : "'\(argument.replacingOccurrences(of: "'", with: "'\\''"))'"
     }
 
+    /// The fraction a `progress <done> <total>` line reports, or nil for any
+    /// other line.
+    nonisolated static func progress(in line: String) -> Double? {
+        let fields = line.split(separator: " ")
+        guard fields.count == 3, fields[0] == "progress",
+              let done = Double(fields[1]), let total = Double(fields[2]), total > 0
+        else { return nil }
+        return min(1, done / total)
+    }
+
     /// Runs to completion. Cancelling the calling task sends SIGINT.
-    /// `onLine` runs on the reader thread, never on the main actor.
+    /// `onLine` and `onProgress` run on the reader thread, never on the main
+    /// actor. Progress lines go only to `onProgress`, never to the output.
     func run(
         _ arguments: [String],
         recordInHistory: Bool = true,
         onLine: (@Sendable (String) -> Void)? = nil,
+        onProgress: (@Sendable (Double) -> Void)? = nil,
     ) async throws -> VPhoneLaunchpadCommandResult {
         let entry = recordInHistory ? history.record(Self.display(arguments)) : nil
         let collector = VPhoneLaunchpadLineCollector()
         let child = try VPhoneLaunchpadChildProcess(executable: executable, arguments: arguments) { line in
+            if let fraction = Self.progress(in: line) {
+                onProgress?(fraction)
+                return
+            }
             collector.append(line)
             onLine?(line)
         }
@@ -137,8 +153,9 @@ struct VPhoneLaunchpadCommandLine {
     func runChecked(
         _ arguments: [String],
         onLine: (@Sendable (String) -> Void)? = nil,
+        onProgress: (@Sendable (Double) -> Void)? = nil,
     ) async throws -> VPhoneLaunchpadCommandResult {
-        let result = try await run(arguments, onLine: onLine)
+        let result = try await run(arguments, onLine: onLine, onProgress: onProgress)
         try Task.checkCancellation()
         guard result.succeeded else {
             throw VPhoneLaunchpadError(
