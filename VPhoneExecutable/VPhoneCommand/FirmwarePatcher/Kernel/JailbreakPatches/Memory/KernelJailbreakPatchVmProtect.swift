@@ -129,6 +129,29 @@ extension KernelJailbreakPatcher {
         var off = start
         while off + 0x18 < end {
             defer { off += 4 }
+
+            // Rejection-only gate, ahead of Capstone. Nothing is decided here: a
+            // word that survives goes through exactly the decode and the checks it
+            // always did, and every positive determination below is still
+            // Capstone's. It exists because this scan is deliberately unscoped
+            // (see findFusedWriteDowngradeGate), so it walks all 8.4 MB of kernel
+            // text — and decoding five instructions at every one of the ~2.1M
+            // offsets to reject almost all of them on the first one cost ~29 s of
+            // a ~49 s `fw patch`, nearly all of it inside Capstone's printer.
+            //
+            // The window has to open with `mov wMask, #6`, which an assembler can
+            // spell two ways: MOVZ, or `orr wMask, wzr, #6`. Both are let through.
+            // In practice the ORR form disassembles as `orr`, not `mov` — the
+            // MOV-bitmask alias applies only when the immediate is *not*
+            // MOVZ-encodable, and #6 is — so the check below would reject it
+            // anyway. Accepting it here regardless keeps this gate from depending
+            // on that aliasing rule, which is the one way a cheap prefilter could
+            // silently narrow the match.
+            let word = buffer.readU32(at: off)
+            guard (ARM64Inst.isMOVZW(word) && ARM64Inst.movImm16(word) == 6)
+                || (ARM64Inst.isORRImmW(word) && ARM64Inst.rn(word) == 31)
+            else { continue }
+
             let insns = disasm.disassemble(in: buffer.data, at: off, count: 5)
             guard insns.count >= 5 else { continue }
             let movMask = insns[0], bicInsn = insns[1]

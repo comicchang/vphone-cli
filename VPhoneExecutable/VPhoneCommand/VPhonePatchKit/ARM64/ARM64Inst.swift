@@ -68,6 +68,22 @@ public enum ARM64Inst {
         (i & 0xFFE0_0000) == 0x5280_0000
     }
 
+    /// ORR Wd, WZR, #imm — 32-bit logical-immediate ORR, [31:22]=0011001000
+    /// (sf=0, opc=01, N=0). This is the *other* encoding an assembler may pick to
+    /// materialise a small constant, so a scanner looking for `mov wD, #imm` has
+    /// to let it through as well. Rn is left free: a caller that means WZR
+    /// specifically checks `rn(i) == 31` itself.
+    ///
+    /// The immediate field is not decoded here. Logical immediates carry their own
+    /// element size, so the same value has several legal spellings — `orr w9, wzr,
+    /// #6` is 0x321F07E9 (element size 32) while `orr w9, wzr, #7` is 0x32000BE9 —
+    /// and reproducing that table would be the kind of hand-rolled decode the
+    /// kernel patcher guardrails exist to keep out. Callers confirm the value with
+    /// Capstone.
+    public static func isORRImmW(_ i: UInt32) -> Bool {
+        (i & 0xFFC0_0000) == 0x3200_0000
+    }
+
     /// AND Wd, Wn, Wm — 32-bit shifted-register AND (imm6=0; shift type left free,
     /// harmless at shift amount 0): [31:24]=00001010, N=0.
     public static func isANDRegW(_ i: UInt32) -> Bool {
@@ -82,6 +98,13 @@ public enum ARM64Inst {
     /// BL — branch with link, [31:26]=100101.
     public static func isBL(_ i: UInt32) -> Bool {
         i >> 26 == 0b100101
+    }
+
+    /// B or BL — unconditional branch (immediate), [30:26]=00101. Bit 31 is the
+    /// link bit and is left free, so both forms pass and nothing else does: those
+    /// two are the only encodings in the group.
+    public static func isBorBL(_ i: UInt32) -> Bool {
+        (i & 0x7C00_0000) == 0x1400_0000
     }
 
     /// B.EQ — conditional branch, [31:24]=0x54, bit4=0, cond=0000.

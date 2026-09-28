@@ -43,6 +43,11 @@ extension KernelJailbreakPatcher {
             var off = range.start
             while off + 4 <= min(range.end, buffer.count) {
                 defer { off += 4 }
+                // Rejection-only gate ahead of the decode, for the same reason as
+                // the vm_map_protect scan: this walks all of kernel text, and B/BL
+                // are the only two encodings `isBorBL` accepts, so a word it
+                // rejects could never have satisfied the mnemonic check below.
+                guard ARM64Inst.isBorBL(buffer.readU32(at: off)) else { continue }
                 guard let branch = disasAt(off),
                       branch.mnemonic == "b" || branch.mnemonic == "bl",
                       let target = branchTargetFileOffset(branch),
