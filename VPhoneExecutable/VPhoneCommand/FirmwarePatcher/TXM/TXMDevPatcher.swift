@@ -3,6 +3,7 @@
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
+import VPhonePatchKit
 
 /// Dev-variant patcher for TXM images.
 ///

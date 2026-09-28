@@ -27,6 +27,7 @@ For any changes applying new patches, also update Research/0_binary_patch_compar
 
 - If working on kernel analysis, symbolication lookups, or kernel patch reasoning, read `Skills/kernel-analysis-vphone600/SKILL.md` first.
 - Use this skill as the default procedure for `vphone600` kernel work.
+- If adding or changing a patch, a patch set, or a preset, read `Skills/authoring-patch-sets/SKILL.md` first. Every patch is declared in a patch set and selected by a preset; a patch in no manifest cannot be turned off and warns on every run.
 
 ## Firmware Mode
 

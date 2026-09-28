@@ -27,6 +27,7 @@ import CryptoKit
 import Foundation
 import Img4tool
 import Testing
+import VPhonePatchKit
 
 // MARK: - The frozen reference
 

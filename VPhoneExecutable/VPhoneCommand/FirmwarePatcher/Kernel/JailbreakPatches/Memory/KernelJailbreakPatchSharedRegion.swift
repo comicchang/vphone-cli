@@ -2,8 +2,8 @@
 //
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Force `cmp x0, x0` in the root-vs-preboot gate of
@@ -80,12 +80,12 @@ extension KernelJailbreakPatcher {
 
             guard cmpInsn.mnemonic == "cmp", beqInsn.mnemonic == "b.eq" else { off += 4; continue }
 
-            guard let cmpOps = cmpInsn.aarch64?.operands, cmpOps.count == 2,
-                  cmpOps[0].type == AARCH64_OP_REG, cmpOps[1].type == AARCH64_OP_REG
+            guard let cmpOps = cmpInsn.detail?.operands, cmpOps.count == 2,
+                  cmpOps[0].type == .register, cmpOps[1].type == .register
             else { off += 4; continue }
 
-            guard let beqOps = beqInsn.aarch64?.operands, beqOps.count == 1,
-                  beqOps[0].type == AARCH64_OP_IMM,
+            guard let beqOps = beqInsn.detail?.operands, beqOps.count == 1,
+                  beqOps[0].type == .immediate,
                   Int(beqOps[0].imm) > Int(beqInsn.address)
             else { off += 4; continue }
 

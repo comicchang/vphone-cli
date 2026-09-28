@@ -1,6 +1,7 @@
 // CustomFirmwareWatchDogSymbolTargets.swift — Resolve watchdogd branch targets.
 
 import Foundation
+import VPhonePatchKit
 
 // MARK: - Symbol targets
 

@@ -53,8 +53,8 @@
 // pass `reattestsCodeSignature: true` or ship a binary TXM will SIGKILL on the
 // first page-in of the patched page.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// NOPs the `launchd_unsecure_cache=` gate in `/usr/libexec/launchd_cache_loader`.
 public enum CustomFirmwareCacheLoaderPatcher {
@@ -311,7 +311,7 @@ public enum CustomFirmwareCacheLoaderPatcher {
     ) throws -> Gate {
         let disassembler = ARM64Disassembler()
         let textEnd = Int(text.fileOffset) + Int(text.size)
-        func decode(_ offset: Int) -> Instruction? {
+        func decode(_ offset: Int) -> ARM64Instruction? {
             guard offset >= Int(text.fileOffset), offset + 4 <= textEnd else { return nil }
             return disassembler.disassembleOne(
                 in: data,
@@ -320,7 +320,7 @@ public enum CustomFirmwareCacheLoaderPatcher {
             )
         }
 
-        var call: Instruction?
+        var call: ARM64Instruction?
         for step in 0 ..< maxInstructionsToCall {
             guard let instruction = decode(anchor.referenceFileOffset + step * 4) else { break }
             // A direct `bl` only — the string is an argument to a call, and an
@@ -372,8 +372,8 @@ public enum CustomFirmwareCacheLoaderPatcher {
         )
     }
 
-    /// Conditional branches, decided on the mnemonic Capstone produced.
-    static func isConditionalBranch(_ instruction: Instruction) -> Bool {
+    /// Conditional branches, decided on the decoded mnemonic.
+    static func isConditionalBranch(_ instruction: ARM64Instruction) -> Bool {
         switch instruction.mnemonic {
         case "cbz", "cbnz", "tbz", "tbnz": true
         default: instruction.mnemonic.hasPrefix("b.")
@@ -388,10 +388,10 @@ public enum CustomFirmwareCacheLoaderPatcher {
     /// branch, and NOP'ing it would be a silent miscompile of a boot-critical
     /// binary — so this throws instead.
     static func validate(
-        gate: Instruction,
+        gate: ARM64Instruction,
         in data: Data,
         text: MachOSectionInfo,
-        after call: Instruction?,
+        after call: ARM64Instruction?,
         _ disassembler: ARM64Disassembler,
     ) throws {
         if let target = branchTarget(of: gate) {
@@ -431,8 +431,8 @@ public enum CustomFirmwareCacheLoaderPatcher {
     /// Whether some instruction between the call and the branch sets the flags
     /// from x0/w0 — a `cmp`/`subs`/`ands`/`tst` reading register 0.
     static func flagSetterOnResult(
-        between call: Instruction,
-        and gate: Instruction,
+        between call: ARM64Instruction,
+        and gate: ARM64Instruction,
         in data: Data,
         text: MachOSectionInfo,
         _ disassembler: ARM64Disassembler,
@@ -442,11 +442,11 @@ public enum CustomFirmwareCacheLoaderPatcher {
             defer { address += 4 }
             let offset = Int(address - text.address) + Int(text.fileOffset)
             guard let instruction = disassembler.disassembleOne(in: data, at: offset, address: address),
-                  instruction.aarch64?.updatesFlags == true,
-                  let operands = instruction.aarch64?.operands
+                  instruction.detail?.updatesFlags == true,
+                  let operands = instruction.detail?.operands
             else { continue }
-            for operand in operands where operand.type == AARCH64_OP_REG {
-                let name = disassembler.registerName(UInt32(operand.reg.rawValue))
+            for operand in operands where operand.type == .register {
+                let name = operand.reg.name
                 if name == "x0" || name == "w0" {
                     return true
                 }
@@ -457,10 +457,10 @@ public enum CustomFirmwareCacheLoaderPatcher {
 
     /// The absolute address a branch jumps to, read from its last immediate
     /// operand, or `nil` when the instruction carries none.
-    static func branchTarget(of instruction: Instruction) -> UInt64? {
-        guard let operands = instruction.aarch64?.operands,
+    static func branchTarget(of instruction: ARM64Instruction) -> UInt64? {
+        guard let operands = instruction.detail?.operands,
               let last = operands.last,
-              last.type == AARCH64_OP_IMM,
+              last.type == .immediate,
               last.imm >= 0
         else { return nil }
         return UInt64(last.imm)

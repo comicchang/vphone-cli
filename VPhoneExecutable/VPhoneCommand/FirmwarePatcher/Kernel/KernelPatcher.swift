@@ -4,12 +4,13 @@
 // Each patch method is defined as an extension in its own file under Patches/.
 
 import Foundation
+import VPhonePatchKit
 
 /// Regular kernel patcher for iOS prelinked kernelcaches.
 ///
 /// Patches are applied in the same order as the Python reference implementation.
 /// Each patch method is an extension in a separate file under `Kernel/Patches/`.
-public final class KernelPatcher: KernelPatcherBase, Patcher {
+public final class KernelPatcher: KernelPatcherBase, BufferedPatcher {
     public let component = "kernelcache"
 
     /// When true, includes dev-only kernel patches (e.g. EXC_GUARD disable).
@@ -18,8 +19,10 @@ public final class KernelPatcher: KernelPatcherBase, Patcher {
     /// When true, apply the EXC_GUARD (Mach port guard) disable even on
     /// non-dev variants. Always required on iOS 18 bases: their older
     /// userland (runningboardd/SpringBoard) trips a Mach port guard
-    /// "flavor 10" that crash-loops the UI. On other bases this is opt-in
-    /// (see `FirmwarePipeline`'s `forceExcGuard`/`--force-exc-guard`): some
+    /// "flavor 10" that crash-loops the UI. On other bases it is off: the
+    /// `kernel.thread_guard_violation` declaration is pinned to iOS 18, and no
+    /// preset or checkmark can widen a version gate, so a 26.x or 27.x base cannot
+    /// ask for it any more. What it used to be for: some
     /// third-party apps calling task_swap_exception_ports() (crash-reporting/
     /// RASP SDKs) can trip a GUARD_TYPE_MACH_PORT/KOBJECT_REPLY_PORT_SEMANTICS
     /// violation that the research kernel enforces fatally (upstream issue

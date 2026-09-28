@@ -19,6 +19,7 @@
 // is told the target build and rewrites it.
 
 import Foundation
+import VPhonePatchKit
 
 /// Rewrites `ProductBuildVersion` in a `SystemVersion.plist`, preserving the
 /// file's original plist format (XML in, XML out; binary in, binary out).

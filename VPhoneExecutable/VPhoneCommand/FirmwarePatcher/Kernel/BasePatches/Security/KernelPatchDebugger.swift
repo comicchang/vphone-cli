@@ -6,6 +6,7 @@
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelPatcher {
     /// Patches 6-7: stub _PE_i_can_has_debugger with mov x0,#1; ret.

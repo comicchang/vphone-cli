@@ -2,8 +2,8 @@
 //
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// Base class for JB kernel patching, extending KernelPatcherBase with:
 /// - Symbol table parsing (nlist64 from LC_SYMTAB + fileset entries)
@@ -273,7 +273,7 @@ public class KernelJailbreakPatcherBase: KernelPatcherBase {
     // MARK: - Disassemble Helper
 
     /// Disassemble one instruction at file offset in the mutable buffer.
-    func disasAt(_ off: Int) -> Instruction? {
+    func disasAt(_ off: Int) -> ARM64Instruction? {
         guard off >= 0, off + 4 <= buffer.count else { return nil }
         return disasm.disassembleOne(in: buffer.data, at: off)
     }

@@ -36,8 +36,8 @@
 //   Widening the mask keeps ALL requested permission bits; it is strictly more
 //   permissive (`prot & 7` ⊇ `prot & 5`), so no working mapping regresses.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Bypass the vm_map_protect W^X downgrade so write+execute protections are honored.
@@ -136,44 +136,44 @@ extension KernelJailbreakPatcher {
 
             // mov wMask, #6
             guard movMask.mnemonic == "mov",
-                  let movOps = movMask.aarch64?.operands, movOps.count == 2,
-                  movOps[0].type == AARCH64_OP_REG,
-                  movOps[1].type == AARCH64_OP_IMM, movOps[1].imm == 6
+                  let movOps = movMask.detail?.operands, movOps.count == 2,
+                  movOps[0].type == .register,
+                  movOps[1].type == .immediate, movOps[1].imm == 6
             else { continue }
             let maskReg = movOps[0].reg
 
             // bic wMask, wMask, wProt — the non-flag-setting form.
             guard bicInsn.mnemonic == "bic",
-                  let bicOps = bicInsn.aarch64?.operands, bicOps.count == 3,
-                  bicOps[0].type == AARCH64_OP_REG, bicOps[0].reg == maskReg,
-                  bicOps[1].type == AARCH64_OP_REG, bicOps[1].reg == maskReg,
-                  bicOps[2].type == AARCH64_OP_REG
+                  let bicOps = bicInsn.detail?.operands, bicOps.count == 3,
+                  bicOps[0].type == .register, bicOps[0].reg == maskReg,
+                  bicOps[1].type == .register, bicOps[1].reg == maskReg,
+                  bicOps[2].type == .register
             else { continue }
             let protReg = bicOps[2].reg
 
             // cmp wMask, #0
             guard cmpInsn.mnemonic == "cmp",
-                  let cmpOps = cmpInsn.aarch64?.operands, cmpOps.count == 2,
-                  cmpOps[0].type == AARCH64_OP_REG, cmpOps[0].reg == maskReg,
-                  cmpOps[1].type == AARCH64_OP_IMM, cmpOps[1].imm == 0
+                  let cmpOps = cmpInsn.detail?.operands, cmpOps.count == 2,
+                  cmpOps[0].type == .register, cmpOps[0].reg == maskReg,
+                  cmpOps[1].type == .immediate, cmpOps[1].imm == 0
             else { continue }
 
             // ccmp wFlags, #0, #nzcv, eq — the `eq` is what makes this the second
             // half of the same decision rather than an unrelated fused compare.
             guard ccmpInsn.mnemonic == "ccmp",
-                  let ccmpDetail = ccmpInsn.aarch64,
-                  ccmpDetail.conditionCode == AArch64CC_EQ,
+                  let ccmpDetail = ccmpInsn.detail,
+                  ccmpDetail.conditionCode == .eq,
                   ccmpDetail.operands.count >= 2,
-                  ccmpDetail.operands[0].type == AARCH64_OP_REG,
-                  ccmpDetail.operands[1].type == AARCH64_OP_IMM,
+                  ccmpDetail.operands[0].type == .register,
+                  ccmpDetail.operands[1].type == .immediate,
                   ccmpDetail.operands[1].imm == 0
             else { continue }
             let flagsReg = ccmpDetail.operands[0].reg
 
             // b.ne <skip>, forward.
             guard bneInsn.mnemonic == "b.ne",
-                  let bneOps = bneInsn.aarch64?.operands, bneOps.count == 1,
-                  bneOps[0].type == AARCH64_OP_IMM
+                  let bneOps = bneInsn.detail?.operands, bneOps.count == 1,
+                  bneOps[0].type == .immediate
             else { continue }
             let skipTarget = Int(bneOps[0].imm)
             guard skipTarget > Int(bneInsn.address) else { continue }
@@ -199,16 +199,16 @@ extension KernelJailbreakPatcher {
     }
 
     /// Scan backwards for `and wFlags, wFlags, #bit` that isolates the entry flag.
-    private func findEntryFlagMask(before: Int, limit: Int, reg: aarch64_reg, bit: Int64) -> Int? {
+    private func findEntryFlagMask(before: Int, limit: Int, reg: ARM64Register, bit: Int64) -> Int? {
         var off = before - 4
         let floor = max(limit, before - 0x20)
         while off >= floor {
             let insns = disasm.disassemble(in: buffer.data, at: off, count: 1)
             if let insn = insns.first, insn.mnemonic == "and",
-               let ops = insn.aarch64?.operands, ops.count == 3,
-               ops[0].type == AARCH64_OP_REG, ops[0].reg == reg,
-               ops[1].type == AARCH64_OP_REG, ops[1].reg == reg,
-               ops[2].type == AARCH64_OP_IMM, ops[2].imm == bit
+               let ops = insn.detail?.operands, ops.count == 3,
+               ops[0].type == .register, ops[0].reg == reg,
+               ops[1].type == .register, ops[1].reg == reg,
+               ops[2].type == .immediate, ops[2].imm == bit
             {
                 return off
             }
@@ -221,7 +221,7 @@ extension KernelJailbreakPatcher {
 
     /// Find the `b.ne` that skips the write-downgrade block, and its target.
     private func findWriteDowngradeGate(start: Int, end: Int) -> (brOff: Int, target: Int)? {
-        let wZrReg: aarch64_reg = AARCH64_REG_WZR
+        let wZrReg: ARM64Register = .wzr
 
         var hits: [(Int, Int)] = []
         var off = start
@@ -232,35 +232,35 @@ extension KernelJailbreakPatcher {
 
             // mov wMask, #6
             guard movMask.mnemonic == "mov",
-                  let movOps = movMask.aarch64?.operands, movOps.count == 2,
-                  movOps[0].type == AARCH64_OP_REG,
-                  movOps[1].type == AARCH64_OP_IMM, movOps[1].imm == 6
+                  let movOps = movMask.detail?.operands, movOps.count == 2,
+                  movOps[0].type == .register,
+                  movOps[1].type == .immediate, movOps[1].imm == 6
             else { off += 4; continue }
             let maskReg = movOps[0].reg
 
             // bics wzr, wMask, wProt
             guard bicsInsn.mnemonic == "bics",
-                  let bicsOps = bicsInsn.aarch64?.operands, bicsOps.count == 3,
-                  bicsOps[0].type == AARCH64_OP_REG, bicsOps[0].reg == wZrReg,
-                  bicsOps[1].type == AARCH64_OP_REG, bicsOps[1].reg == maskReg,
-                  bicsOps[2].type == AARCH64_OP_REG
+                  let bicsOps = bicsInsn.detail?.operands, bicsOps.count == 3,
+                  bicsOps[0].type == .register, bicsOps[0].reg == wZrReg,
+                  bicsOps[1].type == .register, bicsOps[1].reg == maskReg,
+                  bicsOps[2].type == .register
             else { off += 4; continue }
             let protReg = bicsOps[2].reg
 
             // b.ne <skip>
             guard bneInsn.mnemonic == "b.ne",
-                  let bneOps = bneInsn.aarch64?.operands, bneOps.count == 1,
-                  bneOps[0].type == AARCH64_OP_IMM
+                  let bneOps = bneInsn.detail?.operands, bneOps.count == 1,
+                  bneOps[0].type == .immediate
             else { off += 4; continue }
             let skipTarget = Int(bneOps[0].imm)
             guard skipTarget > Int(bneInsn.address) else { off += 4; continue }
 
             // tbnz wEntryFlags, #22, <skip>
             guard tbnzInsn.mnemonic == "tbnz",
-                  let tbnzOps = tbnzInsn.aarch64?.operands, tbnzOps.count == 3,
-                  tbnzOps[0].type == AARCH64_OP_REG,
-                  tbnzOps[1].type == AARCH64_OP_IMM, tbnzOps[1].imm == 22,
-                  tbnzOps[2].type == AARCH64_OP_IMM, Int(tbnzOps[2].imm) == skipTarget
+                  let tbnzOps = tbnzInsn.detail?.operands, tbnzOps.count == 3,
+                  tbnzOps[0].type == .register,
+                  tbnzOps[1].type == .immediate, tbnzOps[1].imm == 22,
+                  tbnzOps[2].type == .immediate, Int(tbnzOps[2].imm) == skipTarget
             else { off += 4; continue }
 
             // Verify there's an `and wProt, wProt, #~bit` between tbnz+4 and target.
@@ -277,16 +277,16 @@ extension KernelJailbreakPatcher {
     }
 
     /// Scan [start, end) for `and wProt, wProt, #imm` that strips one of the low protection bits.
-    private func findWriteClearBetween(start: Int, end: Int, protReg: aarch64_reg) -> Int? {
+    private func findWriteClearBetween(start: Int, end: Int, protReg: ARM64Register) -> Int? {
         var off = start
         while off < end {
             let insns = disasm.disassemble(in: buffer.data, at: off, count: 1)
             guard let insn = insns.first else { off += 4; continue }
             if insn.mnemonic == "and",
-               let ops = insn.aarch64?.operands, ops.count == 3,
-               ops[0].type == AARCH64_OP_REG, ops[0].reg == protReg,
-               ops[1].type == AARCH64_OP_REG, ops[1].reg == protReg,
-               ops[2].type == AARCH64_OP_IMM
+               let ops = insn.detail?.operands, ops.count == 3,
+               ops[0].type == .register, ops[0].reg == protReg,
+               ops[1].type == .register, ops[1].reg == protReg,
+               ops[2].type == .immediate
             {
                 let imm = UInt32(bitPattern: Int32(truncatingIfNeeded: ops[2].imm)) & 0xFFFF_FFFF
                 // Keeps two of the three low protection bits, clears the middle one.

@@ -21,6 +21,7 @@
 
 import CryptoKit
 import Foundation
+import VPhonePatchKit
 
 // MARK: - Byte Reading
 

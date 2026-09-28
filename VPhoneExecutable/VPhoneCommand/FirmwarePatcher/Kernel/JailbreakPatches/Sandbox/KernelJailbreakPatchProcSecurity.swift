@@ -11,6 +11,7 @@
 //   used by jailbreak userland never hit cross-identity authorization denials.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Stub _proc_security_policy: mov x0,#0; ret.

@@ -12,6 +12,8 @@ struct VPhoneFirmwareCommand: ParsableCommand {
             VPhoneFirmwareInspectCommand.self,
             VPhoneFirmwarePrepareCommand.self,
             VPhoneFirmwarePatchCommand.self,
+            VPhoneFirmwarePatchesCommand.self,
+            VPhoneFirmwareSetPatchesCommand.self,
             VPhoneFirmwareManifestCommand.self,
             VPhoneFirmwareListCommand.self,
             VPhoneFirmwareResolveCommand.self,
@@ -291,9 +293,11 @@ struct VPhoneFirmwarePatchCommand: ParsableCommand {
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "VM name") var name: String?
-    @Flag(name: .customLong("force-exc-guard"), help: "Force the EXC_GUARD disable patch") var forceExcGuard = false
-    @Flag(name: .customLong("frida"), help: "Opt in to Frida Stalker kernel relaxations (jb/exp only)")
-    var frida = false
+    @Option(
+        name: .customLong("preset"),
+        help: "Patch preset to apply. Defaults to the VM's recorded choice, or standard.",
+    )
+    var preset: String?
     @Flag(name: .shortAndLong, help: "Suppress per-component progress") var quiet = false
 
     func run() throws {
@@ -303,16 +307,190 @@ struct VPhoneFirmwarePatchCommand: ParsableCommand {
             try? VPhoneHostFilePermissions.makeAccessible(at: bundle.url)
         }
 
+        // An explicit --preset wins and is remembered, so `cfw install` and a
+        // later re-patch agree without the flag being repeated.
+        var selection = VPhonePatchPresetStore.selection(forVM: bundle.url)
+        if let preset {
+            selection.presetIdentifier = preset
+        }
+        guard let resolved = VPhonePatchPresetStore.preset(named: selection.presetIdentifier) else {
+            let available = VPhonePatchPresetStore.availablePresets().map(\.identifier)
+            throw ValidationError(
+                "Unknown patch preset '\(selection.presetIdentifier)'. Available: \(available.joined(separator: ", "))",
+            )
+        }
+
         let pipeline = FirmwarePipeline(
             vmDirectory: bundle.url,
             variant: .jb,
             verbose: !quiet,
             noBinpack: true,
-            forceExcGuard: forceExcGuard,
-            enableFrida: frida,
+            preset: resolved,
+            blockedPatches: Set(selection.blockedPatches),
+            allowedPatches: Set(selection.allowedPatches),
         )
         let records = try pipeline.patchAll()
+
+        if let plan = pipeline.resolvedPlan {
+            try VPhonePatchPresetStore.write(selection, forVM: bundle.url)
+            try VPhonePatchPresetStore.write(
+                VPhoneVirtualMachinePatchPlan(
+                    plan: plan,
+                    iOSBase: pipeline.baseProductVersion,
+                    cloudOS: pipeline.cloudOSProductVersion,
+                ),
+                forVM: bundle.url,
+            )
+        }
+
         try VPhoneHostFilePermissions.makeAccessible(at: bundle.url)
-        print("[fw patch] applied \(records.count) JB patches")
+        print("[fw patch] applied \(records.count) JB patches"
+            + " (preset \(selection.presetIdentifier))")
+    }
+}
+
+// MARK: - patches
+
+struct VPhoneFirmwarePatchesCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "patches",
+        abstract: "List the patch sets, presets and individual patches this bundle can apply",
+    )
+
+    @OptionGroup var lib: VPhoneLibraryOption
+    @Argument(help: "VM name, to report what it is set to") var name: String?
+    @Option(name: .customLong("preset"), help: "Report against this preset instead of the VM's choice")
+    var preset: String?
+    @Flag(name: .customLong("json"), help: "Emit machine-readable output for a UI")
+    var json = false
+
+    func run() throws {
+        // A VM is optional: without one, this reports what the bundle can do.
+        var selection = VPhoneVirtualMachinePatchSelection()
+        var vmName: String?
+        if let name {
+            let resolvedName = try VPhoneVirtualMachineSelection.resolveExisting(name, in: lib.library)
+            vmName = resolvedName
+            selection = VPhonePatchPresetStore.selection(forVM: try lib.library.bundle(named: resolvedName).url)
+        }
+        if let preset {
+            selection.presetIdentifier = preset
+        }
+
+        let presets = VPhonePatchPresetStore.availablePresets()
+        guard let active = presets.first(where: { $0.identifier == selection.presetIdentifier }) else {
+            throw ValidationError(
+                "Unknown patch preset '\(selection.presetIdentifier)'."
+                    + " Available: \(presets.map(\.identifier).joined(separator: ", "))",
+            )
+        }
+
+        let report = VPhonePatchCatalogReport(
+            vmName: vmName,
+            selection: selection,
+            activePreset: active,
+            presets: presets,
+        )
+        if json {
+            print(try report.jsonText())
+        } else {
+            print(report.text())
+        }
+    }
+}
+
+// MARK: - set-patches
+
+/// Records what a VM applies, without patching anything.
+///
+/// This is the write half of `fw patches`: the Launchpad's patch editor reads the
+/// JSON, composes the checkmarks onto the preset, and hands the difference back
+/// here. Keeping it a verb of its own means the app never writes into a VM bundle
+/// itself, and a person can make the same edit from a terminal.
+struct VPhoneFirmwareSetPatchesCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "set-patches",
+        abstract: "Record which patches a VM applies, for the next fw patch",
+        discussion: """
+        Replaces the VM's PatchSelection.plist. Every run writes the whole record:
+        --block and --allow name the complete lists, so a run naming neither drops
+        the VM's overrides and it follows its preset again.
+
+        Only differences from the preset are stored. An identifier the preset
+        already agrees with is dropped, so a later preset revision still reaches a
+        VM whose boxes were never touched.
+
+        Nothing is patched here. The choice applies the next time `fw patch` runs
+        for the VM, and `cfw install` follows the plan that run records.
+        """,
+    )
+
+    @OptionGroup var lib: VPhoneLibraryOption
+    @Argument(help: "VM name") var name: String?
+    @Option(
+        name: .customLong("preset"),
+        help: "Preset the choice composes onto. Defaults to the VM's recorded preset.",
+    )
+    var preset: String?
+    @Option(
+        name: .customLong("block"),
+        help: ArgumentHelp("A patch the preset turns on that this VM leaves off", valueName: "patch"),
+    )
+    var block: [String] = []
+    @Option(
+        name: .customLong("allow"),
+        help: ArgumentHelp("A patch the preset leaves off that this VM turns on", valueName: "patch"),
+    )
+    var allow: [String] = []
+
+    func run() throws {
+        let name = try VPhoneVirtualMachineSelection.resolveExisting(name, in: lib.library)
+        let bundle = try lib.library.bundle(named: name)
+
+        var selection = VPhonePatchPresetStore.selection(forVM: bundle.url)
+        if let preset {
+            selection.presetIdentifier = preset
+        }
+        guard let resolved = VPhonePatchPresetStore.preset(named: selection.presetIdentifier) else {
+            let available = VPhonePatchPresetStore.availablePresets().map(\.identifier)
+            throw ValidationError(
+                "Unknown patch preset '\(selection.presetIdentifier)'. Available: \(available.joined(separator: ", "))",
+            )
+        }
+
+        let declarations = FirmwarePatchSetCatalog.allDeclarations
+        let declared = Set(declarations.map(\.identifier))
+        // A typo would otherwise write a list that turns nothing on or off.
+        let unknown = Set(block + allow).subtracting(declared).sorted()
+        guard unknown.isEmpty else {
+            throw ValidationError(
+                "No patch declares \(unknown.joined(separator: ", ")). Run `fw patches` for the identifiers.",
+            )
+        }
+        let contradictory = Set(block).intersection(allow).sorted()
+        guard contradictory.isEmpty else {
+            throw ValidationError(
+                "\(contradictory.joined(separator: ", ")) cannot be both blocked and allowed.",
+            )
+        }
+
+        // Only differences reach the plist, whatever the caller passed.
+        let included = VPhonePatchCatalogReport.patchesInPreset(resolved)
+        selection.blockedPatches = Set(block).intersection(included).sorted()
+        selection.allowedPatches = Set(allow).subtracting(included).sorted()
+
+        let essential = Set(declarations.filter(\.bootEssential).map(\.identifier))
+        let essentialOff = Set(selection.blockedPatches).intersection(essential).sorted()
+        if !essentialOff.isEmpty {
+            FileHandle.standardError.write(Data(
+                ("warning: \(essentialOff.count) boot-essential patch(es) are off — the VM may not boot: "
+                    + "\(essentialOff.joined(separator: ", "))\n").utf8,
+            ))
+        }
+
+        try VPhonePatchPresetStore.write(selection, forVM: bundle.url)
+        try VPhoneHostFilePermissions.makeAccessible(at: bundle.url)
+        print("[fw set-patches] \(name): preset \(selection.presetIdentifier)"
+            + ", \(selection.blockedPatches.count) off, \(selection.allowedPatches.count) on")
     }
 }

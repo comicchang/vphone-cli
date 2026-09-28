@@ -6,9 +6,10 @@
 import CryptoKit
 import Foundation
 import Img4tool
+import VPhonePatchKit
 
 /// Patcher for Manifest payloads.
-public final class ManifestHashPatcher: Patcher {
+public final class ManifestHashPatcher: BufferedPatcher {
     public let component = "Manifest"
     public let restoreDir: URL?
     public let verbose: Bool

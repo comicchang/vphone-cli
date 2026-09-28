@@ -71,8 +71,8 @@
 // drops the `ldid` step needs — and what makes `codesign -v` pass on the patched
 // file on its own.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// Forces `-[DIDiskArb isMountCompleteWithExpectedCount:diskTracker:]` to
 /// return YES so MobileStorageMounter stops waiting on a mount that will never
@@ -365,7 +365,7 @@ public enum CustomFirmwareDiskImage {
             original,
             at: virtualAddress ?? UInt64(fileOffset),
         )
-        guard decoded.count == length / 4, decoded.allSatisfy({ $0.id != 0 }) else { return nil }
+        guard decoded.count == length / 4, decoded.allSatisfy(\.isDecoded) else { return nil }
         return site
     }
 

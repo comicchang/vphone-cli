@@ -2,6 +2,7 @@ import ArgumentParser
 import FirmwarePatcher
 import Foundation
 import VPhoneCoreKit
+import VPhonePatchKit
 
 struct VPhoneCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -10,7 +11,7 @@ struct VPhoneCommand: ParsableCommand {
         subcommands: [
             VPhoneBootCommand.self, PatchFirmwareCommand.self, PatchComponentCommand.self, VPhoneVirtualMachineCommand.self,
             VPhoneFirmwareCommand.self, VPhoneRestoreCommand.self, VPhoneRecoveryProbeCommand.self,
-            VPhoneCustomFirmwareCommand.self,
+            VPhoneCustomFirmwareCommand.self, VPhonePatchSetCommand.self,
             VPhoneHostCommand.self,
             VPhoneSignCommand.self, VPhoneDumpEntitlementsCommand.self,
             VPhoneArchiveCommand.self,
@@ -44,26 +45,26 @@ struct PatchFirmwareCommand: ParsableCommand {
     @Flag(name: [.customShort("q"), .customLong("quiet")], help: "Suppress per-component progress output.")
     var quiet: Bool = false
 
-    @Flag(
-        name: .customLong("force-exc-guard"),
-        help: "Force-enable the EXC_GUARD (Mach port guard) disable patch on regular/jb/exp, even on bases where it isn't required to boot. Use if a third-party app's crash-reporting/RASP SDK trips a fatal GUARD_TYPE_MACH_PORT violation on launch. Always on for iOS 18 bases regardless of this flag.",
+    @Option(
+        name: .customLong("preset"),
+        help: "Patch preset to apply. Defaults to standard. Individual patches are selected per VM by `fw patch`, not here.",
     )
-    var forceExcGuard: Bool = false
-
-    @Flag(
-        name: .customLong("frida"),
-        help: "Opt in to Frida Stalker kernel relaxations (existing-thread follow + repeated VM_PROT_COPY). jb/exp only.",
-    )
-    var frida: Bool = false
+    var preset: String = VPhonePatchPreset.standardIdentifier
 
     mutating func run() throws {
+        guard let resolved = FirmwarePatchSetCatalog.builtInPresets.first(where: { $0.identifier == preset })
+        else {
+            let available = FirmwarePatchSetCatalog.builtInPresets.map(\.identifier)
+            throw ValidationError(
+                "Unknown patch preset '\(preset)'. Available: \(available.joined(separator: ", "))",
+            )
+        }
         let pipeline = FirmwarePipeline(
             vmDirectory: vmDirectory,
             variant: .jb,
             verbose: !quiet,
             noBinpack: true,
-            forceExcGuard: forceExcGuard,
-            enableFrida: frida,
+            preset: resolved,
         )
         let records = try pipeline.patchAll()
 

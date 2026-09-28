@@ -12,6 +12,7 @@
 // from patchAmfiExecveKillPath() in the orchestrator.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     // MARK: - AMFI execve kill-path bypass (disabled)

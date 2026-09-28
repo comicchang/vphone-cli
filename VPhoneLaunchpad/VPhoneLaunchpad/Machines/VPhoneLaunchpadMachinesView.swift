@@ -8,6 +8,7 @@ struct VPhoneLaunchpadMachinesView: View {
         case newMachine
         case creation(MachinePath)
         case settings(VPhoneLaunchpadMachine)
+        case patches(MachinePath)
         case rename(MachinePath)
         case clone(MachinePath)
         case export(MachinePath)
@@ -18,6 +19,7 @@ struct VPhoneLaunchpadMachinesView: View {
             case .newMachine: "new"
             case let .creation(machine): "creation-\(machine.url.path)"
             case let .settings(machine): "settings-\(machine.path.url.path)"
+            case let .patches(machine): "patches-\(machine.url.path)"
             case let .rename(machine): "rename-\(machine.url.path)"
             case let .clone(machine): "clone-\(machine.url.path)"
             case let .export(machine): "export-\(machine.url.path)"
@@ -186,6 +188,8 @@ struct VPhoneLaunchpadMachinesView: View {
             Divider()
             Button("Settings…") { sheet = .settings(machine) }
                 .disabled(!isStopped)
+            Button("Patch Settings…") { sheet = .patches(machine.path) }
+                .disabled(!isStopped)
             Button("Rename…") { sheet = .rename(machine.path) }
                 .disabled(!isStopped)
             Button("Clone…") { sheet = .clone(machine.path) }
@@ -292,6 +296,12 @@ struct VPhoneLaunchpadMachinesView: View {
             }
         case let .settings(machine):
             VPhoneLaunchpadMachineSettingsView(machine: machine)
+        case let .patches(path):
+            // The machine's own record is what the editor starts from, so it reads
+            // it back through `fw patches` rather than being handed a copy.
+            VPhoneLaunchpadPatchSettingsView(machine: path) { selection in
+                Task { await library.setPatches(path, selection) }
+            }
         case let .rename(path):
             VPhoneLaunchpadNameSheet(title: "Rename \(path.name)", action: "Rename", initial: path.name, machine: path) { newName in
                 Task { await library.rename(path, to: newName) }

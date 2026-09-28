@@ -23,7 +23,10 @@ struct VPhoneLaunchpadNewMachineView: View {
     @State private var memoryMB = 8192
     @State private var diskSizeGB = 64
     @State private var network = "nat"
-    @State private var enableFrida = false
+    @State private var patches = VPhoneLaunchpadPatchSelection()
+    @State private var patchCatalog: VPhoneLaunchpadPatchCatalog?
+    @State private var patchCatalogError: String?
+    @State private var showsPatchSettings = false
     @State private var forceMaxSlide = false
     @State private var keepArtifacts = false
 
@@ -106,8 +109,9 @@ struct VPhoneLaunchpadNewMachineView: View {
                 }
             }
 
+            patchSection
+
             Section {
-                Toggle("Relax kernel restrictions for Frida Stalker", isOn: $enableFrida)
                 Toggle("Disable dyld shared cache randomization", isOn: $forceMaxSlide)
                 Toggle("Keep prepared restore files", isOn: $keepArtifacts)
             } header: {
@@ -118,7 +122,14 @@ struct VPhoneLaunchpadNewMachineView: View {
         }
         .formStyle(.grouped)
         .navigationTitle("New Machine")
-        .frame(width: 560, height: 620)
+        .frame(width: 560, height: 780)
+        .sheet(isPresented: $showsPatchSettings) {
+            VPhoneLaunchpadPatchSettingsView(machine: nil, initial: patches) { selection in
+                patches = selection
+                Task { await loadPatchCatalog() }
+            }
+            .environment(model)
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
@@ -129,7 +140,72 @@ struct VPhoneLaunchpadNewMachineView: View {
             }
         }
         .task { await loadCatalog() }
+        .task { await loadPatchCatalog() }
         .onAppear { location = model.machines.preferredRoot }
+    }
+
+    // MARK: - Patches
+
+    private var patchSection: some View {
+        Section {
+            if let patchCatalog {
+                Picker("Preset", selection: presetBinding) {
+                    ForEach(patchCatalog.presets) { preset in
+                        Text(verbatim: preset.title).tag(preset.identifier)
+                    }
+                }
+                Button("Patch Settings…") { showsPatchSettings = true }
+            } else if let patchCatalogError {
+                Label(patchCatalogError, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.secondary)
+            } else {
+                HStack {
+                    ProgressView().controlSize(.small)
+                    Text("Reading the bundle's patches…").foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Patches")
+        } footer: {
+            patchNote
+        }
+    }
+
+    @ViewBuilder
+    private var patchNote: some View {
+        let essentialOff = patchCatalog.map { patches.bootEssentialOff(in: $0) } ?? []
+        VStack(alignment: .leading, spacing: 4) {
+            if let summary = patchCatalog?.preset(patches.preset)?.summary, !summary.isEmpty {
+                Text(verbatim: summary).foregroundStyle(.secondary)
+            }
+            if patches.hasOverrides {
+                Text("Differs from the preset: \(patches.blocked.count) off, \(patches.allowed.count) on.")
+                    .foregroundStyle(.secondary)
+            }
+            if !essentialOff.isEmpty {
+                Label {
+                    Text("^[\(essentialOff.count) boot-essential patch](inflect: true) off: \(essentialOff.map(\.identifier).joined(separator: ", "))")
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                }
+                .foregroundStyle(.orange)
+            }
+        }
+    }
+
+    /// Switching preset here re-bases the overrides for the same reason the editor
+    /// does: they are read as a difference from whichever preset is active.
+    private var presetBinding: Binding<String> {
+        Binding(
+            get: { patches.preset },
+            set: { identifier in
+                guard identifier != patches.preset else {
+                    return
+                }
+                patches = VPhoneLaunchpadPatchSelection(preset: identifier)
+                Task { await loadPatchCatalog() }
+            },
+        )
     }
 
     // MARK: - Location
@@ -285,6 +361,27 @@ struct VPhoneLaunchpadNewMachineView: View {
         }
     }
 
+    /// Read again whenever the preset changes: `inPreset`, which the note and the
+    /// editor read the checkmarks against, is reported per preset.
+    private func loadPatchCatalog() async {
+        let requested = patches.preset
+        do {
+            let catalog = try await VPhoneLaunchpadPatchCatalog.read(
+                using: model.bundles.commandLine(),
+                machine: nil,
+                preset: requested,
+            )
+            // A second switch may have overtaken this read.
+            guard requested == patches.preset else {
+                return
+            }
+            patchCatalog = catalog
+            patchCatalogError = nil
+        } catch {
+            patchCatalogError = VPhoneLaunchpadError.message(for: error)
+        }
+    }
+
     private func create() {
         guard let (iphone, cloudOS) = sources else {
             return
@@ -298,7 +395,7 @@ struct VPhoneLaunchpadNewMachineView: View {
             memoryMB: memoryMB,
             diskSizeGB: diskSizeGB,
             network: network,
-            enableFrida: enableFrida,
+            patches: patches,
             forceDyldSharedCacheMaxSlide: forceMaxSlide,
             keepArtifacts: keepArtifacts,
         )

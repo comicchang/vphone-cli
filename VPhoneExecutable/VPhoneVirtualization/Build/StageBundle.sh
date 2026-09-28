@@ -7,6 +7,9 @@ configuration="${CONFIGURATION:?}"
 bundle="${TARGET_BUILD_DIR:?}/${FULL_PRODUCT_NAME:?}"
 macos="$bundle/Contents/MacOS"
 resources="$bundle/Contents/Resources"
+# VPhonePatchKit is the patch API. vphone-cli links it, and patch sets resolve
+# against this one copy rather than statically linking a second disassembler.
+frameworks="$bundle/Contents/Frameworks"
 # Host programs run from Contents/MacOS. Everything installed into the guest
 # lives in guest-resources and never runs on the Mac.
 guest="$resources/guest-resources"
@@ -53,7 +56,9 @@ if /usr/bin/nm -u "$daemon_products/vphoned" | /usr/bin/grep -q '_swift_initBorr
 fi
 
 /bin/rm -rf "$macos" "$resources"
-/bin/mkdir -p "$macos" "$guest"
+/bin/mkdir -p "$macos" "$guest" "$frameworks"
+/bin/rm -rf "$frameworks/VPhonePatchKit.framework"
+/bin/cp -R "$command_products/VPhonePatchKit.framework" "$frameworks/VPhonePatchKit.framework"
 /bin/cp "$TARGET_BUILD_DIR/vphone-vm" "$macos/vphone-vm"
 /bin/cp "$command_products/vphone-cli" "$macos/vphone-cli"
 /bin/cp "$amfi_products/vphone-escalator" "$macos/vphone-escalator"
@@ -68,6 +73,12 @@ fi
 /bin/cp "$guest_products/vcamcaptured/libvcamcaptured.plist" "$guest/libvcamcaptured.plist"
 /bin/cp "$guest_products/gpu/libAppleParavirtCompilerPluginIOGPUFamily.dylib" \
     "$guest/libAppleParavirtCompilerPluginIOGPUFamily.dylib"
+
+# Patch presets. Prewritten plists, read by vphone-cli at patch time to decide
+# which declared patches apply. Nothing generates or edits these.
+/bin/mkdir -p "$resources/patches_presets"
+/bin/cp "$root/VPhoneExecutable/VPhoneVirtualization/Resources/patches_presets/"*.plist \
+    "$resources/patches_presets/"
 
 "${0:a:h}/SyncStrings.sh"
 for catalog in Localizable InfoPlist; do
@@ -84,8 +95,9 @@ compatibility_library="$(/usr/bin/xcrun swift-stdlib-tool --print \
 /bin/cp "$compatibility_library" "$macos/libswiftCompatibilitySpan.vphone.dylib"
 /usr/bin/install_name_tool -change @rpath/libswiftCompatibilitySpan.dylib \
     @loader_path/libswiftCompatibilitySpan.vphone.dylib "$macos/vphone-vm"
-/bin/rm -f "$bundle/Contents/Frameworks/libswiftCompatibilitySpan.dylib"
+/bin/rm -f "$frameworks/libswiftCompatibilitySpan.dylib"
 
+/usr/bin/codesign --force --sign - "$frameworks/VPhonePatchKit.framework"
 /usr/bin/codesign --force --sign - "$macos/vphone-cli"
 /usr/bin/codesign --force --sign - --entitlements "$root/VPhoneDaemon/Configuration/VPhoneDaemon.entitlements" "$guest/vphoned"
 /usr/bin/codesign --force --sign - "$macos/vphone-escalator"

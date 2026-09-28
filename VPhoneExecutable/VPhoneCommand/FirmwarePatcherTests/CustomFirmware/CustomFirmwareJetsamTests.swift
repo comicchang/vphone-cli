@@ -19,11 +19,11 @@
 // Set `VPHONE_JETSAM_ARTIFACTS=<dir>` to keep each run's inputs and outputs for
 // inspection from a shell; without it they land in a temporary directory.
 
-import Capstone
 import CryptoKit
 @testable import FirmwarePatcher
 import Foundation
 import Testing
+import VPhonePatchKit
 
 // MARK: - Fixtures
 
@@ -473,9 +473,9 @@ struct CustomFirmwareJetsamDecodeTests {
         ] {
             let encoded = try #require(ARM64Encoder.encodeADRP(rd: 0, pc: pc, target: target))
             let insn = try #require(disassembler.disassembleOne(encoded, at: pc))
-            let operands = try #require(insn.aarch64?.operands)
+            let operands = try #require(insn.detail?.operands)
             #expect(insn.mnemonic == "adrp")
-            #expect(operands.count >= 2 && operands[1].type == AARCH64_OP_IMM)
+            #expect(operands.count >= 2 && operands[1].type == .immediate)
             let word = encoded.loadLE(UInt32.self, at: 0)
             #expect(CustomFirmwareJetsamPatcher.adrpPage(word, at: pc) == UInt64(operands[1].imm))
             #expect(CustomFirmwareJetsamPatcher.adrpPage(word, at: pc) == target & ~0xFFF)
@@ -503,7 +503,7 @@ struct CustomFirmwareJetsamDecodeTests {
     @Test
     func `block boundaries come from capstone groups`() throws {
         let disassembler = ARM64Disassembler()
-        func decode(_ bytes: Data) throws -> Instruction {
+        func decode(_ bytes: Data) throws -> ARM64Instruction {
             try #require(disassembler.disassembleOne(bytes, at: 0))
         }
 

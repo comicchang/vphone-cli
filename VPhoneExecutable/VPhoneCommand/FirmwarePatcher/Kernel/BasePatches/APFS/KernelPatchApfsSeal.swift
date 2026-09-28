@@ -11,8 +11,8 @@
 //      branch whose target lands in [adrp_off - 0x40, bl_off + 4].
 //   4. NOP that conditional branch.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelPatcher {
     @discardableResult

@@ -10,11 +10,11 @@
 //
 // Each patch method is defined as an extension in its own file under IBoot/Patches/.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// Patcher for iBoot components (iBSS, iBEC, LLB).
-public class IBootPatcher: Patcher {
+public class IBootPatcher: BufferedPatcher {
     // MARK: - Types
 
     public enum Mode: String, Sendable {
@@ -36,6 +36,9 @@ public class IBootPatcher: Patcher {
 
     public let component: String
     public let verbose: Bool
+
+    /// Which patches the resolved preset turned on. Unrestricted by default.
+    public var gate: VPhonePatchGate = .unrestricted
 
     /// Extra boot-args token(s) inserted before the trailing `%s` in the
     /// patched boot-args (ibec/llb). Used to add `if_attach_nx=0x3` on iOS 18
@@ -105,6 +108,8 @@ public class IBootPatcher: Patcher {
 
     /// Record a code patch (disassembles before/after for logging).
     func emit(_ offset: Int, _ patchBytes: Data, id: String, description: String) {
+        guard gateAllows(id) else { return }
+
         let originalBytes = buffer.readBytes(at: offset, count: patchBytes.count)
 
         let beforeInsn = disasm.disassembleOne(in: buffer.original, at: offset)
@@ -131,6 +136,8 @@ public class IBootPatcher: Patcher {
 
     /// Record a string/data patch (not disassemblable).
     func emitString(_ offset: Int, _ data: Data, id: String, description: String) {
+        guard gateAllows(id) else { return }
+
         let originalBytes = buffer.readBytes(at: offset, count: data.count)
         let txt = String(data: data, encoding: .ascii) ?? data.hex
 
@@ -177,9 +184,9 @@ public class IBootPatcher: Patcher {
 
     /// Yield chunks of disassembled instructions over the whole binary.
     /// Mirrors Python `_chunked_disasm()` with CHUNK_SIZE=0x2000, OVERLAP=0x100.
-    func chunkedDisasm() -> [[Instruction]] {
+    func chunkedDisasm() -> [[ARM64Instruction]] {
         let size = buffer.original.count
-        var results: [[Instruction]] = []
+        var results: [[ARM64Instruction]] = []
         var off = 0
         while off < size {
             let end = min(off + IBootPatcher.chunkSize, size)

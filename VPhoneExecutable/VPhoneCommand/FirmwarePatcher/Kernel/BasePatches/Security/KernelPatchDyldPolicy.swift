@@ -8,6 +8,7 @@
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelPatcher {
     /// Patches 10–11: Replace two BL calls in _check_dyld_policy_internal with mov w0,#1.

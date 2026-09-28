@@ -2,8 +2,8 @@
 //
 // Part of IBootPatcher; see IBootPatcher.swift for the patch schedule by mode.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension IBootPatcher {
     // MARK: - 4. Rootfs Bypass (LLB only)
@@ -54,7 +54,7 @@ extension IBootPatcher {
         }
 
         // Extract branch target from the operand string (last operand is the immediate)
-        guard let detail = insn.aarch64, detail.operands.count >= 2 else { return }
+        guard let detail = insn.detail, detail.operands.count >= 2 else { return }
         let target = Int(detail.operands[1].imm)
 
         guard let bInsn = ARM64Encoder.encodeB(from: cbzOff, to: target) else {

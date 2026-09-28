@@ -9,11 +9,15 @@
 //   3. Serialize the modified tree back to flat binary.
 
 import Foundation
+import VPhonePatchKit
 
 /// Patcher for DeviceTree payloads.
-public final class DeviceTreePatcher: Patcher {
+public final class DeviceTreePatcher: BufferedPatcher {
     public let component = "devicetree"
     public let verbose: Bool
+
+    /// Which patches the resolved preset turned on. Unrestricted by default.
+    public var gate: VPhonePatchGate = .unrestricted
 
     /// Whether to apply the 8 identity-rewrite property patches (Tier 1b + 1c)
     /// that flip device identity towards iPhone17,3 / D47AP. Enabled for
@@ -300,6 +304,11 @@ public final class DeviceTreePatcher: Patcher {
             patchesToApply.append(contentsOf: Self.identityPropertyPatches)
         }
         for patch in patchesToApply {
+            // Before the property is rewritten, not after: the tree is serialised
+            // from these nodes, so a skipped record with a mutated node would
+            // still change the output.
+            guard gateAllows(patch.patchID) else { continue }
+
             let node = try resolveNode(root, path: patch.nodePath)
             let prop = try findProperty(node, name: patch.property)
 
@@ -354,6 +363,8 @@ public final class DeviceTreePatcher: Patcher {
     /// parent — keeps the patch idempotent so re-runs against an
     /// already-patched DT don't double-add.
     private func applyNodeAddition(root: DTNode, patch: AddChildNodePatch) throws {
+        guard gateAllows(patch.patchID) else { return }
+
         let parent = try resolveNode(root, path: patch.parentPath)
 
         for existing in parent.children {

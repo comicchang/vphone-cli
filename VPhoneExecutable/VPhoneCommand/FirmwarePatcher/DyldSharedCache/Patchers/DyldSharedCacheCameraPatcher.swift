@@ -69,8 +69,8 @@
 // `--avf-only` is `applyAVFAuthorizationOnly`: the composition mode for a chunk
 // pulled off a device that already carries the NeutrinoCore patches.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// The camera-related patches applied to the SystemOS cryptex's shared cache.
 public enum DyldSharedCacheCameraPatcher {
@@ -428,19 +428,19 @@ public enum DyldSharedCacheCameraPatcher {
     /// method already return that constant", and a byte comparison would answer
     /// a narrower one that only happens to coincide. `movz` is accepted
     /// alongside its `mov` alias so the answer does not depend on which of the
-    /// two Capstone prints.
+    /// two the disassembler prints.
     static func isReturnConstantShape(
-        _ decoded: [Instruction],
+        _ decoded: [ARM64Instruction],
         returning value: UInt16,
         disassembler: ARM64Disassembler,
     ) -> Bool {
         guard decoded.count == 2,
               decoded[1].mnemonic == "ret",
               decoded[0].mnemonic == "mov" || decoded[0].mnemonic == "movz",
-              let operands = decoded[0].aarch64?.operands,
+              let operands = decoded[0].detail?.operands,
               operands.count == 2,
-              operands[0].type == AARCH64_OP_REG,
-              operands[1].type == AARCH64_OP_IMM,
+              operands[0].type == .register,
+              operands[1].type == .immediate,
               disassembler.firstRegisterName(decoded[0]) == "w0"
         else { return false }
         return operands[1].imm == Int64(value)

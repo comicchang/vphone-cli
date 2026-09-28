@@ -6,8 +6,8 @@
 //   BL targets in AMFI text → callee with `cmp w0,#imm ; b.ne` preceded by a BL.
 // Patch: replace `cmp w0,#imm` with `cmp w0,w0` so the compare always sets Z=1.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Patch: rewrite the SHA256-only reject compare in AMFI's post-validation path.
@@ -58,19 +58,19 @@ extension KernelJailbreakPatcher {
 
                     // Must be: cmp w0, #imm  followed by  b.ne
                     guard i0.mnemonic == "cmp", i1.mnemonic == "b.ne" else { continue }
-                    guard let detail0 = i0.aarch64, detail0.operands.count >= 2 else { continue }
+                    guard let detail0 = i0.detail, detail0.operands.count >= 2 else { continue }
                     let op0 = detail0.operands[0]
                     let op1 = detail0.operands[1]
-                    guard op0.type == AARCH64_OP_REG, op0.reg == AARCH64_REG_W0 else { continue }
+                    guard op0.type == .register, op0.reg == .w(0) else { continue }
 
-                    let isImmediate = op1.type == AARCH64_OP_IMM
+                    let isImmediate = op1.type == .immediate
                     // `cmp w0, w0` in this slot is this patch's own result. The
                     // base layer's postValidation patch reveals the same site
                     // the same way — same string anchor, same `cmp w0,#imm ;
                     // b.ne` shape, a narrower BL window — and rewrites it
                     // before this runs, so the immediate is already gone by
                     // then and searching only for one finds nothing at all.
-                    let isAlreadyPatched = op1.type == AARCH64_OP_REG && op1.reg == AARCH64_REG_W0
+                    let isAlreadyPatched = op1.type == .register && op1.reg == .w(0)
                     guard isImmediate || isAlreadyPatched else { continue }
 
                     // Must be preceded by a BL within 3 instructions.

@@ -32,6 +32,7 @@
 // it → the immediately-preceding B.EQ allow target); no hardcoded offsets.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     @discardableResult

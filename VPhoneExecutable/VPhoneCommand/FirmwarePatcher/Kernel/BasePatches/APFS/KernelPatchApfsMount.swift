@@ -3,8 +3,8 @@
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 //                scripts/patchers/kernel_patch_apfs_graft.py (patch_handle_fsioc_graft)
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelPatcher {
     // MARK: - Private Helpers
@@ -89,7 +89,7 @@ extension KernelPatcher {
             while scan + 4 <= scanEnd {
                 guard let insn = disasm.disassembleOne(in: buffer.data, at: scan),
                       insn.mnemonic == "cmp",
-                      let detail = insn.aarch64,
+                      let detail = insn.detail,
                       detail.operands.count >= 2
                 else {
                     scan += 4; continue
@@ -97,11 +97,11 @@ extension KernelPatcher {
 
                 let ops = detail.operands
                 // Both operands must be registers.
-                guard ops[0].type == AARCH64_OP_REG, ops[1].type == AARCH64_OP_REG else {
+                guard ops[0].type == .register, ops[1].type == .register else {
                     scan += 4; continue
                 }
                 // First operand must be x0 (return value from BL current_thread).
-                guard ops[0].reg == AARCH64_REG_X0 else {
+                guard ops[0].reg == .x(0) else {
                     scan += 4; continue
                 }
                 // Skip CMP x0, x0 (already patched or trivially true).
@@ -174,10 +174,10 @@ extension KernelPatcher {
             guard nextOff + 4 <= buffer.count,
                   let nextInsn = disasm.disassembleOne(in: buffer.data, at: nextOff),
                   nextInsn.mnemonic == "tbnz",
-                  let detail = nextInsn.aarch64,
+                  let detail = nextInsn.detail,
                   !detail.operands.isEmpty,
-                  detail.operands[0].type == AARCH64_OP_REG,
-                  detail.operands[0].reg == AARCH64_REG_W0
+                  detail.operands[0].type == .register,
+                  detail.operands[0].reg == .w(0)
             else {
                 scan += 4; continue
             }
@@ -314,21 +314,21 @@ extension KernelPatcher {
             while scan + 4 <= funcEnd {
                 guard let insn = disasm.disassembleOne(in: buffer.data, at: scan),
                       insn.mnemonic == "cbz" || insn.mnemonic == "cbnz",
-                      let detail = insn.aarch64,
+                      let detail = insn.detail,
                       detail.operands.count >= 2
                 else {
                     scan += 4; continue
                 }
 
                 let ops = detail.operands
-                guard ops[0].type == AARCH64_OP_REG,
-                      ops[1].type == AARCH64_OP_IMM
+                guard ops[0].type == .register,
+                      ops[1].type == .immediate
                 else {
                     scan += 4; continue
                 }
 
                 let reg = ops[0].reg
-                guard reg == AARCH64_REG_X0 || reg == AARCH64_REG_W0 else {
+                guard reg == .x(0) || reg == .w(0) else {
                     scan += 4; continue
                 }
 

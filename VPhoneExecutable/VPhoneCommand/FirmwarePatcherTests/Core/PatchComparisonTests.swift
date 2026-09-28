@@ -20,6 +20,7 @@
 @testable import FirmwarePatcher
 import Foundation
 import Testing
+import VPhonePatchKit
 
 /// True when the unreproducible Python reference records are present.
 private var hasReferencePatches: Bool {

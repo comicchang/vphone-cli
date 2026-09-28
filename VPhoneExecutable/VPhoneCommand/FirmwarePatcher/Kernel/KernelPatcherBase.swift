@@ -4,8 +4,8 @@
 // kext range discovery, and the emit() system.
 // Historical note: this file replaces the old Python firmware patcher implementation.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// Base class for kernel patchers providing shared infrastructure.
 open class KernelPatcherBase {
@@ -17,8 +17,18 @@ open class KernelPatcherBase {
     /// Verbose logging.
     public let verbose: Bool
 
+    /// Which patches the resolved preset turned on. Unrestricted by default, so a
+    /// patcher built directly applies everything it finds.
+    public var gate: VPhonePatchGate = .unrestricted
+
     /// Collected patch records.
     public var patches: [PatchRecord] = []
+
+    /// The kernelcache after ``emit`` wrote every allowed site.
+    ///
+    /// ``BufferedPatcher`` is how the pipeline reads a component's result, so the
+    /// three concrete kernel patchers satisfy it from here.
+    public var patchedData: Data { buffer.data }
 
     /// Base virtual address of the kernelcache __TEXT segment.
     public var baseVA: UInt64 = 0
@@ -81,6 +91,10 @@ open class KernelPatcherBase {
         virtualAddress: UInt64? = nil,
         description: String,
     ) {
+        // The gate is consulted before the write, not after: a record dropped
+        // afterwards would leave the bytes patched and nothing saying so.
+        guard gate.allowsReporting(record: patchID, component: "kernelcache", verbose: verbose) else { return }
+
         let originalBytes = buffer.readBytes(at: offset, count: patchBytes.count)
 
         // Disassemble before/after
@@ -234,12 +248,12 @@ open class KernelPatcherBase {
 
     /// Decode a conditional branch instruction, returning its target as a file offset.
     /// Returns nil if the instruction is not a conditional branch.
-    public func conditionalBranchTarget(insn: Instruction) -> Int? {
+    public func conditionalBranchTarget(insn: ARM64Instruction) -> Int? {
         guard KernelPatcherBase.conditionalBranchMnemonics.contains(insn.mnemonic) else { return nil }
         // Target is always the last IMM operand.
-        guard let detail = insn.aarch64 else { return nil }
+        guard let detail = insn.detail else { return nil }
         for op in detail.operands.reversed() {
-            if op.type == AARCH64_OP_IMM {
+            if op.type == .immediate {
                 return Int(op.imm)
             }
         }

@@ -52,8 +52,8 @@
 // `ldid_sign` stays a no-op-in-effect re-sign. Pass `resign: false` to get the
 // Python's exact bytes.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// Forces `-[DeviceType should_hactivate]` to return YES, so the guest
 /// self-activates instead of waiting on Apple's activation service.
@@ -296,9 +296,9 @@ public enum CustomFirmwareMobileActivation {
     // MARK: - Body Shape
 
     /// Decode the eight bytes the patch replaces.
-    static func decodeBody(_ bytes: Data, at va: UInt64) throws -> [Instruction] {
+    static func decodeBody(_ bytes: Data, at va: UInt64) throws -> [ARM64Instruction] {
         let decoded = ARM64Disassembler().disassemble(bytes, at: va, count: 2)
-        guard decoded.count == 2, decoded.allSatisfy({ $0.id != 0 }) else {
+        guard decoded.count == 2, decoded.allSatisfy(\.isDecoded) else {
             throw PatcherError.invalidFormat(
                 "\(method): the eight bytes at 0x\(hex(va)) (\(bytes.hex)) are not two "
                     + "decodable instructions",
@@ -315,7 +315,7 @@ public enum CustomFirmwareMobileActivation {
     /// is a plain function entry — rather than on `ldrb` specifically: a future
     /// build may spell the getter differently, but overwriting eight bytes that
     /// are *not* a function's first two words would land mid-function.
-    static func isPlausibleGetterBody(_ body: [Instruction]) -> Bool {
+    static func isPlausibleGetterBody(_ body: [ARM64Instruction]) -> Bool {
         guard body.count == 2 else { return false }
         // A getter: `ldr…/mov… ; ret`.
         if body[1].mnemonic == "ret" || body[1].mnemonic.hasPrefix("reta") {
@@ -329,7 +329,7 @@ public enum CustomFirmwareMobileActivation {
 
     // MARK: - Helpers
 
-    static func text(of instructions: [Instruction]) -> String {
+    static func text(of instructions: [ARM64Instruction]) -> String {
         instructions
             .map { $0.operandString.isEmpty ? $0.mnemonic : "\($0.mnemonic) \($0.operandString)" }
             .joined(separator: "; ")

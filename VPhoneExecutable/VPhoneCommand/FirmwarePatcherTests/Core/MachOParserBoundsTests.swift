@@ -11,6 +11,7 @@
 @testable import FirmwarePatcher
 import Foundation
 import Testing
+import VPhonePatchKit
 
 @Suite("MachOParser bounds")
 struct MachOParserBoundsTests {

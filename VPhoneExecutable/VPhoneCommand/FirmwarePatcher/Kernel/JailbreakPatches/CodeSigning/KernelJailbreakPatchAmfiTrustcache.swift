@@ -16,6 +16,7 @@
 //   the always-allow stub: mov x0,#1 / cbz x2,+8 / str x0,[x2] / ret.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// AMFI trustcache gate bypass: rewrite AMFIIsCDHashInTrustCache to always return 1.

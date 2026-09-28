@@ -1,4 +1,6 @@
-// KernelJailbreakPatchVmMapDelete.swift — optional Frida Stalker support (--frida).
+// KernelJailbreakPatchVmMapDelete.swift — optional Frida Stalker support.
+//
+// Declared as `kernelcache_frida.vm_map_delete_immutable_code`, off in `standard`.
 //
 // Frida's write-then-flip leaves a permanent CSM mapping at current RW / max RWX;
 // vm_map_delete's immutable-code exception tests current-protection EXECUTE, which
@@ -6,8 +8,8 @@
 // test from current-X (packed [entry,#0x38] bit 9) to max-X (bit 13).
 // Reveal + validation: Research/KernelJailbreakPatches/patch_vm_map_delete_immutable_code.md.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     private struct VmMapDeleteGate {
@@ -51,9 +53,9 @@ extension KernelJailbreakPatcher {
             ),
                 let decoded = disasm.disassembleOne(bytes, at: UInt64(gate.offset)),
                 decoded.mnemonic == (gate.nonzero ? "tbnz" : "tbz"),
-                let ops = decoded.aarch64?.operands, ops.count == 3,
-                ops[1].type == AARCH64_OP_IMM, ops[1].imm == 13,
-                ops[2].type == AARCH64_OP_IMM, Int(ops[2].imm) == gate.target
+                let ops = decoded.detail?.operands, ops.count == 3,
+                ops[1].type == .immediate, ops[1].imm == 13,
+                ops[2].type == .immediate, Int(ops[2].imm) == gate.target
             else {
                 log("  [-] failed to assemble/verify max-X gate at 0x\(String(format: "%X", gate.offset))")
                 return false
@@ -67,7 +69,7 @@ extension KernelJailbreakPatcher {
                 bytes,
                 patchID: "kernelcache_frida.vm_map_delete_immutable_code",
                 virtualAddress: fileOffsetToVA(gate.offset),
-                description: "\(gate.nonzero ? "tbnz" : "tbz") entry max_protection.X [vm_map_delete immutable-code \(gate.shape), --frida]",
+                description: "\(gate.nonzero ? "tbnz" : "tbz") entry max_protection.X [vm_map_delete immutable-code \(gate.shape), frida]",
             )
         }
         return true
@@ -156,7 +158,7 @@ extension KernelJailbreakPatcher {
     // MARK: - Instruction helpers
 
     /// The instruction's first operand as a W register number, if it is one.
-    private func destRegister(_ insn: Instruction) -> UInt32? {
+    private func destRegister(_ insn: ARM64Instruction) -> UInt32? {
         guard let name = disasm.firstRegisterName(insn), name.hasPrefix("w"),
               let value = UInt32(name.dropFirst()), value < 32
         else { return nil }
@@ -165,29 +167,29 @@ extension KernelJailbreakPatcher {
 
     /// A `tbz`/`tbnz wReg,#bit,target` matching the given mnemonic, register, and
     /// bit; returns the branch target file offset.
-    private func bitBranch(_ insn: Instruction, mnemonic: String, register: UInt32, bit: Int64) -> Int? {
+    private func bitBranch(_ insn: ARM64Instruction, mnemonic: String, register: UInt32, bit: Int64) -> Int? {
         guard insn.mnemonic == mnemonic,
-              let ops = insn.aarch64?.operands, ops.count == 3,
-              ops[0].type == AARCH64_OP_REG, destRegister(insn) == register,
-              ops[1].type == AARCH64_OP_IMM, ops[1].imm == bit,
-              ops[2].type == AARCH64_OP_IMM
+              let ops = insn.detail?.operands, ops.count == 3,
+              ops[0].type == .register, destRegister(insn) == register,
+              ops[1].type == .immediate, ops[1].imm == bit,
+              ops[2].type == .immediate
         else { return nil }
         return Int(ops[2].imm)
     }
 
     /// Any `tbz`/`tbnz wReg,#bit,target` of the given mnemonic; returns bit + target.
-    private func bitBranchAnyBit(_ insn: Instruction, mnemonic: String) -> (bit: Int64, target: Int)? {
+    private func bitBranchAnyBit(_ insn: ARM64Instruction, mnemonic: String) -> (bit: Int64, target: Int)? {
         guard insn.mnemonic == mnemonic,
-              let ops = insn.aarch64?.operands, ops.count == 3,
-              ops[0].type == AARCH64_OP_REG,
-              ops[1].type == AARCH64_OP_IMM, ops[2].type == AARCH64_OP_IMM
+              let ops = insn.detail?.operands, ops.count == 3,
+              ops[0].type == .register,
+              ops[1].type == .immediate, ops[2].type == .immediate
         else { return nil }
         return (ops[1].imm, Int(ops[2].imm))
     }
 
     /// The inlined `developer_mode_state()`: a byte load whose bit 0 is then tested
     /// (`ldrb wD,[...] ; … ; tbz/tbnz wD,#0`).
-    private func developerModeGatePresent(_ insns: [Instruction]) -> Bool {
+    private func developerModeGatePresent(_ insns: [ARM64Instruction]) -> Bool {
         for i in 0 ..< insns.count {
             guard insns[i].mnemonic == "ldrb", let devReg = destRegister(insns[i]) else { continue }
             for j in (i + 1) ..< min(insns.count, i + 4) {

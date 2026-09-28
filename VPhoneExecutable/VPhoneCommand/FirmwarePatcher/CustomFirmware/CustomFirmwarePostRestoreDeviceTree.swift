@@ -29,6 +29,7 @@
 
 import Foundation
 import Img4tool
+import VPhonePatchKit
 
 /// Rewrites the three restore-fatal identity properties in a
 /// `devicetree.img4` (or bare `.im4p`), in place, preserving the container's

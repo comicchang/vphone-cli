@@ -14,8 +14,8 @@
 // The ops[18] entry is an auth-rebase chained pointer. We re-encode it
 // preserving PAC metadata but changing the target to our cave address.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     // MARK: - Constants

@@ -90,8 +90,8 @@
 // binary's cdHash; the JB kernel patch `patch_amfi_cdhash_in_trustcache`
 // short-circuits AMFI's trust-cache check, and that precondition still holds.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 public enum CustomFirmwareWatchDog {
     // MARK: - Anchors
@@ -383,20 +383,20 @@ public enum CustomFirmwareWatchDog {
     // MARK: - Instruction helpers
 
     /// Index of the first instruction at or after `from` that satisfies
-    /// `predicate`, within `within` instructions. A word Capstone could not
-    /// decode ends the window: past it the stream is no longer this function's
-    /// instructions.
+    /// `predicate`, within `within` instructions. A word the disassembler could
+    /// not decode ends the window: past it the stream is no longer this
+    /// function's instructions.
     static func firstIndex(
-        in instructions: [Instruction],
+        in instructions: [ARM64Instruction],
         from: Int,
         within: Int,
-        where predicate: (Instruction) -> Bool,
+        where predicate: (ARM64Instruction) -> Bool,
     ) -> Int? {
         guard from >= 0 else { return nil }
         let end = min(instructions.count, from + within)
         var index = from
         while index < end {
-            guard instructions[index].id != 0 else { return nil }
+            guard instructions[index].isDecoded else { return nil }
             if predicate(instructions[index]) {
                 return index
             }
@@ -411,7 +411,7 @@ public enum CustomFirmwareWatchDog {
         ofRegister register: UInt32,
         before: Int,
         notBefore: Int,
-        in instructions: [Instruction],
+        in instructions: [ARM64Instruction],
     ) -> UInt64? {
         var index = before - 1
         while index >= notBefore {
@@ -426,9 +426,9 @@ public enum CustomFirmwareWatchDog {
         return nil
     }
 
-    /// True for `mov wN, #1` in any encoding Capstone aliases to it (MOVZ, and
-    /// the ORR-immediate form) — the shape this patch writes.
-    static func isMoveOfOne(_ instruction: Instruction) -> Bool {
+    /// True for `mov wN, #1` in any encoding the disassembler aliases to it
+    /// (MOVZ, and the ORR-immediate form) — the shape this patch writes.
+    static func isMoveOfOne(_ instruction: ARM64Instruction) -> Bool {
         guard instruction.mnemonic == "mov",
               let register = registerName(instruction, 0), register.hasPrefix("w"),
               let value = immediate(instruction, 1)
@@ -437,7 +437,7 @@ public enum CustomFirmwareWatchDog {
     }
 
     /// The instruction's raw little-endian word, for the branch decoder.
-    static func word(of instruction: Instruction) -> UInt32 {
+    static func word(of instruction: ARM64Instruction) -> UInt32 {
         var value: UInt32 = 0
         for byte in instruction.bytes.prefix(4).reversed() {
             value = (value << 8) | UInt32(byte)
@@ -445,30 +445,30 @@ public enum CustomFirmwareWatchDog {
         return value
     }
 
-    static func registerName(_ instruction: Instruction, _ index: Int) -> String? {
-        guard let operands = instruction.aarch64?.operands, index < operands.count,
-              operands[index].type == AARCH64_OP_REG
+    static func registerName(_ instruction: ARM64Instruction, _ index: Int) -> String? {
+        guard let operands = instruction.detail?.operands, index < operands.count,
+              operands[index].type == .register
         else { return nil }
-        return sharedDisassembler.registerName(UInt32(operands[index].reg.rawValue))
+        return operands[index].reg.name
     }
 
-    static func registerNumber(_ instruction: Instruction, _ index: Int) -> UInt32? {
-        guard let operands = instruction.aarch64?.operands, index < operands.count,
-              operands[index].type == AARCH64_OP_REG
+    static func registerNumber(_ instruction: ARM64Instruction, _ index: Int) -> UInt32? {
+        guard let operands = instruction.detail?.operands, index < operands.count,
+              operands[index].type == .register
         else { return nil }
         return UInt32(operands[index].reg.rawValue)
     }
 
-    static func immediate(_ instruction: Instruction, _ index: Int) -> Int64? {
-        guard let operands = instruction.aarch64?.operands, index < operands.count,
-              operands[index].type == AARCH64_OP_IMM
+    static func immediate(_ instruction: ARM64Instruction, _ index: Int) -> Int64? {
+        guard let operands = instruction.detail?.operands, index < operands.count,
+              operands[index].type == .immediate
         else { return nil }
         return operands[index].imm
     }
 
-    static func memoryOperand(_ instruction: Instruction) -> aarch64_op_mem? {
-        guard let operands = instruction.aarch64?.operands,
-              let operand = operands.first(where: { $0.type == AARCH64_OP_MEM })
+    static func memoryOperand(_ instruction: ARM64Instruction) -> ARM64MemoryOperand? {
+        guard let operands = instruction.detail?.operands,
+              let operand = operands.first(where: { $0.type == .memory })
         else { return nil }
         return operand.mem
     }
@@ -480,10 +480,6 @@ public enum CustomFirmwareWatchDog {
         guard name.hasPrefix("w"), let number = UInt32(name.dropFirst()), number <= 30 else { return nil }
         return number
     }
-
-    /// Capstone handle used only for register-name lookups, which need no
-    /// per-call state.
-    static let sharedDisassembler = ARM64Disassembler()
 
     // MARK: - Addresses
 

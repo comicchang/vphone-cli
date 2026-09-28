@@ -93,6 +93,7 @@
                 if let machine = model.machines.selected {
                     await sheet(.settings(machine), "09-machine-settings", suffix)
                 }
+                await sheet(.patches(labMachine), "09b-patch-settings", suffix)
                 await sheet(.clone(labMachine), "10-clone", suffix)
                 await sheet(.export(labMachine), "11-export", suffix)
                 await sheet(.console(path("research-01")), "12-console", suffix)
@@ -263,10 +264,34 @@
             memoryMB: 12288,
             diskSizeGB: 128,
             network: "nat",
-            enableFrida: false,
+            patches: VPhoneLaunchpadPatchSelection(),
             forceDyldSharedCacheMaxSlide: false,
             keepArtifacts: false,
         )
+
+        /// Stands in for `fw patches --json`. `preset` moves the Frida patches in
+        /// and out of the preset, as the real report does.
+        static func patchCatalog(preset: String?) -> VPhoneLaunchpadPatchCatalog? {
+            let active = preset ?? "standard"
+            let frida = active == "extended"
+            let json = """
+            {"activePreset":"\(active)","blockedPatches":[],"allowedPatches":[],
+             "presets":[
+               {"identifier":"standard","title":"Standard","summary":"The patches every vphone VM needs to boot, jailbroken, with a working display and camera.","patchSets":[]},
+               {"identifier":"extended","title":"Extended","summary":"Every patch this bundle declares, including the Frida Stalker relaxations.","patchSets":[]}
+             ],
+             "patches":[
+               {"identifier":"avpbooter.dgst_bypass","title":"AVPBooter digest bypass","summary":"Accepts the resealed boot images instead of the stock digests.","patchSet":"com.vphone.patchset.bootchain","patchSetName":"Boot Chain","target":"AVPBooter","applicability":"any","bootEssential":true,"inPreset":true,"enabled":true},
+               {"identifier":"ibss.serial_label","title":"iBSS serial label","summary":"Tags iBSS serial output so the boot log names its stage.","patchSet":"com.vphone.patchset.bootchain","patchSetName":"Boot Chain","target":"iBSS","applicability":"any","bootEssential":false,"inPreset":true,"enabled":true},
+               {"identifier":"kernel.debugger","title":"Kernel debugger gate","summary":"Lets a debugger attach to any process in the guest.","patchSet":"com.vphone.patchset.kernel.base","patchSetName":"Kernel Base","target":"Kernel","applicability":"any","bootEssential":false,"inPreset":true,"enabled":true},
+               {"identifier":"kernel.thread_guard_violation","title":"Thread guard violation","summary":"Stops the guard exception the older kernels raise on first boot.","patchSet":"com.vphone.patchset.kernel.base","patchSetName":"Kernel Base","target":"Kernel","applicability":"iOS 18.x","bootEssential":true,"inPreset":true,"enabled":true},
+               {"identifier":"kernelcache_frida.thread_set_state_entitlement_flag","title":"Frida thread state entitlement","summary":"Lets Stalker set thread state without the entitlement the kernel asks for.","patchSet":"com.vphone.patchset.kernel.frida","patchSetName":"Frida Stalker","target":"Kernel","applicability":"cloudOS 26.4+","bootEssential":false,"inPreset":\(frida),"enabled":\(frida)},
+               {"identifier":"kernelcache_frida.vm_map_delete_immutable_code","title":"Frida immutable code unmap","summary":"Allows Stalker to unmap the immutable code it rewrote.","patchSet":"com.vphone.patchset.kernel.frida","patchSetName":"Frida Stalker","target":"Kernel","applicability":"cloudOS 26.4+","bootEssential":false,"inPreset":\(frida),"enabled":\(frida)},
+               {"identifier":"guest.vphoned","title":"Guest vphoned","summary":"Installs vphoned and its launch daemon into the guest.","patchSet":"com.vphone.patchset.guest.system","patchSetName":"Guest System","target":"Guest filesystem","applicability":"any","bootEssential":true,"inPreset":true,"enabled":true}
+             ]}
+            """
+            return try? JSONDecoder().decode(VPhoneLaunchpadPatchCatalog.self, from: Data(json.utf8))
+        }
 
         /// What a log terminal shows in snapshot mode instead of the file.
         static func log(for url: URL) -> [String] {

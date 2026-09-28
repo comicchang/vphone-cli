@@ -2,8 +2,8 @@
 //
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Apply the upstream twin bypasses in the mount-role wrapper.
@@ -107,10 +107,10 @@ extension KernelJailbreakPatcher {
             let insns = disasm.disassemble(in: buffer.data, at: off, count: 1)
             guard let insn = insns.first else { off += 4; continue }
             guard insn.mnemonic == "tbnz",
-                  let ops = insn.aarch64?.operands, ops.count == 3,
-                  ops[0].type == AARCH64_OP_REG,
-                  ops[1].type == AARCH64_OP_IMM, ops[1].imm == 5,
-                  ops[2].type == AARCH64_OP_IMM
+                  let ops = insn.detail?.operands, ops.count == 3,
+                  ops[0].type == .register,
+                  ops[1].type == .immediate, ops[1].imm == 5,
+                  ops[2].type == .immediate
             else { off += 4; continue }
 
             // Check register is a w-register
@@ -123,9 +123,9 @@ extension KernelJailbreakPatcher {
             let targetInsns = disasm.disassemble(in: buffer.data, at: target, count: 1)
             guard let tInsn = targetInsns.first,
                   tInsn.mnemonic == "mov",
-                  let tOps = tInsn.aarch64?.operands, tOps.count == 2,
-                  tOps[0].type == AARCH64_OP_REG,
-                  tOps[1].type == AARCH64_OP_IMM, tOps[1].imm == 1
+                  let tOps = tInsn.detail?.operands, tOps.count == 2,
+                  tOps[0].type == .register,
+                  tOps[1].type == .immediate, tOps[1].imm == 1
             else { off += 4; continue }
             guard let tRegName = disasm.firstRegisterName(tInsn), tRegName.hasPrefix("w") else { off += 4; continue }
 
@@ -153,9 +153,9 @@ extension KernelJailbreakPatcher {
 
             // ldrb wN, [xBase, #imm]
             guard ldrInsn.mnemonic == "ldrb",
-                  let ldrOps = ldrInsn.aarch64?.operands, ldrOps.count >= 2,
-                  ldrOps[0].type == AARCH64_OP_REG,
-                  ldrOps[1].type == AARCH64_OP_MEM
+                  let ldrOps = ldrInsn.detail?.operands, ldrOps.count >= 2,
+                  ldrOps[0].type == .register,
+                  ldrOps[1].type == .memory
             else { off += 4; continue }
             let ldrDstReg = ldrOps[0].reg
             guard let ldrDstName = disasm.firstRegisterName(ldrInsn),
@@ -163,9 +163,9 @@ extension KernelJailbreakPatcher {
 
             // tbz/tbnz wN, #6, <target>   (same register the byte was loaded into)
             guard brInsn.mnemonic == "tbz" || brInsn.mnemonic == "tbnz",
-                  let brOps = brInsn.aarch64?.operands, brOps.count == 3,
-                  brOps[0].type == AARCH64_OP_REG, brOps[0].reg == ldrDstReg,
-                  brOps[1].type == AARCH64_OP_IMM, brOps[1].imm == 6
+                  let brOps = brInsn.detail?.operands, brOps.count == 3,
+                  brOps[0].type == .register, brOps[0].reg == ldrDstReg,
+                  brOps[1].type == .immediate, brOps[1].imm == 6
             else { off += 4; continue }
 
             hits.append(Int(ldrInsn.address))

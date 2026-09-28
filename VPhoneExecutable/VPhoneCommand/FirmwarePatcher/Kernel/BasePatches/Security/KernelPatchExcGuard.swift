@@ -21,8 +21,8 @@
 //   4. → in that target, find BL to thread_guard_violation()
 //   5. → patch thread_guard_violation prologue to RET
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelPatcher {
     /// Disable Mach port guard violation enforcement (EXC_GUARD).

@@ -16,6 +16,7 @@
 //   5. Replace CBZ W0, <allow> with unconditional B <allow>.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// IOUC MACF gate bypass: replace CBZ W0, <allow> with B <allow>.

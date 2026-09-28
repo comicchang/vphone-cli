@@ -59,8 +59,8 @@
 // written, so that check happens while the cache is still untouched. On the
 // success path the bytes are identical.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// Retargets IOMobileFramebuffer's public swap trampolines at their `_kern_`
 /// implementations, inside a chunked dyld shared cache.
@@ -333,18 +333,18 @@ public enum DyldSharedCacheIOMFBForceKernPatcher {
     /// True iff the four instructions are
     /// `cbz x0, … ; ldr xN, [x0, #imm] ; cbz xN, … ; braaz xN`.
     ///
-    /// Matched on typed Capstone operands rather than on the operand text: the
+    /// Matched on typed decoded operands rather than on the operand text: the
     /// base register of the load, the register the fp lands in and the register
     /// the tail-call branches through are compared as register identities, so
     /// `x1` cannot match the `x10` that a prefix test on the printed string
     /// would accept.
-    public static func isDispatchTrampoline(_ instructions: [Instruction]) -> Bool {
+    public static func isDispatchTrampoline(_ instructions: [ARM64Instruction]) -> Bool {
         guard instructions.count >= 4 else { return false }
         let (check, load, guardBranch, tailCall) =
             (instructions[0], instructions[1], instructions[2], instructions[3])
 
         // cbz x0, <fail> — the connection pointer.
-        guard check.mnemonic == "cbz", register(check, at: 0) == AARCH64_REG_X0 else {
+        guard check.mnemonic == "cbz", register(check, at: 0) == .x(0) else {
             return false
         }
 
@@ -353,8 +353,8 @@ public enum DyldSharedCacheIOMFBForceKernPatcher {
         guard load.mnemonic == "ldr",
               let scratch = register(load, at: 0),
               let memory = memory(load),
-              memory.base == AARCH64_REG_X0,
-              memory.index == AARCH64_REG_INVALID,
+              memory.base == .x(0),
+              memory.index == .invalid,
               memory.disp != 0
         else { return false }
 
@@ -428,23 +428,23 @@ public enum DyldSharedCacheIOMFBForceKernPatcher {
 
     // MARK: - Typed operand access
 
-    private static func register(_ instruction: Instruction, at index: Int) -> aarch64_reg? {
-        guard let operands = instruction.aarch64?.operands, index < operands.count,
-              operands[index].type == AARCH64_OP_REG
+    private static func register(_ instruction: ARM64Instruction, at index: Int) -> ARM64Register? {
+        guard let operands = instruction.detail?.operands, index < operands.count,
+              operands[index].type == .register
         else { return nil }
         return operands[index].reg
     }
 
-    private static func immediate(_ instruction: Instruction, at index: Int) -> Int64? {
-        guard let operands = instruction.aarch64?.operands, index < operands.count,
-              operands[index].type == AARCH64_OP_IMM
+    private static func immediate(_ instruction: ARM64Instruction, at index: Int) -> Int64? {
+        guard let operands = instruction.detail?.operands, index < operands.count,
+              operands[index].type == .immediate
         else { return nil }
         return operands[index].imm
     }
 
-    private static func memory(_ instruction: Instruction) -> aarch64_op_mem? {
-        guard let operands = instruction.aarch64?.operands,
-              let operand = operands.first(where: { $0.type == AARCH64_OP_MEM })
+    private static func memory(_ instruction: ARM64Instruction) -> ARM64MemoryOperand? {
+        guard let operands = instruction.detail?.operands,
+              let operand = operands.first(where: { $0.type == .memory })
         else { return nil }
         return operand.mem
     }

@@ -23,11 +23,11 @@
 // working tree. Clones are made with `clonefile` under the system temp
 // directory — instant and near-free on APFS — and removed again.
 
-import Capstone
 import CryptoKit
 @testable import FirmwarePatcher
 import Foundation
 import Testing
+import VPhonePatchKit
 
 // MARK: - The frozen reference
 
@@ -420,7 +420,7 @@ struct DyldSharedCacheLockdownModeParityTests {
 struct DyldSharedCacheLockdownModeGateTests {
     /// The real instruction stream, and the index of the real gate in it.
     private struct Stream {
-        let instructions: [Instruction]
+        let instructions: [ARM64Instruction]
         let gateIndex: Int
         let comparisonIndex: Int
     }
@@ -447,7 +447,7 @@ struct DyldSharedCacheLockdownModeGateTests {
     /// documented `[21:10]` immediate field (see `ARM64Inst.addSubImm12`) is
     /// rewritten, so this is derived test data rather than a hand-written
     /// encoding.
-    private func word(of insn: Instruction, withImmediate imm12: UInt32) -> Data {
+    private func word(of insn: ARM64Instruction, withImmediate imm12: UInt32) -> Data {
         let original = insn.bytes.enumerated().reduce(UInt32(0)) { accumulated, byte in
             accumulated | (UInt32(byte.element) << (8 * UInt32(byte.offset)))
         }

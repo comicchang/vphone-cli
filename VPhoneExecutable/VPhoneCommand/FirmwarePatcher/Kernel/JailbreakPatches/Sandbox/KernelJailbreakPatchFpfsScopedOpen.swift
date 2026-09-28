@@ -8,6 +8,7 @@
 // daemons (matched by p_comm) and returns allow for everyone else — preserving the bypass.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     private static let vnodeCheckOpenIndex = 267

@@ -15,6 +15,7 @@
 //   RELAX_SETMASK  = 0x0000000C  (CS_GET_TASK_ALLOW | CS_INSTALLER)
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     // MARK: - Constants

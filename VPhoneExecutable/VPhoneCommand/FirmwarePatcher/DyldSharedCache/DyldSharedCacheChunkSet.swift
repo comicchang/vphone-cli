@@ -33,6 +33,7 @@
 //     one file, which on this cache accepts every seam the Python accepts.
 
 import Foundation
+import VPhonePatchKit
 
 /// A half-open span of virtual addresses that was written, or is about to be.
 ///

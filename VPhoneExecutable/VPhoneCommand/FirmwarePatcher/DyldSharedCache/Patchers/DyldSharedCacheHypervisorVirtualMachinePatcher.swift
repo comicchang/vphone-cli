@@ -72,6 +72,7 @@
 // write itself, so it is the page that changed by construction.
 
 import Foundation
+import VPhonePatchKit
 
 /// The user-mode `kern.hv_vmm_present` cstring mangle, over a chunked dyld
 /// shared cache and over standalone Mach-Os.

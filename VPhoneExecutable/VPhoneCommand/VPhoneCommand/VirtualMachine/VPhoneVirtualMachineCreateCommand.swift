@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import VPhoneCoreKit
+import VPhonePatchKit
 
 struct VPhoneVirtualMachineCreateCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -23,11 +24,11 @@ struct VPhoneVirtualMachineCreateCommand: ParsableCommand {
         help: "Zero the dyld cache maxSlide on non-27 bases (opt-in DSC-map fit)",
     )
     var forceDyldSharedCacheMaxSlide = false
-    @Flag(
-        name: .customLong("frida"),
-        help: "Opt in to Frida Stalker kernel relaxations",
+    @Option(
+        name: .customLong("preset"),
+        help: "Patch preset for the new VM. Defaults to standard; run `fw patches` to see what each one applies.",
     )
-    var frida = false
+    var preset: String = VPhonePatchPreset.standardIdentifier
     @Flag(
         name: .customLong("keep-artifacts"),
         help: "Keep the prepared restore tree after installation. Downloaded IPSWs always stay in the IPSW cache.",
@@ -61,7 +62,7 @@ struct VPhoneVirtualMachineCreateCommand: ParsableCommand {
                 URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath, isDirectory: true)
             } ?? VPhoneResources.ipswCacheDirectory(),
             forceDyldSharedCacheMaxSlide: forceDyldSharedCacheMaxSlide,
-            enableFrida: frida,
+            patchPreset: preset,
             diskSizeGB: diskSize,
             verbosity: VPhoneVerbosity(count: verboseCount),
             keepArtifacts: keepArtifacts,

@@ -50,8 +50,8 @@
 //     binary that leaves this function verifies on its own. Pass
 //     `reattest: false` to reproduce the reference's bytes exactly.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 public enum CustomFirmwareSeputil {
     // MARK: - Anchors
@@ -412,10 +412,10 @@ public enum CustomFirmwareSeputil {
         var sites: [UInt64] = []
         for (index, insn) in instructions.enumerated() {
             guard insn.mnemonic == "adrp",
-                  let operands = insn.aarch64?.operands,
+                  let operands = insn.detail?.operands,
                   operands.count == 2,
-                  operands[0].type == AARCH64_OP_REG,
-                  operands[1].type == AARCH64_OP_IMM,
+                  operands[0].type == .register,
+                  operands[1].type == .immediate,
                   UInt64(bitPattern: operands[1].imm) == page
             else { continue }
 
@@ -426,12 +426,12 @@ public enum CustomFirmwareSeputil {
                 let candidate = instructions[cursor]
                 cursor += 1
                 guard candidate.mnemonic == "add",
-                      let addOperands = candidate.aarch64?.operands,
+                      let addOperands = candidate.detail?.operands,
                       addOperands.count == 3,
-                      addOperands[0].type == AARCH64_OP_REG,
-                      addOperands[1].type == AARCH64_OP_REG,
+                      addOperands[0].type == .register,
+                      addOperands[1].type == .register,
                       addOperands[1].reg.rawValue == base,
-                      addOperands[2].type == AARCH64_OP_IMM,
+                      addOperands[2].type == .immediate,
                       addOperands[2].imm == pageOffset,
                       !isShiftedAddImmediate(candidate)
                 else { continue }
@@ -444,12 +444,12 @@ public enum CustomFirmwareSeputil {
 
     /// True when an `add` immediate carries `lsl #12`.
     ///
-    /// The Swift Capstone wrapper does not surface an operand's shift, so the
+    /// PatchKit's decoded operands do not surface an operand's shift, so the
     /// `sh` field is read off the instruction's own 32-bit encoding — still a
     /// property of the decode, never of the printed operand text. Without it an
     /// `add xD, xN, #imm, lsl #12` could be paired as if it computed
     /// `page + imm`, which is a different address than it really forms.
-    static func isShiftedAddImmediate(_ insn: Instruction) -> Bool {
+    static func isShiftedAddImmediate(_ insn: ARM64Instruction) -> Bool {
         guard insn.bytes.count == 4 else { return false }
         let word = UInt32(insn.bytes[0])
             | UInt32(insn.bytes[1]) << 8

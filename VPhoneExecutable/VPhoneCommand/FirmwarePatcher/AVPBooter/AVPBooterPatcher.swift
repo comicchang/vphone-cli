@@ -12,11 +12,15 @@
 //   5. Patch that instruction to `mov x0, #0`.
 
 import Foundation
+import VPhonePatchKit
 
 /// Patcher for AVPBooter DGST bypass.
-public final class AVPBooterPatcher: Patcher {
+public final class AVPBooterPatcher: BufferedPatcher {
     public let component = "avpbooter"
     public let verbose: Bool
+
+    /// Which patches the resolved preset turned on. Unrestricted by default.
+    public var gate: VPhonePatchGate = .unrestricted
 
     let buffer: BinaryBuffer
     let disasm = ARM64Disassembler()
@@ -122,6 +126,8 @@ public final class AVPBooterPatcher: Patcher {
         guard let targetIdx = x0Idx else {
             throw PatcherError.patchSiteNotFound("AVPBooter DGST: x0 setter not found before RET")
         }
+
+        guard gateAllows("avpbooter.dgst_bypass") else { return }
 
         let target = insns[targetIdx]
         let fileOff = Int(target.address) // base address is 0, so VA == file offset

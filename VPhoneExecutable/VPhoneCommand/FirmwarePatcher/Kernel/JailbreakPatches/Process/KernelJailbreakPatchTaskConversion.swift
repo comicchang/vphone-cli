@@ -22,6 +22,7 @@
 //   pinned, never the operand position.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Task conversion eval bypass: patch the guard CMP to always be equal.

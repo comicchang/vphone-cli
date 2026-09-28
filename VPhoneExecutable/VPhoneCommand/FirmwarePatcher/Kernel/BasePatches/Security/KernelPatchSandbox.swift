@@ -21,6 +21,7 @@
 //   vnode_check_rename  → index 120
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelPatcher {
     // MARK: - Public Entry Point

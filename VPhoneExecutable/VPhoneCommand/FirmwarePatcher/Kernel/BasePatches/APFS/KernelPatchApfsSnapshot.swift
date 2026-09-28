@@ -10,8 +10,8 @@
 //      tbz/tbnz <reg>, #5, <target> instruction.
 //   3. NOP it.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelPatcher {
     @discardableResult
@@ -47,10 +47,10 @@ extension KernelPatcher {
                 // Check: tbz/tbnz <reg>, #5, <target>
                 // Operands: [0] = register, [1] = bit number (IMM), [2] = branch target (IMM)
                 guard
-                    let detail = insn.aarch64,
+                    let detail = insn.detail,
                     detail.operands.count >= 2,
-                    detail.operands[0].type == AARCH64_OP_REG,
-                    detail.operands[1].type == AARCH64_OP_IMM,
+                    detail.operands[0].type == .register,
+                    detail.operands[1].type == .immediate,
                     detail.operands[1].imm == 5
                 else {
                     scan += 4

@@ -24,6 +24,7 @@
 // policy is part of this API rather than a separate pass.
 
 import Foundation
+import VPhonePatchKit
 
 // MARK: - Byte Access
 

@@ -11,6 +11,7 @@
 
 import Darwin
 import Foundation
+import VPhonePatchKit
 
 extension FirmwarePipeline {
     // MARK: - File Discovery

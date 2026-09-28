@@ -16,6 +16,7 @@
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelPatcher {
     // MARK: - Patches 4–5: _proc_check_launch_constraints

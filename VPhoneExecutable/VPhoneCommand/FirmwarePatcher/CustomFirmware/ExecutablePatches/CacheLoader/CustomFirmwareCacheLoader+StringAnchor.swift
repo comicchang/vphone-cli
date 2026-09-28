@@ -1,5 +1,5 @@
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension CustomFirmwareCacheLoaderPatcher {
     // MARK: - The boot-arg string
@@ -120,21 +120,21 @@ extension CustomFirmwareCacheLoaderPatcher {
         for (index, offset) in wordOffsets(of: text).enumerated() {
             let vma = text.address + UInt64(offset - Int(text.fileOffset))
             guard let instruction = disassembler.disassembleOne(in: data, at: offset, address: vma),
-                  let operands = instruction.aarch64?.operands
+                  let operands = instruction.detail?.operands
             else { continue }
 
             switch instruction.mnemonic {
             case "adrp":
                 guard operands.count >= 2,
-                      operands[0].type == AARCH64_OP_REG,
-                      operands[1].type == AARCH64_OP_IMM
+                      operands[0].type == .register,
+                      operands[1].type == .immediate
                 else { continue }
                 pendingADRP[UInt32(operands[0].reg.rawValue)] = (index, offset, vma, operands[1].imm)
 
             case "add":
                 guard operands.count >= 3,
-                      operands[1].type == AARCH64_OP_REG,
-                      operands[2].type == AARCH64_OP_IMM,
+                      operands[1].type == .register,
+                      operands[2].type == .immediate,
                       let adrp = pendingADRP[UInt32(operands[1].reg.rawValue)],
                       adrp.page == targetPage,
                       operands[2].imm == targetPageOffset,

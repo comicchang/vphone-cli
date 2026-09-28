@@ -1,5 +1,6 @@
 import Foundation
 import VPhoneCoreKit
+import VPhonePatchKit
 
 // MARK: - Create Options
 
@@ -11,7 +12,9 @@ public extension VPhoneVirtualMachineCreator {
         public var gpuDriverBundle: URL?
         public var ipswCacheDirectory: URL
         public var forceDyldSharedCacheMaxSlide: Bool
-        public var enableFrida: Bool
+        /// Which patch preset the new VM is built with. Individual patches are
+        /// turned on or off per VM afterwards, through its patch selection.
+        public var patchPreset: String
         public var cpuCount: UInt
         public var memoryMB: UInt64
         public var diskSizeGB: UInt64
@@ -25,7 +28,7 @@ public extension VPhoneVirtualMachineCreator {
             gpuDriverBundle: URL? = nil,
             ipswCacheDirectory: URL = VPhoneResources.ipswCacheDirectory(),
             forceDyldSharedCacheMaxSlide: Bool = false,
-            enableFrida: Bool = false,
+            patchPreset: String = VPhonePatchPreset.standardIdentifier,
             cpuCount: UInt = 8,
             memoryMB: UInt64 = 8192,
             diskSizeGB: UInt64 = 64,
@@ -38,7 +41,7 @@ public extension VPhoneVirtualMachineCreator {
             self.gpuDriverBundle = gpuDriverBundle
             self.ipswCacheDirectory = ipswCacheDirectory
             self.forceDyldSharedCacheMaxSlide = forceDyldSharedCacheMaxSlide
-            self.enableFrida = enableFrida
+            self.patchPreset = patchPreset
             self.cpuCount = cpuCount
             self.memoryMB = memoryMB
             self.diskSizeGB = diskSizeGB

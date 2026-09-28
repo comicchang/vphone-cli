@@ -18,11 +18,11 @@
 // read-only reference data: every test here clones what it needs into the
 // system temp directory and never writes inside it.
 
-import Capstone
 import CryptoKit
 @testable import FirmwarePatcher
 import Foundation
 import Testing
+import VPhonePatchKit
 
 // MARK: - Fixtures
 
@@ -184,7 +184,7 @@ struct CustomFirmwareWatchDogAnchorTests {
                 data.subdata(in: site.valueFileOffset ..< site.valueFileOffset + 4), at: site.valueVMA,
             ))
             #expect(value.mnemonic == "cset")
-            #expect(value.aarch64?.conditionCode == AArch64CC_NE)
+            #expect(value.detail?.conditionCode == .ne)
         }
     }
 
@@ -258,7 +258,7 @@ struct CustomFirmwareWatchDogAnchorTests {
     func `accepts the literal reaching X 0 through A move`() throws {
         let base: UInt64 = 0x1_0000_0000
 
-        func stream(movingInto destination: UInt32?) throws -> [Instruction] {
+        func stream(movingInto destination: UInt32?) throws -> [ARM64Instruction] {
             var code = Data()
             code += try #require(ARM64Encoder.encodeADRP(rd: 9, pc: base, target: base + 0x4000))
             code += try #require(ARM64Encoder.encodeAddImm12(rd: 9, rn: 9, imm12: 0x453))

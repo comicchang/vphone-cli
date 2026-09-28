@@ -90,6 +90,9 @@ struct VPhoneCustomFirmwareInstaller {
 
         let bundleDirectory = try pinBundle(owner: callerUID)
         let bundlePath = try bundleDirectory.path
+        // Which guest patches to apply, as `fw patch` resolved them. Read through
+        // the pinned descriptor so root never follows a link out of the bundle.
+        let plan = readPatchPlan(in: bundleDirectory)
         let disk = try openDiskImage(in: bundleDirectory, path: bundlePath, owner: callerUID)
         let diskPath = (bundlePath as NSString).appendingPathComponent("Disk.img")
         let busy = try VPhoneProcessRunner.runCapturing(
@@ -202,7 +205,14 @@ struct VPhoneCustomFirmwareInstaller {
             // is left open to hold the volume busy when it is unmounted.
             let systemRoot = try openGuestVolume("system", device: "\(container)s1", in: work)
             let dataRoot = try openGuestVolume("data", device: "\(container)s3", in: work)
-            try installMounted(system: systemRoot, data: dataRoot, restore: restore, work: work, owner: callerUID)
+            try installMounted(
+                system: systemRoot,
+                data: dataRoot,
+                restore: restore,
+                work: work,
+                owner: callerUID,
+                plan: plan,
+            )
         }
         try patchPreboot(volumes: volumes, work: work)
         _ = try tool("/sbin/umount", [data.path])
@@ -384,26 +394,51 @@ struct VPhoneCustomFirmwareInstaller {
         restore: VPhoneConfinedDirectory,
         work: WorkDirectory,
         owner: uid_t?,
+        plan: VPhoneVirtualMachinePatchPlan?,
     ) throws {
+        /// Whether the VM's patch plan turned this guest patch on.
+        ///
+        /// A VM with no plan — one created before presets, or patched by a build
+        /// that had none — gets every patch, which is what it was restored with.
+        func on(_ identifier: String) -> Bool {
+            guard let plan else { return true }
+            guard plan.isEnabled(identifier) else {
+                print("  [·] \(identifier): off in preset \(plan.presetIdentifier)")
+                return false
+            }
+            return true
+        }
+
         try installCryptexes(restore: restore, system: system, work: work, owner: owner)
         let version = try productVersion(system: system)
         let dsc = try verifiedDyldCacheDirectory(system: system)
+        // The version branches stay: they and the declarations' applicability say
+        // the same thing, and this is what a VM with no plan still follows.
         if version.hasPrefix("27.") {
-            try patch("patch-iomfb-force-kern", [dsc])
-            try patch("patch-dsc-maxslide", [dsc])
-            try patch("patch-lsd-embedded-reg", [dsc])
-            try patch("patch-xpc-lwcr", [dsc])
-            try patch("patch-lockdown-mode", [dsc])
+            if on("iomfb_force_kern") { try patch("patch-iomfb-force-kern", [dsc]) }
+            if on("dsc_maxslide.zero") { try patch("patch-dsc-maxslide", [dsc]) }
+            if on("lsd_embedded_reg.entitlement_gate") { try patch("patch-lsd-embedded-reg", [dsc]) }
+            if on("xpc_lwcr") { try patch("patch-xpc-lwcr", [dsc]) }
+            if on("lockdown_mode.sysctl_error_gate") { try patch("patch-lockdown-mode", [dsc]) }
         } else if version.hasPrefix("26.0") || version.hasPrefix("18.") {
-            try patch("patch-iomfb-swapend", [dsc, "--target-size", "0x560"])
+            if on("dsc.iomfb_swapend") {
+                try patch("patch-iomfb-swapend", [dsc, "--target-size", "0x560"])
+            }
         } else if forceDyldSharedCacheMaxSlide {
-            try patch("patch-dsc-maxslide", [dsc, "--force"])
+            // Superseded by the plan: `dsc_maxslide.zero` is pinned to iOS 27, so
+            // a VM with a plan cannot force it onto a 26.x base any more.
+            if on("dsc_maxslide.zero") { try patch("patch-dsc-maxslide", [dsc, "--force"]) }
         }
         // These former EXP patches pair with the kernel OID rename and the
         // camera DeviceTree additions in the public JB firmware pipeline.
-        try patch("patch-hv-vmm-dsc", [dsc])
-        try patch("patch-camera-dsc", [dsc, (dsc as NSString).appendingPathComponent("dyld_shared_cache_arm64e")])
-        if let build = spoofBuild {
+        if on("hv_vmm_dsc") { try patch("patch-hv-vmm-dsc", [dsc]) }
+        if on("camera_dsc") {
+            try patch("patch-camera-dsc", [dsc, (dsc as NSString).appendingPathComponent("dyld_shared_cache_arm64e")])
+        }
+        // The preset's own parameter first; `SPOOF_BUILD` still works for a VM
+        // whose preset does not set one.
+        let buildVersion = plan?.parameters[FirmwareGuestSystemPatchSet.buildVersionParameter] ?? spoofBuild
+        if let build = buildVersion, !build.isEmpty, on("guest.build_version") {
             for path in [
                 "System/Library/CoreServices/SystemVersion.plist",
                 "System/Cryptexes/OS/System/Library/CoreServices/SystemVersion.plist",
@@ -411,14 +446,16 @@ struct VPhoneCustomFirmwareInstaller {
                 try patchCopy(of: path, in: system, work: work, verb: "patch-build-version", arguments: [build])
             }
         }
-        try patchMachO(
-            system: system,
-            work: work,
-            path: "usr/libexec/seputil",
-            verb: "patch-seputil",
-            identifier: "com.apple.seputil",
-        )
-        if version.hasPrefix("27.") {
+        if on("seputil.gigalocker_uuid") {
+            try patchMachO(
+                system: system,
+                work: work,
+                path: "usr/libexec/seputil",
+                verb: "patch-seputil",
+                identifier: "com.apple.seputil",
+            )
+        }
+        if version.hasPrefix("27."), on("diskimagesiod.is_mount_complete") {
             try patchMachO(
                 system: system,
                 work: work,
@@ -427,36 +464,61 @@ struct VPhoneCustomFirmwareInstaller {
                 preserveEntitlements: true,
             )
         }
-        try renameGigalocker(data: data)
-        try installGPUBundle(restore: restore, system: system, owner: owner)
-        try patchMachO(
-            system: system,
-            work: work,
-            path: "usr/libexec/launchd_cache_loader",
-            verb: "patch-launchd-cache-loader",
-            identifier: "com.apple.launchd_cache_loader",
-        )
-        try patchMachO(
-            system: system,
-            work: work,
-            path: "usr/libexec/mobileactivationd",
-            verb: "patch-mobileactivationd",
-        )
-        try patchWatchdog(system: system, work: work)
-        try installVphoned(system: system, work: work)
-        try installEnvironment(system: system)
-        try patchMachO(
-            system: system,
-            work: work,
-            path: "sbin/launchd",
-            verb: "patch-launchd-jetsam",
-            preserveEntitlements: true,
-            injectedDylibPath: "/vh",
-        )
-        try patchDebugserver(system: system, work: work)
-        if version.hasPrefix("27.") {
+        if on("guest.gigalocker_rename") { try renameGigalocker(data: data) }
+        if on("guest.gpu_bundle") {
+            try installGPUBundle(restore: restore, system: system, owner: owner)
+        }
+        if on("launchd_cache_loader.unsecure_cache_gate") {
+            try patchMachO(
+                system: system,
+                work: work,
+                path: "usr/libexec/launchd_cache_loader",
+                verb: "patch-launchd-cache-loader",
+                identifier: "com.apple.launchd_cache_loader",
+            )
+        }
+        if on("mobileactivationd.should_hactivate") {
+            try patchMachO(
+                system: system,
+                work: work,
+                path: "usr/libexec/mobileactivationd",
+                verb: "patch-mobileactivationd",
+            )
+        }
+        if on("watchdogd.hv_vmm_cache") { try patchWatchdog(system: system, work: work) }
+        if on("guest.vphoned") { try installVphoned(system: system, work: work) }
+        if on("guest.environment") { try installEnvironment(system: system) }
+        if on("launchd_jetsam.panic_guard_bypass") {
+            try patchMachO(
+                system: system,
+                work: work,
+                path: "sbin/launchd",
+                verb: "patch-launchd-jetsam",
+                preserveEntitlements: true,
+                injectedDylibPath: "/vh",
+            )
+        }
+        if on("guest.debugserver") { try patchDebugserver(system: system, work: work) }
+        if version.hasPrefix("27."), on("campo.entitlements") {
             try patchCampo(system: system, work: work)
         }
+    }
+
+    /// The plan `fw patch` wrote into the VM, or nil when it never ran with one.
+    private func readPatchPlan(in bundleDirectory: VPhoneConfinedDirectory) -> VPhoneVirtualMachinePatchPlan? {
+        guard let data = try? bundleDirectory.readData(VPhonePatchPresetStore.planFileName) else {
+            print("[*] No patch plan recorded; applying every guest patch")
+            return nil
+        }
+        guard let plan = try? PropertyListDecoder().decode(
+            VPhoneVirtualMachinePatchPlan.self,
+            from: data,
+        ) else {
+            print("[!] \(VPhonePatchPresetStore.planFileName) is unreadable; applying every guest patch")
+            return nil
+        }
+        print("[*] Patch preset: \(plan.presetIdentifier)  (\(plan.enabledPatches.count) patches on)")
+        return plan
     }
 
     /// The dsc verbs patch a multi-gigabyte folder in place, too large to

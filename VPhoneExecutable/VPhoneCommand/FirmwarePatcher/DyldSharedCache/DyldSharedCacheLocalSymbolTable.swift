@@ -27,6 +27,7 @@
 //     };
 
 import Foundation
+import VPhonePatchKit
 
 /// Reader over `dyld_shared_cache_<arch>.symbols`.
 public struct DyldSharedCacheLocalSymbolTable: Sendable {

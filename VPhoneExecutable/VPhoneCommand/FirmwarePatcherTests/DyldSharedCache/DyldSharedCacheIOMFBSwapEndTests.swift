@@ -28,11 +28,11 @@
 // builds with keystone — and run the finder over it, so the anchor's semantics
 // are pinned on every machine, fixture or no fixture.
 
-import Capstone
 import CryptoKit
 @testable import FirmwarePatcher
 import Foundation
 import Testing
+import VPhonePatchKit
 
 // MARK: - The frozen reference
 
@@ -297,7 +297,7 @@ private enum SwapEndCallSetup {
         return ldr + add + selectorMove + sizeMove + zeroX4 + zeroX5 + (terminator ?? call)
     }
 
-    static func disassemble(_ code: Data, _ disassembler: ARM64Disassembler) -> [Instruction] {
+    static func disassemble(_ code: Data, _ disassembler: ARM64Disassembler) -> [ARM64Instruction] {
         disassembler.disassemble(code, at: baseAddress, count: code.count / 4)
     }
 }

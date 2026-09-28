@@ -18,6 +18,7 @@
 //   two guards lets kernel-task / restricted-pid flavors fall through to the switch.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Bypass the two early pid-0 guards in the inlined proc_pidinfo path.

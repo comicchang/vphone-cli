@@ -2,8 +2,8 @@
 //
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// JB-variant patcher for iBoot images.
 ///
@@ -76,11 +76,11 @@ public final class IBootJailbreakPatcher: IBootPatcher {
 
                 // i0 operands: [0]=reg (w0), [1]=bit (0), [2]=target address
                 guard
-                    let detail0 = i0.aarch64,
+                    let detail0 = i0.detail,
                     detail0.operands.count >= 3,
-                    detail0.operands[0].type == AARCH64_OP_REG,
-                    detail0.operands[0].reg.rawValue == AARCH64_REG_W0.rawValue,
-                    detail0.operands[1].type == AARCH64_OP_IMM,
+                    detail0.operands[0].type == .register,
+                    detail0.operands[0].reg == .w(0),
+                    detail0.operands[1].type == .immediate,
                     detail0.operands[1].imm == 0
                 else {
                     scan += 4
@@ -170,13 +170,13 @@ public final class IBootJailbreakPatcher: IBootPatcher {
             guard
                 a.mnemonic == "adrp",
                 b.mnemonic == "add",
-                let detA = a.aarch64,
-                let detB = b.aarch64,
+                let detA = a.detail,
+                let detB = b.detail,
                 detA.operands.count >= 2,
                 detB.operands.count >= 3,
-                detA.operands[0].reg.rawValue == detB.operands[1].reg.rawValue,
-                detA.operands[1].type == AARCH64_OP_IMM,
-                detB.operands[2].type == AARCH64_OP_IMM
+                detA.operands[0].reg == detB.operands[1].reg,
+                detA.operands[1].type == .immediate,
+                detB.operands[2].type == .immediate
             else {
                 off += 4
                 continue
@@ -220,14 +220,14 @@ public final class IBootJailbreakPatcher: IBootPatcher {
             guard
                 a.mnemonic == "adrp",
                 b.mnemonic == "add",
-                let detA = a.aarch64,
-                let detB = b.aarch64,
+                let detA = a.detail,
+                let detB = b.detail,
                 detA.operands.count >= 2,
                 detB.operands.count >= 3,
                 // Destination register of ADRP must match source register of ADD
-                detA.operands[0].reg.rawValue == detB.operands[1].reg.rawValue,
-                detA.operands[1].type == AARCH64_OP_IMM,
-                detB.operands[2].type == AARCH64_OP_IMM
+                detA.operands[0].reg == detB.operands[1].reg,
+                detA.operands[1].type == .immediate,
+                detB.operands[2].type == .immediate
             else {
                 off += 4
                 continue

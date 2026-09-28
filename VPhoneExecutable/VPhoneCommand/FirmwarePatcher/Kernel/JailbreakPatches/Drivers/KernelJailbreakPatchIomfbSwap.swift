@@ -27,6 +27,7 @@
 // handler reads (26.5=0x588, 27=0x6e0 both do).
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     private static let swapEndExpectedSize: UInt32 = 0x588 // 26.4 kernel's native SwapEnd struct size

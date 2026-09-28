@@ -2,8 +2,8 @@
 //
 // Part of IBootPatcher; see IBootPatcher.swift for the patch schedule by mode.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension IBootPatcher {
     // MARK: - 5. Panic Bypass (LLB only)

@@ -51,8 +51,8 @@
 // reads the cache's export tries and its `.symbols` side file directly — same
 // addresses, no Go tool on the patch path.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// What one run of the SwapEnd size patch did.
 public struct DyldSharedCacheIOMFBSwapEndPatch: Sendable {
@@ -257,7 +257,7 @@ public enum DyldSharedCacheIOMFBSwapEndPatcher {
     /// The `mov w3, #imm` found inside the external-method call set-up, with the
     /// index it sits at — the index is what the tests assert the shape on.
     struct SizeSite {
-        let instruction: Instruction
+        let instruction: ARM64Instruction
         let index: Int
     }
 
@@ -270,7 +270,7 @@ public enum DyldSharedCacheIOMFBSwapEndPatcher {
     /// operand — register identity and immediate value — never on the rendered
     /// operand string.
     static func findSizeInstruction(
-        in instructions: [Instruction],
+        in instructions: [ARM64Instruction],
         disassembler: ARM64Disassembler,
     ) -> SizeSite? {
         // selector, size, the zeroed argument registers, then the call.
@@ -308,18 +308,18 @@ public enum DyldSharedCacheIOMFBSwapEndPatcher {
     /// `(register, immediate)` when `instruction` is `mov <reg>, #<imm>`, else
     /// `nil`.
     ///
-    /// The register name comes from Capstone's own register table rather than
+    /// The register name comes from the decoder's own register table rather than
     /// from splitting `operandString`, so `w3` and `w13` cannot be confused and
-    /// a change in how Capstone renders an operand cannot move the site.
+    /// a change in how an operand renders cannot move the site.
     static func movRegisterImmediate(
-        _ instruction: Instruction,
+        _ instruction: ARM64Instruction,
         disassembler: ARM64Disassembler,
     ) -> (register: String, immediate: Int64)? {
         guard instruction.mnemonic == "mov" else { return nil }
-        guard let operands = instruction.aarch64?.operands, operands.count == 2,
-              operands[0].type == AARCH64_OP_REG,
-              operands[1].type == AARCH64_OP_IMM,
-              let name = disassembler.registerName(UInt32(operands[0].reg.rawValue))
+        guard let operands = instruction.detail?.operands, operands.count == 2,
+              operands[0].type == .register,
+              operands[1].type == .immediate,
+              let name = operands[0].reg.name
         else { return nil }
         return (name, operands[1].imm)
     }
@@ -335,13 +335,13 @@ public enum DyldSharedCacheIOMFBSwapEndPatcher {
         at vma: UInt64,
         maximumInstructions: Int,
         disassembler: ARM64Disassembler,
-    ) throws -> [Instruction] {
+    ) throws -> [ARM64Instruction] {
         let code = try chunks.readAtVMA(
             vma,
             length: maximumInstructions * 4,
             allowShort: true,
         )
-        var result: [Instruction] = []
+        var result: [ARM64Instruction] = []
         for instruction in disassembler.disassemble(code, at: vma, count: maximumInstructions) {
             result.append(instruction)
             if instruction.mnemonic == "ret" || instruction.mnemonic == "retab" {

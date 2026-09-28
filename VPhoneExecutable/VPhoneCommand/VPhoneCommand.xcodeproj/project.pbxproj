@@ -7,16 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5036445030653D1000CAADDF /* Capstone in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000201 /* Capstone */; };
 		5036445130653D1000CAADDF /* Img4tool in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000202 /* Img4tool */; };
 		5036445230653D1000CAADDF /* MachOKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000203 /* MachOKit */; };
 		5036445330653D1000CAADDF /* ArchiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000205 /* ArchiveKit */; };
-		50364C1A30653DE900CAADDF /* Capstone in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000201 /* Capstone */; };
 		50364C1B30653DE900CAADDF /* Img4tool in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000202 /* Img4tool */; };
 		50364C1C30653DE900CAADDF /* MachOKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000203 /* MachOKit */; };
 		50364C1D30653DE900CAADDF /* ArchiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000205 /* ArchiveKit */; };
 		50364C1E30653DE900CAADDF /* libVPhoneSign.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000032 /* libVPhoneSign.a */; };
-		BB0000000000000000000101 /* Capstone in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000201 /* Capstone */; };
 		BB0000000000000000000102 /* Img4tool in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000202 /* Img4tool */; };
 		BB0000000000000000000103 /* MachOKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000203 /* MachOKit */; };
 		BB0000000000000000000104 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000204 /* ArgumentParser */; };
@@ -25,6 +22,10 @@
 		BB0000000000000000000107 /* libFirmwarePatcher.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000033 /* libFirmwarePatcher.a */; };
 		BB0000000000000000000108 /* libVPhoneSign.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000032 /* libVPhoneSign.a */; };
 		BB0000000000000000000109 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000204 /* ArgumentParser */; };
+		BB0000000000000000000110 /* Capstone in Frameworks */ = {isa = PBXBuildFile; productRef = BB0000000000000000000201 /* Capstone */; };
+		BB0000000000000000000111 /* VPhonePatchKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000036 /* VPhonePatchKit.framework */; };
+		BB0000000000000000000112 /* VPhonePatchKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000036 /* VPhonePatchKit.framework */; };
+		BB0000000000000000000113 /* VPhonePatchKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000036 /* VPhonePatchKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +57,41 @@
 			remoteGlobalIDString = BB0000000000000000000012;
 			remoteInfo = VPhoneSign;
 		};
+		BB0000000000000000000130 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BB0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB0000000000000000000016;
+			remoteInfo = VPhonePatchKit;
+		};
+		BB0000000000000000000132 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BB0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB0000000000000000000016;
+			remoteInfo = VPhonePatchKit;
+		};
+		BB0000000000000000000134 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BB0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB0000000000000000000016;
+			remoteInfo = VPhonePatchKit;
+		};
+		BB0000000000000000000136 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BB0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB0000000000000000000016;
+			remoteInfo = VPhonePatchKit;
+		};
+		BB0000000000000000000138 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BB0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB0000000000000000000017;
+			remoteInfo = VPhonePatchSetExample;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -64,6 +100,8 @@
 		BB0000000000000000000033 /* libFirmwarePatcher.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libFirmwarePatcher.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB0000000000000000000034 /* FirmwarePatcherTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FirmwarePatcherTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB0000000000000000000035 /* VPhoneSignTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VPhoneSignTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000036 /* VPhonePatchKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = VPhonePatchKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000037 /* VPhonePatchSetExample.vphonepatchset */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VPhonePatchSetExample.vphonepatchset; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -74,6 +112,8 @@
 		BB0000000000000000000025 /* VPhoneSignTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = VPhoneSignTests; sourceTree = "<group>"; };
 		BB0000000000000000000026 /* VPhoneSignTestFixtures */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = VPhoneSignTestFixtures; sourceTree = "<group>"; };
 		BB0000000000000000000027 /* FirmwarePatcherTestFixtures */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = FirmwarePatcherTestFixtures; sourceTree = "<group>"; };
+		BB0000000000000000000028 /* VPhonePatchKit */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = VPhonePatchKit; sourceTree = "<group>"; };
+		BB0000000000000000000029 /* VPhonePatchSetExample */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = VPhonePatchSetExample; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,7 +124,7 @@
 				5036445330653D1000CAADDF /* ArchiveKit in Frameworks */,
 				5036445230653D1000CAADDF /* MachOKit in Frameworks */,
 				5036445130653D1000CAADDF /* Img4tool in Frameworks */,
-				5036445030653D1000CAADDF /* Capstone in Frameworks */,
+				BB0000000000000000000111 /* VPhonePatchKit.framework in Frameworks */,
 				BB0000000000000000000104 /* ArgumentParser in Frameworks */,
 				BB0000000000000000000106 /* AppleMobileDeviceLibrary in Frameworks */,
 			);
@@ -102,7 +142,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB0000000000000000000109 /* ArgumentParser in Frameworks */,
-				BB0000000000000000000101 /* Capstone in Frameworks */,
 				BB0000000000000000000102 /* Img4tool in Frameworks */,
 				BB0000000000000000000103 /* MachOKit in Frameworks */,
 				BB0000000000000000000105 /* ArchiveKit in Frameworks */,
@@ -113,7 +152,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				50364C1A30653DE900CAADDF /* Capstone in Frameworks */,
+				BB0000000000000000000112 /* VPhonePatchKit.framework in Frameworks */,
 				50364C1C30653DE900CAADDF /* MachOKit in Frameworks */,
 				BB0000000000000000000107 /* libFirmwarePatcher.a in Frameworks */,
 				BB0000000000000000000108 /* libVPhoneSign.a in Frameworks */,
@@ -130,6 +169,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB0000000000000000000046 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB0000000000000000000110 /* Capstone in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000047 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB0000000000000000000113 /* VPhonePatchKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -143,6 +198,8 @@
 				BB0000000000000000000025 /* VPhoneSignTests */,
 				BB0000000000000000000026 /* VPhoneSignTestFixtures */,
 				BB0000000000000000000027 /* FirmwarePatcherTestFixtures */,
+				BB0000000000000000000028 /* VPhonePatchKit */,
+				BB0000000000000000000029 /* VPhonePatchSetExample */,
 				BB0000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -155,6 +212,8 @@
 				BB0000000000000000000033 /* libFirmwarePatcher.a */,
 				BB0000000000000000000034 /* FirmwarePatcherTests.xctest */,
 				BB0000000000000000000035 /* VPhoneSignTests.xctest */,
+				BB0000000000000000000036 /* VPhonePatchKit.framework */,
+				BB0000000000000000000037 /* VPhonePatchSetExample.vphonepatchset */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -174,6 +233,7 @@
 			dependencies = (
 				BB0000000000000000000121 /* PBXTargetDependency */,
 				BB0000000000000000000123 /* PBXTargetDependency */,
+				BB0000000000000000000129 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				BB0000000000000000000021 /* VPhoneCommand */,
@@ -181,7 +241,6 @@
 			name = VPhoneCommand;
 			packageProductDependencies = (
 				BB0000000000000000000204 /* ArgumentParser */,
-				BB0000000000000000000201 /* Capstone */,
 				BB0000000000000000000202 /* Img4tool */,
 				BB0000000000000000000203 /* MachOKit */,
 				BB0000000000000000000205 /* ArchiveKit */,
@@ -221,6 +280,7 @@
 			);
 			dependencies = (
 				BB0000000000000000000123 /* PBXTargetDependency */,
+				BB0000000000000000000131 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				BB0000000000000000000023 /* FirmwarePatcher */,
@@ -228,7 +288,6 @@
 			name = FirmwarePatcher;
 			packageProductDependencies = (
 				BB0000000000000000000204 /* ArgumentParser */,
-				BB0000000000000000000201 /* Capstone */,
 				BB0000000000000000000202 /* Img4tool */,
 				BB0000000000000000000203 /* MachOKit */,
 				BB0000000000000000000205 /* ArchiveKit */,
@@ -249,13 +308,14 @@
 			dependencies = (
 				BB0000000000000000000125 /* PBXTargetDependency */,
 				BB0000000000000000000127 /* PBXTargetDependency */,
+				BB0000000000000000000133 /* PBXTargetDependency */,
+				BB0000000000000000000137 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				BB0000000000000000000024 /* FirmwarePatcherTests */,
 			);
 			name = FirmwarePatcherTests;
 			packageProductDependencies = (
-				BB0000000000000000000201 /* Capstone */,
 				BB0000000000000000000202 /* Img4tool */,
 				BB0000000000000000000203 /* MachOKit */,
 				BB0000000000000000000205 /* ArchiveKit */,
@@ -283,6 +343,49 @@
 			productName = VPhoneSignTests;
 			productReference = BB0000000000000000000035 /* VPhoneSignTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		BB0000000000000000000016 /* VPhonePatchKit */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB0000000000000000000086 /* Build configuration list for PBXNativeTarget "VPhonePatchKit" */;
+			buildPhases = (
+				BB0000000000000000000056 /* Sources */,
+				BB0000000000000000000046 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BB0000000000000000000028 /* VPhonePatchKit */,
+			);
+			name = VPhonePatchKit;
+			packageProductDependencies = (
+				BB0000000000000000000201 /* Capstone */,
+			);
+			productName = VPhonePatchKit;
+			productReference = BB0000000000000000000036 /* VPhonePatchKit.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		BB0000000000000000000017 /* VPhonePatchSetExample */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB0000000000000000000087 /* Build configuration list for PBXNativeTarget "VPhonePatchSetExample" */;
+			buildPhases = (
+				BB0000000000000000000057 /* Sources */,
+				BB0000000000000000000058 /* Resources */,
+				BB0000000000000000000047 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BB0000000000000000000135 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				BB0000000000000000000029 /* VPhonePatchSetExample */,
+			);
+			name = VPhonePatchSetExample;
+			productName = VPhonePatchSetExample;
+			productReference = BB0000000000000000000037 /* VPhonePatchSetExample.vphonepatchset */;
+			productType = "com.apple.product-type.bundle";
 		};
 /* End PBXNativeTarget section */
 
@@ -317,6 +420,8 @@
 				BB0000000000000000000013 /* FirmwarePatcher */,
 				BB0000000000000000000014 /* FirmwarePatcherTests */,
 				BB0000000000000000000015 /* VPhoneSignTests */,
+				BB0000000000000000000016 /* VPhonePatchKit */,
+				BB0000000000000000000017 /* VPhonePatchSetExample */,
 			);
 		};
 /* End PBXProject section */
@@ -357,7 +462,31 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB0000000000000000000056 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000057 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		BB0000000000000000000058 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		BB0000000000000000000121 /* PBXTargetDependency */ = {
@@ -380,6 +509,31 @@
 			target = BB0000000000000000000012 /* VPhoneSign */;
 			targetProxy = BB0000000000000000000128 /* PBXContainerItemProxy */;
 		};
+		BB0000000000000000000129 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB0000000000000000000016 /* VPhonePatchKit */;
+			targetProxy = BB0000000000000000000130 /* PBXContainerItemProxy */;
+		};
+		BB0000000000000000000131 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB0000000000000000000016 /* VPhonePatchKit */;
+			targetProxy = BB0000000000000000000132 /* PBXContainerItemProxy */;
+		};
+		BB0000000000000000000133 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB0000000000000000000016 /* VPhonePatchKit */;
+			targetProxy = BB0000000000000000000134 /* PBXContainerItemProxy */;
+		};
+		BB0000000000000000000135 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB0000000000000000000016 /* VPhonePatchKit */;
+			targetProxy = BB0000000000000000000136 /* PBXContainerItemProxy */;
+		};
+		BB0000000000000000000137 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB0000000000000000000017 /* VPhonePatchSetExample */;
+			targetProxy = BB0000000000000000000138 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -398,6 +552,10 @@
 					"$(BUILT_PRODUCTS_DIR)",
 					"$(SRCROOT)/../../.build/XcodeKit/Build/Products/$(CONFIGURATION)",
 					"$(SRCROOT)/../../.build/XcodeRestore/Build/Products/$(CONFIGURATION)",
+				);
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+					"@executable_path",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				OTHER_LDFLAGS = (
@@ -435,6 +593,10 @@
 					"$(BUILT_PRODUCTS_DIR)",
 					"$(SRCROOT)/../../.build/XcodeKit/Build/Products/$(CONFIGURATION)",
 					"$(SRCROOT)/../../.build/XcodeRestore/Build/Products/$(CONFIGURATION)",
+				);
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+					"@executable_path",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				OTHER_LDFLAGS = (
@@ -659,6 +821,114 @@
 			};
 			name = Release;
 		};
+		BB000000000000000000006B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_TESTABILITY = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "@rpath";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vphone.patchkit;
+				PRODUCT_NAME = VPhonePatchKit;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		BB000000000000000000006C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_TESTABILITY = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "@rpath";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vphone.patchkit;
+				PRODUCT_NAME = VPhonePatchKit;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		BB000000000000000000006D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CODE_SIGNING_ALLOWED = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+					"@loader_path/../../..",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vphone.patchset.example;
+				PRODUCT_NAME = VPhonePatchSetExample;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				WRAPPER_EXTENSION = vphonepatchset;
+			};
+			name = Debug;
+		};
+		BB000000000000000000006E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CODE_SIGNING_ALLOWED = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+					"@loader_path/../../..",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vphone.patchset.example;
+				PRODUCT_NAME = VPhonePatchSetExample;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				WRAPPER_EXTENSION = vphonepatchset;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -712,6 +982,24 @@
 			buildConfigurations = (
 				BB0000000000000000000069 /* Debug */,
 				BB000000000000000000006A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BB0000000000000000000086 /* Build configuration list for PBXNativeTarget "VPhonePatchKit" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB000000000000000000006B /* Debug */,
+				BB000000000000000000006C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BB0000000000000000000087 /* Build configuration list for PBXNativeTarget "VPhonePatchSetExample" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB000000000000000000006D /* Debug */,
+				BB000000000000000000006E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -1,3 +1,5 @@
+import VPhonePatchKit
+
 public extension CustomFirmwareCacheLoaderPatcher {
     // MARK: - Results
 

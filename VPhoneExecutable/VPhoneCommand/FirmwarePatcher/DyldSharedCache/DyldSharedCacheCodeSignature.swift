@@ -47,6 +47,7 @@
 
 import CryptoKit
 import Foundation
+import VPhonePatchKit
 
 /// The `CS_CodeDirectory` of one chunk, reduced to what re-signing needs.
 public struct DyldSharedCacheChunkCodeDirectory: Sendable {

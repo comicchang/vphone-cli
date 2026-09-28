@@ -1,4 +1,5 @@
 import Foundation
+import VPhonePatchKit
 
 extension CustomFirmwareMobileActivation {
     // MARK: - Anchoring

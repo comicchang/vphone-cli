@@ -29,6 +29,7 @@ import CryptoKit
 @testable import FirmwarePatcher
 import Foundation
 import Testing
+import VPhonePatchKit
 
 // MARK: - The frozen reference
 

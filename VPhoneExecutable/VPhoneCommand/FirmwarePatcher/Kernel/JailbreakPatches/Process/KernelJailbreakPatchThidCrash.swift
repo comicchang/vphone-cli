@@ -3,6 +3,7 @@
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Zero out `_thid_should_crash` via the nearby sysctl metadata.

@@ -43,8 +43,8 @@
 // page is re-attested (TXM enforces per-page); the CDHash change that follows
 // is accepted by the JB's always-true AMFI cdhash-trust patch.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// Forces `-[_LSDModifyClient clientIsEntitledForEmbeddedRegistrationOperations]`
 /// to return YES, by NOP'ing the branch that skips its YES result.
@@ -248,22 +248,21 @@ public enum DyldSharedCacheLSDEmbeddedRegPatcher {
     static func disassembleFunction(
         in chunks: DyldSharedCacheChunkSet,
         at vma: UInt64,
-    ) throws -> [Instruction] {
+    ) throws -> [ARM64Instruction] {
         let buffer = try chunks.readAtVMA(
             vma,
             length: maxInstructions * 4,
             allowShort: true,
         )
         let decoded = ARM64Disassembler().disassemble(buffer, at: vma)
-        var result: [Instruction] = []
+        var result: [ARM64Instruction] = []
         for instruction in decoded {
-            // The shared disassembler has `skipData` on, so a word Capstone
-            // cannot decode arrives as a data pseudo-instruction (id 0) rather
-            // than ending the stream. The Python's `cs.disasm` stops there, and
-            // so does this: past an undecodable word the window is no longer
-            // this function's instructions, and matching a "gate" in it would
-            // be matching noise.
-            guard instruction.id != 0 else { break }
+            // The shared disassembler has skip-data on, so a word it cannot
+            // decode arrives as a data pseudo-instruction rather than ending the
+            // stream. The Python's `cs.disasm` stops there, and so does this:
+            // past an undecodable word the window is no longer this function's
+            // instructions, and matching a "gate" in it would be matching noise.
+            guard instruction.isDecoded else { break }
             result.append(instruction)
             if instruction.mnemonic == "ret" || instruction.mnemonic == "retab" {
                 break
@@ -279,7 +278,7 @@ public enum DyldSharedCacheLSDEmbeddedRegPatcher {
     /// output, so a second run over an already-patched cache recognises the
     /// idempotent state instead of failing to find a branch that is no longer
     /// there — which is exactly how a re-run of `cfw install` used to die.
-    static func findGate(in instructions: [Instruction]) -> Gate? {
+    static func findGate(in instructions: [ARM64Instruction]) -> Gate? {
         let disassembler = ARM64Disassembler()
         guard instructions.count >= 2 else { return nil }
 
@@ -313,14 +312,14 @@ public enum DyldSharedCacheLSDEmbeddedRegPatcher {
     /// Matched on decoded operand types — register destination, immediate
     /// source — rather than on operand text.
     static func movRegisterImmediate(
-        _ instruction: Instruction,
+        _ instruction: ARM64Instruction,
         _ disassembler: ARM64Disassembler,
     ) -> (register: String, immediate: Int64)? {
         guard instruction.mnemonic == "mov",
-              let operands = instruction.aarch64?.operands,
+              let operands = instruction.detail?.operands,
               operands.count == 2,
-              operands[0].type == AARCH64_OP_REG,
-              operands[1].type == AARCH64_OP_IMM,
+              operands[0].type == .register,
+              operands[1].type == .immediate,
               let register = disassembler.firstRegisterName(instruction)
         else { return nil }
         return (register, operands[1].imm)

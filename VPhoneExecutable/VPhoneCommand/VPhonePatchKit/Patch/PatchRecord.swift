@@ -69,7 +69,8 @@ extension PatchRecord: CustomStringConvertible {
 }
 
 extension Data {
-    var hex: String {
+    /// Lowercase hex, the spelling every patch log and record uses.
+    public var hex: String {
         map { String(format: "%02x", $0) }.joined()
     }
 }

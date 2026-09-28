@@ -1,6 +1,7 @@
 // DyldSharedCacheError.swift — Errors raised by the dyld shared cache foundation layer.
 
 import Foundation
+import VPhonePatchKit
 
 /// Failures specific to reading and writing a chunked dyld shared cache.
 ///

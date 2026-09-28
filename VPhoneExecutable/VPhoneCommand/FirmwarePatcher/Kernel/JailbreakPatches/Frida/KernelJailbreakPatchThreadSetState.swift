@@ -1,12 +1,15 @@
-// KernelJailbreakPatchThreadSetState.swift — optional Frida Stalker support (--frida).
+// KernelJailbreakPatchThreadSetState.swift — optional Frida Stalker support.
+//
+// Declared as `kernelcache_frida.thread_set_state_entitlement_flag`, off in
+// `standard`.
 //
 // Frida follows an existing thread via thread_set_state_from_user, whose flags
 // carry TSSF_CHECK_ENTITLEMENT and trip GUARD_TYPE_MACH_PORT. Clear that bit in the
 // user setters (`mov w6,#0x201` → `mov w6,#0x1`) rather than the check itself.
 // Reveal + validation: Research/KernelJailbreakPatches/patch_thread_set_state.md.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     private static let tssEntitlement = "com.apple.private.thread-set-state"
@@ -63,8 +66,8 @@ extension KernelJailbreakPatcher {
                   let bytes = ARM64Encoder.encodeMovzW(rd: rd, imm16: Self.tssFlagsCleared),
                   let check = disasm.disassembleOne(bytes, at: UInt64(setterOff)),
                   check.mnemonic == "mov" || check.mnemonic == "movz",
-                  let ops = check.aarch64?.operands, ops.count == 2,
-                  ops[1].type == AARCH64_OP_IMM, ops[1].imm == Int64(Self.tssFlagsCleared)
+                  let ops = check.detail?.operands, ops.count == 2,
+                  ops[1].type == .immediate, ops[1].imm == Int64(Self.tssFlagsCleared)
             else {
                 log("  [-] failed to assemble/verify cleared flags at 0x\(String(format: "%X", setterOff))")
                 return false
@@ -83,9 +86,9 @@ extension KernelJailbreakPatcher {
     // MARK: - Helpers
 
     /// Direct B/BL target (disassembly runs in file-offset space).
-    private func branchTargetFileOffset(_ insn: Instruction) -> Int? {
-        guard let ops = insn.aarch64?.operands, ops.count == 1,
-              ops[0].type == AARCH64_OP_IMM
+    private func branchTargetFileOffset(_ insn: ARM64Instruction) -> Int? {
+        guard let ops = insn.detail?.operands, ops.count == 1,
+              ops[0].type == .immediate
         else { return nil }
         return Int(ops[0].imm)
     }
@@ -99,8 +102,8 @@ extension KernelJailbreakPatcher {
             defer { off -= 4; steps += 1 }
             guard let insn = disasAt(off) else { continue }
             guard insn.mnemonic == "mov" || insn.mnemonic == "movz" else { continue }
-            guard let ops = insn.aarch64?.operands, ops.count == 2,
-                  ops[0].type == AARCH64_OP_REG, ops[1].type == AARCH64_OP_IMM,
+            guard let ops = insn.detail?.operands, ops.count == 2,
+                  ops[0].type == .register, ops[1].type == .immediate,
                   disasm.firstRegisterName(insn) == "w6"
             else { continue }
             return ops[1].imm == Self.tssFlagsFromUser ? off : nil
@@ -108,7 +111,7 @@ extension KernelJailbreakPatcher {
         return nil
     }
 
-    private func wRegisterNumber(_ insn: Instruction) -> UInt32? {
+    private func wRegisterNumber(_ insn: ARM64Instruction) -> UInt32? {
         guard let name = disasm.firstRegisterName(insn), name.hasPrefix("w"),
               let value = UInt32(name.dropFirst()), value < 32
         else { return nil }

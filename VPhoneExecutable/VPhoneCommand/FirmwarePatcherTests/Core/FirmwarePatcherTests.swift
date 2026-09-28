@@ -3,6 +3,7 @@
 @testable import FirmwarePatcher
 import Foundation
 import Testing
+import VPhonePatchKit
 
 struct ARM64ConstantTests {
     let disasm = ARM64Disassembler()
@@ -527,13 +528,11 @@ struct FirmwarePipelineTests {
         let pipeline = FirmwarePipeline(vmDirectory: root, variant: .jb, verbose: false)
         let components = pipeline.buildComponentList(
             restoreDir: root,
-            iosBaseIs18: false,
-            iosBaseIs27: true,
-            cloudOSIsFridaCapable: true,
+            iOSBase: VPhoneVersion("27.0"),
         )
         let kernel = try #require(components.first { $0.name == "kernelcache" })
         #expect(kernel.patcherFactories.count == 3)
-        #expect(kernel.patcherFactories[2](Data(), false) is KernelExperimentalPatcher)
+        #expect(try kernel.patcherFactories[2](Data(), false) is KernelExperimentalPatcher)
 
         let deviceTree = try #require(components.first { $0.name == "DeviceTree" })
         let patcher = try #require(deviceTree.patcherFactories.first?(Data(), false) as? DeviceTreePatcher)

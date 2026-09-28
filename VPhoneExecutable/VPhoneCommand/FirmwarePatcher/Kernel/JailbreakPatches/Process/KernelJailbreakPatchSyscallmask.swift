@@ -16,6 +16,7 @@
 // validation, but with an all-0xFF effective mask.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     // MARK: - Constants

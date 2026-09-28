@@ -37,6 +37,7 @@
 import ArgumentParser
 import FirmwarePatcher
 import Foundation
+import VPhonePatchKit
 
 /// Where these verbs send patcher progress: stdout, like the Python.
 private let machOVerbLog: @Sendable (String) -> Void = { print($0) }

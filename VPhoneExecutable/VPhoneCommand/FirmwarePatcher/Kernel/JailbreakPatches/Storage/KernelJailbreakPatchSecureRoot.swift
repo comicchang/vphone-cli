@@ -14,8 +14,8 @@
 //   — a stable ABI signature, not a pinned field offset or struct layout.
 //   Patch: rewrite that CSEL to `mov Wd, #0` so the policy always returns success.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Force SecureRootName policy return to success in AppleARMPE::callPlatformFunction.
@@ -111,18 +111,18 @@ extension KernelJailbreakPatcher {
         for off in stride(from: funcStart, to: funcEnd - 4, by: 4) {
             let insns = disasm.disassemble(in: buffer.data, at: off, count: 1)
             guard let insn = insns.first, insn.mnemonic == "csel" else { continue }
-            guard let detail = insn.aarch64, detail.operands.count >= 3 else { continue }
+            guard let detail = insn.detail, detail.operands.count >= 3 else { continue }
 
             let destOp = detail.operands[0]
             let zeroSrcOp = detail.operands[1]
             let errSrcOp = detail.operands[2]
-            guard destOp.type == AARCH64_OP_REG,
-                  zeroSrcOp.type == AARCH64_OP_REG,
-                  errSrcOp.type == AARCH64_OP_REG else { continue }
+            guard destOp.type == .register,
+                  zeroSrcOp.type == .register,
+                  errSrcOp.type == .register else { continue }
 
-            let destName = disasm.registerName(UInt32(destOp.reg.rawValue)) ?? ""
-            let zeroName = disasm.registerName(UInt32(zeroSrcOp.reg.rawValue)) ?? ""
-            let errName = disasm.registerName(UInt32(errSrcOp.reg.rawValue)) ?? ""
+            let destName = destOp.reg.name ?? ""
+            let zeroName = zeroSrcOp.reg.name ?? ""
+            let errName = errSrcOp.reg.name ?? ""
 
             // Allow value must be 0 (wzr); deny value is the error register.
             guard destName.hasPrefix("w") else { continue }

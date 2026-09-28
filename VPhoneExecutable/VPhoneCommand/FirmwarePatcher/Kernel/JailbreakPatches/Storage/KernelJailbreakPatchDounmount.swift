@@ -6,8 +6,8 @@
 //   call: mov x0,xN ; mov w1,#0 ; mov w2,#0 ; mov w3,#0 ; bl ; mov x0,xN ; bl ; cbz x19,...
 // Patch: NOP the first BL in that sequence.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// NOP the upstream cleanup call in _dounmount.
@@ -80,36 +80,36 @@ extension KernelJailbreakPatcher {
     }
 
     /// Return the source register name if instruction is `mov <dst>, <src_reg>`.
-    private func movRegRegDst(_ insn: Instruction, dst: String) -> String? {
+    private func movRegRegDst(_ insn: ARM64Instruction, dst: String) -> String? {
         guard insn.mnemonic == "mov" else { return nil }
-        guard let detail = insn.aarch64, detail.operands.count == 2 else { return nil }
+        guard let detail = insn.detail, detail.operands.count == 2 else { return nil }
         let dstOp = detail.operands[0], srcOp = detail.operands[1]
-        guard dstOp.type == AARCH64_OP_REG, srcOp.type == AARCH64_OP_REG else { return nil }
+        guard dstOp.type == .register, srcOp.type == .register else { return nil }
         guard regName(dstOp.reg) == dst else { return nil }
         return regName(srcOp.reg)
     }
 
     /// Return true if instruction is `mov <dst>, #0`.
-    private func movImmZero(_ insn: Instruction, dst: String) -> Bool {
+    private func movImmZero(_ insn: ARM64Instruction, dst: String) -> Bool {
         guard insn.mnemonic == "mov" else { return false }
-        guard let detail = insn.aarch64, detail.operands.count == 2 else { return false }
+        guard let detail = insn.detail, detail.operands.count == 2 else { return false }
         let dstOp = detail.operands[0], srcOp = detail.operands[1]
-        guard dstOp.type == AARCH64_OP_REG, regName(dstOp.reg) == dst else { return false }
-        guard srcOp.type == AARCH64_OP_IMM, srcOp.imm == 0 else { return false }
+        guard dstOp.type == .register, regName(dstOp.reg) == dst else { return false }
+        guard srcOp.type == .immediate, srcOp.imm == 0 else { return false }
         return true
     }
 
     /// Return true if instruction is `cbz x<N>, <label>` (64-bit register).
-    private func cbzUsesXreg(_ insn: Instruction) -> Bool {
+    private func cbzUsesXreg(_ insn: ARM64Instruction) -> Bool {
         guard insn.mnemonic == "cbz" else { return false }
-        guard let detail = insn.aarch64, detail.operands.count >= 2 else { return false }
+        guard let detail = insn.detail, detail.operands.count >= 2 else { return false }
         let regOp = detail.operands[0]
-        guard regOp.type == AARCH64_OP_REG else { return false }
+        guard regOp.type == .register else { return false }
         return regName(regOp.reg).hasPrefix("x")
     }
 
-    /// Get the register name string for an aarch64_reg value.
-    private func regName(_ reg: aarch64_reg) -> String {
-        disasm.registerName(reg.rawValue) ?? "??"
+    /// Get the register name string for a decoded register operand.
+    private func regName(_ reg: ARM64Register) -> String {
+        reg.name ?? "??"
     }
 }

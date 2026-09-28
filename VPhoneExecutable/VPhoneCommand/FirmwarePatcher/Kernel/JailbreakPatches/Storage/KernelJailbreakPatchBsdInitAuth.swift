@@ -13,8 +13,8 @@
 //      with a BL to _imageboot_needed (or any BL) in the next 3 instructions.
 //   5. NOP that cbnz.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     private static let rootvpAuthNeedle = "rootvp not authenticated after mounting"
@@ -159,10 +159,10 @@ extension KernelJailbreakPatcher {
 
         // Must be CBNZ on w0 or x0
         guard insn.mnemonic == "cbnz" else { return nil }
-        guard let detail = insn.aarch64, !detail.operands.isEmpty else { return nil }
+        guard let detail = insn.detail, !detail.operands.isEmpty else { return nil }
         let regOp = detail.operands[0]
-        guard regOp.type == AARCH64_OP_REG,
-              regOp.reg == AARCH64_REG_W0 || regOp.reg == AARCH64_REG_X0 else { return nil }
+        guard regOp.type == .register,
+              regOp.reg == .w(0) || regOp.reg == .x(0) else { return nil }
 
         // Branch target must point into the panic block region
         guard let (branchTarget, _) = jbDecodeBranchTarget(at: off),

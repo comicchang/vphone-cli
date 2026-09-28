@@ -13,6 +13,7 @@
 //      the high 32 bits (PAC/auth-rebase metadata), and emit the new value.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Extended sandbox hooks bypass: retarget ops entries to the allow stub.

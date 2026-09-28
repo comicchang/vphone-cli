@@ -1,7 +1,7 @@
 // CustomFirmwareJetsamDiscovery.swift — Locate the jetsam guard in launchd.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension CustomFirmwareJetsamPatcher {
     /// `ARM64Disassembler` is stateless across calls and `Sendable`.
@@ -285,22 +285,22 @@ extension CustomFirmwareJetsamPatcher {
     /// the last immediate covers all three without parsing operand text. The
     /// instruction was decoded at its own file offset, so the immediate is a
     /// file offset too.
-    static func branchTarget(_ insn: Instruction) -> Int? {
-        guard let detail = insn.aarch64 else { return nil }
-        for operand in detail.operands.reversed() where operand.type == AARCH64_OP_IMM {
+    static func branchTarget(_ insn: ARM64Instruction) -> Int? {
+        guard let detail = insn.detail else { return nil }
+        for operand in detail.operands.reversed() where operand.type == .immediate {
             return Int(operand.imm)
         }
         return nil
     }
 
     /// True when the instruction returns from the function — `ret`, `retaa`,
-    /// `retab`, by Capstone's own classification rather than a mnemonic prefix.
+    /// `retab`, by the decoder's own classification rather than a mnemonic prefix.
     ///
     /// The prefix test this replaces (`hasPrefix("ret")`) is close enough on
-    /// this image and wrong in principle; the group is what Capstone decoded
-    /// the instruction to mean.
-    static func isReturn(_ insn: Instruction) -> Bool {
-        insn.groups.contains(UInt8(CS_GRP_RET.rawValue))
+    /// this image and wrong in principle; the classification is what the
+    /// disassembler decoded the instruction to mean.
+    static func isReturn(_ insn: ARM64Instruction) -> Bool {
+        insn.isReturn
     }
 
     /// True when control leaves the block here without falling through: an
@@ -311,14 +311,14 @@ extension CustomFirmwareJetsamPatcher {
     /// so the return can still be the instruction after it, which is what makes
     /// a compare-and-return epilogue a return block.
     ///
-    /// Groups again, not prefixes: `hasPrefix("br")` also swallows `brk`, which
-    /// is a breakpoint (`CS_GRP_INT`) and ends nothing, and `hasPrefix("bl")`
+    /// Classification again, not prefixes: `hasPrefix("br")` also swallows
+    /// `brk`, which is a breakpoint and ends nothing, and `hasPrefix("bl")`
     /// would only reach the authenticated calls by accident.
-    static func leavesBlock(_ insn: Instruction) -> Bool {
-        if insn.groups.contains(UInt8(CS_GRP_CALL.rawValue)) {
+    static func leavesBlock(_ insn: ARM64Instruction) -> Bool {
+        if insn.isCall {
             return true
         }
-        return insn.groups.contains(UInt8(CS_GRP_JUMP.rawValue))
+        return insn.isJump
             && !conditionalBranchMnemonics.contains(insn.mnemonic)
     }
 

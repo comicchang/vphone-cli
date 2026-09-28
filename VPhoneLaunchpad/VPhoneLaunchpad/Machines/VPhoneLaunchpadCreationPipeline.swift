@@ -24,7 +24,8 @@ final class VPhoneLaunchpadCreationPipeline {
         var memoryMB: Int
         var diskSizeGB: Int
         var network: String
-        var enableFrida: Bool
+        /// The preset and per-patch overrides the boot chain is built with.
+        var patches: VPhoneLaunchpadPatchSelection
         var forceDyldSharedCacheMaxSlide: Bool
         var keepArtifacts: Bool
 
@@ -124,12 +125,18 @@ final class VPhoneLaunchpadCreationPipeline {
         Step.allCases.first { statuses[$0] == .failed }
     }
 
+    /// `fw patch`, as both the step's log line and the run build it. One array so
+    /// the command the sheet shows cannot drift from the command that runs.
+    private var patchArguments: [String] {
+        ["fw", "patch", options.name] + options.patches.presetArguments
+    }
+
     func command(for step: Step) -> String {
         let name = options.name
         return switch step {
         case .create: "vm new \(name) --cpu \(options.cpuCount) --memory \(options.memoryMB) --disk-size \(options.diskSizeGB)"
         case .prepare: "fw prepare \(name)"
-        case .patch: "fw patch \(name)" + (options.enableFrida ? " --frida" : "")
+        case .patch: patchArguments.joined(separator: " ")
         case .bootDFU: "vm launch \(name) --dfu"
         case .waitDFU: "recovery-probe --ecid …"
         case .restore: "restore \(name)"
@@ -226,7 +233,13 @@ final class VPhoneLaunchpadCreationPipeline {
                            "--cloudos-source", options.cloudOSSource] + library)
 
         case .patch:
-            try await run(["fw", "patch", name] + (options.enableFrida ? ["--frida"] : []) + library)
+            // The preset rides on `fw patch` itself; per-patch overrides are
+            // recorded first, the way `vm config` follows `vm new` above. Both
+            // lines reach the log.
+            if options.patches.hasOverrides {
+                try await run(["fw", "set-patches", name] + options.patches.setPatchesArguments + library)
+            }
+            try await run(patchArguments + library)
 
         case .bootDFU:
             let arguments = ["vm", "launch", name, "--dfu"] + library

@@ -11,8 +11,8 @@
 //   BL targets in code range → callee with `cmp w0,#imm ; b.ne` preceded by BL →
 //   replace CMP with `cmp w0,w0`.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelPatcher {
     // MARK: - Patch 8: NOP TBNZ after TXM CodeSignature error log
@@ -123,11 +123,11 @@ extension KernelPatcher {
                     let i0 = insns[0], i1 = insns[1]
 
                     guard i0.mnemonic == "cmp", i1.mnemonic == "b.ne" else { continue }
-                    guard let detail0 = i0.aarch64, detail0.operands.count >= 2 else { continue }
+                    guard let detail0 = i0.detail, detail0.operands.count >= 2 else { continue }
                     let op0 = detail0.operands[0]
                     let op1 = detail0.operands[1]
-                    guard op0.type == AARCH64_OP_REG, op0.reg == AARCH64_REG_W0 else { continue }
-                    guard op1.type == AARCH64_OP_IMM else { continue }
+                    guard op0.type == .register, op0.reg == .w(0) else { continue }
+                    guard op1.type == .immediate else { continue }
 
                     // Must be preceded by a BL within 2 instructions (4 or 8 bytes back).
                     var hasBlBefore = false

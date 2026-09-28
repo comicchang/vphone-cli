@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Everything the bundle declares, including the Frida Stalker relaxations that
+  `standard` leaves off.
+
+  It names the same patch sets as standard and differs only in its selection, so
+  the two presets are readable against each other: standard is this with two
+  patches blocked. Each patch's own version gate still applies, so the Frida pair
+  lands only on cloudOS 26.4 and newer.
+-->
+<plist version="1.0">
+<dict>
+	<key>Identifier</key>
+	<string>extended</string>
+	<key>Title</key>
+	<string>Extended</string>
+	<key>Summary</key>
+	<string>Every patch this bundle declares, including the Frida Stalker relaxations.</string>
+	<key>PatchSets</key>
+	<array>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.bootchain</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.kernel.base</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.kernel.jailbreak</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.kernel.hypervisor</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.kernel.frida</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.devicetree</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.guest.system</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.guest.display</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.guest.identity</string>
+		</dict>
+	</array>
+	<key>Selection</key>
+	<dict>
+		<key>Kind</key>
+		<string>All</string>
+	</dict>
+</dict>
+</plist>

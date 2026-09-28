@@ -6,6 +6,7 @@
 
 import Foundation
 import VPhoneCoreKit
+import VPhonePatchKit
 import VPhoneSign
 
 extension CryptexFilesystemPatcher {
@@ -92,7 +93,7 @@ extension CryptexFilesystemPatcher {
         let bundle = target.appending(path: "/System/Library/Extensions/AppleParavirtGPUMetalIOGPUFamily.bundle")
         let staged = VPhonePCCGPUDriver.stagedBundle(in: restoreDir)
         guard FileManager.default.fileExists(atPath: staged.path) else {
-            throw FirmwarePatcher.PatcherError.patchVerificationFailed(
+            throw VPhonePatchKit.PatcherError.patchVerificationFailed(
                 "PCC GPU driver is missing: \(staged.path). Re-run fw prepare with the PCC IPSW.",
             )
         }
@@ -112,7 +113,7 @@ extension CryptexFilesystemPatcher {
         }
         let compilerPlugin = bundle.appending(path: "libAppleParavirtCompilerPluginIOGPUFamily.dylib")
         guard FileManager.default.fileExists(atPath: compilerPlugin.path) else {
-            throw FirmwarePatcher.PatcherError.patchVerificationFailed(
+            throw VPhonePatchKit.PatcherError.patchVerificationFailed(
                 "PCC GPU compiler plugin is missing: \(compilerPlugin.path). Re-run fw prepare with a complete vphone-cli.app.",
             )
         }

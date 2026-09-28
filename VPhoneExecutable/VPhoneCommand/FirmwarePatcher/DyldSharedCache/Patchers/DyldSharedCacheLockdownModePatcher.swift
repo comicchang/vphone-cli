@@ -35,8 +35,8 @@
 // and the `PatchRecord` description, never a patched byte, and nothing here
 // matches on operand text.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 public enum DyldSharedCacheLockdownModePatcher {
     // MARK: - Anchors
@@ -260,11 +260,11 @@ public enum DyldSharedCacheLockdownModePatcher {
     /// A wrong patch that passes its own signature check is worse than a
     /// failed install. `DyldSharedCacheLSDEmbeddedRegPatcher.disassembleFunction` breaks on
     /// the same condition for the same reason.
-    static func disassembleBlock(in chunks: DyldSharedCacheChunkSet, at vma: UInt64) throws -> [Instruction] {
+    static func disassembleBlock(in chunks: DyldSharedCacheChunkSet, at vma: UInt64) throws -> [ARM64Instruction] {
         let window = try chunks.readAtVMA(vma, length: maxInstructions * 4, allowShort: true)
-        var decoded: [Instruction] = []
+        var decoded: [ARM64Instruction] = []
         for insn in disassembler.disassemble(window, at: vma, count: maxInstructions) {
-            guard insn.id != 0 else { break }
+            guard insn.isDecoded else { break }
             decoded.append(insn)
             if insn.mnemonic == "ret" || insn.mnemonic == "retab" {
                 break
@@ -282,7 +282,7 @@ public enum DyldSharedCacheLockdownModePatcher {
     /// fails instead of reporting a no-op. The `bl` + `cmn wR, #1` anchor is
     /// unchanged, so widening the slot does not weaken where a match can land,
     /// and re-writing a NOP over a NOP is inert.
-    static func findErrorGate(_ instructions: [Instruction]) -> Instruction? {
+    static func findErrorGate(_ instructions: [ARM64Instruction]) -> ARM64Instruction? {
         guard instructions.count >= 2 else { return nil }
         var sawCall = false
         for index in 0 ..< (instructions.count - 1) {
@@ -304,10 +304,10 @@ public enum DyldSharedCacheLockdownModePatcher {
     ///
     /// Semantic, not textual: the `#1` of `cmn w0, #1` is read off the decode,
     /// so a build that prints it as `#0x1` matches just the same.
-    static func immediate(of insn: Instruction, at index: Int) -> Int64? {
-        guard let operands = insn.aarch64?.operands,
+    static func immediate(of insn: ARM64Instruction, at index: Int) -> Int64? {
+        guard let operands = insn.detail?.operands,
               index < operands.count,
-              operands[index].type == AARCH64_OP_IMM
+              operands[index].type == .immediate
         else { return nil }
         return operands[index].imm
     }
@@ -315,7 +315,7 @@ public enum DyldSharedCacheLockdownModePatcher {
     // MARK: - Reporting
 
     private static func record(
-        for gate: Instruction,
+        for gate: ARM64Instruction,
         original: Data,
         replacement: Data,
         in chunks: DyldSharedCacheChunkSet,

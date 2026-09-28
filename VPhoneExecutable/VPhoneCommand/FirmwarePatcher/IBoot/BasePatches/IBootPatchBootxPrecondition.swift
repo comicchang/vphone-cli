@@ -2,8 +2,8 @@
 //
 // Part of IBootPatcher; see IBootPatcher.swift for the patch schedule by mode.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension IBootPatcher {
     // MARK: - 6. Bootx-handoff precondition (modern iBoot, all stages)
@@ -55,22 +55,22 @@ extension IBootPatcher {
                 let prev = insns[i - 1]
                 guard tbz.mnemonic == "tbz" else { continue }
                 guard
-                    let tbzDet = tbz.aarch64,
+                    let tbzDet = tbz.detail,
                     tbzDet.operands.count >= 3,
-                    tbzDet.operands[0].type == AARCH64_OP_REG,
-                    tbzDet.operands[0].reg.rawValue == AARCH64_REG_W0.rawValue,
-                    tbzDet.operands[1].type == AARCH64_OP_IMM,
+                    tbzDet.operands[0].type == .register,
+                    tbzDet.operands[0].reg == .w(0),
+                    tbzDet.operands[1].type == .immediate,
                     tbzDet.operands[1].imm == 0,
-                    tbzDet.operands[2].type == AARCH64_OP_IMM
+                    tbzDet.operands[2].type == .immediate
                 else { continue }
                 let target = Int(tbzDet.operands[2].imm)
                 guard panicBlocks.contains(target) else { continue }
 
                 guard prev.mnemonic == "bl" else { continue }
                 guard
-                    let prevDet = prev.aarch64,
+                    let prevDet = prev.detail,
                     prevDet.operands.count >= 1,
-                    prevDet.operands[0].type == AARCH64_OP_IMM
+                    prevDet.operands[0].type == .immediate
                 else { continue }
                 let blTarget = Int(prevDet.operands[0].imm)
                 guard bitGetters.contains(blTarget) else { continue }
@@ -123,9 +123,9 @@ extension IBootPatcher {
                 var ok = true
                 for k in 0 ..< 4 {
                     guard
-                        let det = insns[i + k].aarch64,
+                        let det = insns[i + k].detail,
                         det.operands.count >= 1,
-                        det.operands[0].type == AARCH64_OP_REG
+                        det.operands[0].type == .register
                     else { ok = false; break }
                     regs.insert(det.operands[0].reg.rawValue)
                 }
@@ -151,9 +151,9 @@ extension IBootPatcher {
                 ]
                 guard mnems == ["adrp", "ldrb", "ubfx", "ret"] else { continue }
                 guard
-                    let det = insns[i + 2].aarch64,
+                    let det = insns[i + 2].detail,
                     det.operands.count >= 4,
-                    det.operands[3].type == AARCH64_OP_IMM,
+                    det.operands[3].type == .immediate,
                     det.operands[3].imm == 1
                 else { continue }
                 out.insert(Int(insns[i].address))
@@ -176,9 +176,9 @@ extension IBootPatcher {
                     insns[i + 2].mnemonic == "bl"
                 else { continue }
                 guard
-                    let det = insns[i].aarch64,
+                    let det = insns[i].detail,
                     det.operands.count >= 1,
-                    det.operands[0].type == AARCH64_OP_IMM
+                    det.operands[0].type == .immediate
                 else { continue }
                 let blTarget = Int(det.operands[0].imm)
                 guard hashGetters.contains(blTarget) else { continue }

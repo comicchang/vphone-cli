@@ -2,8 +2,8 @@
 //
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// NOP the upstream dual-CBZ bypass in the persona helper.
@@ -103,21 +103,21 @@ extension KernelJailbreakPatcher {
 
             // ldr wA, [base, #8] ; cbz wA, deny
             guard isLdrMem(i0, disp: 8) else { continue }
-            guard let i0ops = i0.aarch64?.operands, i0ops.count >= 2 else { continue }
+            guard let i0ops = i0.detail?.operands, i0ops.count >= 2 else { continue }
             let loadedReg0 = i0ops[0].reg
             let baseReg = i0ops[1].mem.base
             guard isCbzWSameReg(i1, reg: loadedReg0) else { continue }
 
             // ldr wB, [base, #0xc] ; cbz wB, deny (same base)
             guard isLdrMemSameBase(i2, base: baseReg, disp: 0xC) else { continue }
-            guard let i2ops = i2.aarch64?.operands, i2ops.count >= 1 else { continue }
+            guard let i2ops = i2.detail?.operands, i2ops.count >= 1 else { continue }
             let loadedReg2 = i2ops[0].reg
             guard isCbzWSameReg(i3, reg: loadedReg2) else { continue }
 
             // Both cbz must branch to the SAME deny target.
-            guard let i1ops = i1.aarch64?.operands, i1ops.count == 2,
-                  let i3ops = i3.aarch64?.operands, i3ops.count == 2,
-                  i1ops[1].type == AARCH64_OP_IMM, i3ops[1].type == AARCH64_OP_IMM,
+            guard let i1ops = i1.detail?.operands, i1ops.count == 2,
+                  let i3ops = i3.detail?.operands, i3ops.count == 2,
+                  i1ops[1].type == .immediate, i3ops[1].type == .immediate,
                   i1ops[1].imm == i3ops[1].imm
             else { continue }
             let denyTarget = Int(i1ops[1].imm)
@@ -136,29 +136,29 @@ extension KernelJailbreakPatcher {
         return hits.count == 1 ? hits[0] : nil
     }
 
-    private func isLdrMem(_ insn: Instruction, disp: Int32) -> Bool {
+    private func isLdrMem(_ insn: ARM64Instruction, disp: Int32) -> Bool {
         guard insn.mnemonic == "ldr",
-              let ops = insn.aarch64?.operands, ops.count >= 2,
-              ops[0].type == AARCH64_OP_REG,
-              ops[1].type == AARCH64_OP_MEM,
+              let ops = insn.detail?.operands, ops.count >= 2,
+              ops[0].type == .register,
+              ops[1].type == .memory,
               ops[1].mem.disp == disp
         else { return false }
         return true
     }
 
-    private func isLdrMemSameBase(_ insn: Instruction, base: aarch64_reg, disp: Int32) -> Bool {
+    private func isLdrMemSameBase(_ insn: ARM64Instruction, base: ARM64Register, disp: Int32) -> Bool {
         guard isLdrMem(insn, disp: disp),
-              let ops = insn.aarch64?.operands, ops.count >= 2,
+              let ops = insn.detail?.operands, ops.count >= 2,
               ops[1].mem.base == base
         else { return false }
         return true
     }
 
-    private func isCbzWSameReg(_ insn: Instruction, reg: aarch64_reg) -> Bool {
+    private func isCbzWSameReg(_ insn: ARM64Instruction, reg: ARM64Register) -> Bool {
         guard insn.mnemonic == "cbz",
-              let ops = insn.aarch64?.operands, ops.count == 2,
-              ops[0].type == AARCH64_OP_REG, ops[0].reg == reg,
-              ops[1].type == AARCH64_OP_IMM
+              let ops = insn.detail?.operands, ops.count == 2,
+              ops[0].type == .register, ops[0].reg == reg,
+              ops[1].type == .immediate
         else { return false }
         // Must be a w-register
         return disasm.firstRegisterName(insn)?.hasPrefix("w") ?? false
@@ -171,11 +171,11 @@ extension KernelJailbreakPatcher {
         return isMovWImmValue(insn, imm: value)
     }
 
-    private func isMovWImmValue(_ insn: Instruction, imm: Int64) -> Bool {
+    private func isMovWImmValue(_ insn: ARM64Instruction, imm: Int64) -> Bool {
         guard insn.mnemonic == "mov",
-              let ops = insn.aarch64?.operands, ops.count == 2,
-              ops[0].type == AARCH64_OP_REG,
-              ops[1].type == AARCH64_OP_IMM, ops[1].imm == imm
+              let ops = insn.detail?.operands, ops.count == 2,
+              ops[0].type == .register,
+              ops[1].type == .immediate, ops[1].imm == imm
         else { return false }
         return disasm.firstRegisterName(insn)?.hasPrefix("w") ?? false
     }

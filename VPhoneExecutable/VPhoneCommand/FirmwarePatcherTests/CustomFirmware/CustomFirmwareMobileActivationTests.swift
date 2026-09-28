@@ -15,11 +15,11 @@
 // directory under `TMPDIR` — never inside the repository, and never inside
 // `ipsws/ref_extract/`, which is the read-only reference tree.
 
-import Capstone
 import CryptoKit
 @testable import FirmwarePatcher
 import Foundation
 import Testing
+import VPhonePatchKit
 
 // MARK: - Fixtures
 
@@ -268,9 +268,9 @@ struct CustomFirmwareMobileActivationAnchorTests {
         #expect(decoded.count == 2)
         #expect(decoded[0].mnemonic == "mov")
         #expect(decoded[1].mnemonic == "ret")
-        let operands = try #require(decoded[0].aarch64?.operands)
+        let operands = try #require(decoded[0].detail?.operands)
         #expect(operands.count == 2)
-        #expect(operands[1].type == AARCH64_OP_IMM)
+        #expect(operands[1].type == .immediate)
         #expect(operands[1].imm == 1)
         #expect(ARM64Disassembler().firstRegisterName(decoded[0]) == "x0")
     }

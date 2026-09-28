@@ -1,7 +1,7 @@
 // CustomFirmwareWatchDogDiscovery.swift — Locate watchdogd VM-presence cache sites.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension CustomFirmwareWatchDog {
     // MARK: - Site discovery
@@ -42,10 +42,10 @@ extension CustomFirmwareWatchDog {
         var sites: [Site] = []
 
         for (index, instruction) in instructions.enumerated() {
-            // Capstone runs with `skipData` on, so a word it cannot decode
-            // arrives as a data pseudo-instruction rather than ending the
+            // The disassembler runs with skip-data on, so a word it cannot
+            // decode arrives as a data pseudo-instruction rather than ending the
             // stream. Register state across such a word means nothing.
-            guard instruction.id != 0 else {
+            guard instruction.isDecoded else {
                 pages.removeAll()
                 continue
             }
@@ -99,7 +99,7 @@ extension CustomFirmwareWatchDog {
     /// pointer. Returns `nil` when any layer of the anchor fails, which is how
     /// the three unrelated `sysctlbyname` calls in watchdogd are rejected.
     static func matchSite(
-        instructions: [Instruction],
+        instructions: [ARM64Instruction],
         addIndex: Int,
         pointerRegister: String,
         literalVMA: UInt64,
@@ -151,7 +151,7 @@ extension CustomFirmwareWatchDog {
             where: { instruction in
                 switch state {
                 case .pristine:
-                    instruction.mnemonic == "cset" && instruction.aarch64?.conditionCode == AArch64CC_NE
+                    instruction.mnemonic == "cset" && instruction.detail?.conditionCode == .ne
                 case .patched:
                     isMoveOfOne(instruction)
                 }
@@ -210,7 +210,7 @@ extension CustomFirmwareWatchDog {
         inRegister pointer: String,
         from addIndex: Int,
         toCallAt callIndex: Int,
-        in instructions: [Instruction],
+        in instructions: [ARM64Instruction],
     ) -> Bool {
         if pointer == argumentRegister {
             return true

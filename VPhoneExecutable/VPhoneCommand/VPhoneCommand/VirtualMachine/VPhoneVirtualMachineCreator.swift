@@ -146,7 +146,7 @@ public struct VPhoneVirtualMachineCreator {
         try runFWPrepare(options: options, bundleURL: bundleURL)
 
         print("\n=== fw patch ===")
-        try runFWPatch(enableFrida: options.enableFrida, bundleURL: bundleURL, verbosity: v)
+        try runFWPatch(presetIdentifier: options.patchPreset, bundleURL: bundleURL, verbosity: v)
 
         print("\n=== Restore phase ===")
         try runRestorePhase(bundleURL: bundleURL, verbosity: v)
@@ -238,21 +238,43 @@ public struct VPhoneVirtualMachineCreator {
     }
 
     private func runFWPatch(
-        enableFrida: Bool,
+        presetIdentifier: String,
         bundleURL: URL,
         verbosity v: VPhoneVerbosity,
     ) throws {
-        trace("in-process FirmwarePipeline.patchAll variant=jb", v)
+        trace("in-process FirmwarePipeline.patchAll variant=jb preset=\(presetIdentifier)", v)
+        guard let preset = VPhonePatchPresetStore.preset(named: presetIdentifier) else {
+            let available = VPhonePatchPresetStore.availablePresets().map(\.identifier)
+            throw ValidationError(
+                "Unknown patch preset '\(presetIdentifier)'. Available: \(available.joined(separator: ", "))",
+            )
+        }
         let pipeline = FirmwarePipeline(
             vmDirectory: bundleURL,
             variant: .jb,
             verbose: v.showsToolDetail,
             noBinpack: true,
-            forceExcGuard: false,
-            enableFrida: enableFrida,
+            preset: preset,
         )
         let records = try pipeline.patchAll()
-        print("[fw patch] applied \(records.count) JB patches")
+
+        // A new VM records its choice and its plan, so `cfw install` and any later
+        // re-patch agree without the preset being named again.
+        if let plan = pipeline.resolvedPlan {
+            try VPhonePatchPresetStore.write(
+                VPhoneVirtualMachinePatchSelection(presetIdentifier: presetIdentifier),
+                forVM: bundleURL,
+            )
+            try VPhonePatchPresetStore.write(
+                VPhoneVirtualMachinePatchPlan(
+                    plan: plan,
+                    iOSBase: pipeline.baseProductVersion,
+                    cloudOS: pipeline.cloudOSProductVersion,
+                ),
+                forVM: bundleURL,
+            )
+        }
+        print("[fw patch] applied \(records.count) JB patches (preset \(presetIdentifier))")
     }
 
     // MARK: - restore phase

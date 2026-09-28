@@ -32,8 +32,8 @@
 // Capstone decode, replacement bytes from the Keystone-backed ARM64/ARM64Encoder
 // helpers.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Apply all DiskImages2 ABI pokes. Wired into KernelJailbreakPatcher.findAll().
@@ -93,10 +93,10 @@ extension KernelJailbreakPatcher {
         while off + 8 <= funcEnd {
             defer { off += 4 }
             guard let cmp = disasAt(off), cmp.mnemonic == "cmp",
-                  let ops = cmp.aarch64?.operands, ops.count == 2,
-                  ops[0].type == AARCH64_OP_REG,
+                  let ops = cmp.detail?.operands, ops.count == 2,
+                  ops[0].type == .register,
                   disasm.firstRegisterName(cmp)?.hasPrefix("w") ?? false,
-                  ops[1].type == AARCH64_OP_IMM, ops[1].imm == 9
+                  ops[1].type == .immediate, ops[1].imm == 9
             else { continue }
             guard let nxt = disasAt(off + 4), nxt.mnemonic == "b.ne" else { continue }
             hits.append(off + 4) // the b.ne
@@ -215,9 +215,9 @@ extension KernelJailbreakPatcher {
         while off + 4 <= funcEnd {
             defer { off += 4 }
             guard let ins = disasAt(off), ins.mnemonic == mnemonic,
-                  let ops = ins.aarch64?.operands, ops.count == 2,
-                  ops[0].type == AARCH64_OP_REG,
-                  ops[1].type == AARCH64_OP_MEM, ops[1].mem.disp == disp
+                  let ops = ins.detail?.operands, ops.count == 2,
+                  ops[0].type == .register,
+                  ops[1].type == .memory, ops[1].mem.disp == disp
             else { continue }
             if requireWDest, !(disasm.firstRegisterName(ins)?.hasPrefix("w") ?? false) {
                 continue

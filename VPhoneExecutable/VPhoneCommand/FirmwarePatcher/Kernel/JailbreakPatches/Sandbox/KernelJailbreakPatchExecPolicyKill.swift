@@ -29,6 +29,7 @@
 // an X register).
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     @discardableResult

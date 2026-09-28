@@ -64,6 +64,7 @@
 // layout is refused rather than written into blind.
 
 import Foundation
+import VPhonePatchKit
 
 /// Zeroes `dyld_cache_header.maxSlide` when the cache would otherwise overflow
 /// the kernel's fixed shared region.

@@ -7,8 +7,8 @@
 //   recover bsd_init → locate rootvp panic block → find the unique in-function BL
 //   → cbnz w0/x0 panic → bl imageboot_needed site → patch the branch gate only.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 // MARK: - Conditional branch mnemonics (ARM64)
 
@@ -139,7 +139,7 @@ extension KernelPatcher {
     ///
     /// Capstone renders the target as a hex literal (e.g., `#0x1abc`).
     /// We parse the last whitespace-separated token and strip the leading `#`.
-    private func decodeBranchTargetFromInsn(_ insn: Instruction) -> Int? {
+    private func decodeBranchTargetFromInsn(_ insn: ARM64Instruction) -> Int? {
         // operandString examples:
         //   "w0, #0xf7798c"   (cbz / cbnz)
         //   "#0xf7798c"       (b.eq / b.ne / etc.)

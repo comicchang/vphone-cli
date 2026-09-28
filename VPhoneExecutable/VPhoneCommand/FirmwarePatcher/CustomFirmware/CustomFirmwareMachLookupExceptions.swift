@@ -16,6 +16,7 @@
 // downgrade.
 
 import Foundation
+import VPhonePatchKit
 
 /// Merges the mach-lookup global-name exceptions Campo needs into an
 /// entitlements plist, in place.

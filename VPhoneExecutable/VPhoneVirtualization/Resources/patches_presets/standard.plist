@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The preset every VM gets unless another is named.
+
+  It draws on every patch set the bundle ships and turns on all of their patches
+  bar the Frida Stalker pair, which widen what any process in the guest may do and
+  which nothing needs in order to boot. Each patch's own version gate still decides
+  whether it lands on this pairing of iPhone base and cloudOS.
+
+  Prewritten and reviewed. Nothing in the tool edits a preset: a VM records which
+  boxes its owner changed, and those compose on top of this.
+
+  FirmwarePatchSetCatalog.standardPreset is the in-code copy a dev build without a
+  staged bundle falls back to. FirmwarePatchSetTests checks the two agree.
+-->
+<plist version="1.0">
+<dict>
+	<key>Identifier</key>
+	<string>standard</string>
+	<key>Title</key>
+	<string>Standard</string>
+	<key>Summary</key>
+	<string>The patches every vphone VM needs to boot, jailbroken, with a working display and camera.</string>
+	<key>PatchSets</key>
+	<array>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.bootchain</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.kernel.base</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.kernel.jailbreak</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.kernel.hypervisor</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.kernel.frida</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.devicetree</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.guest.system</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.guest.display</string>
+		</dict>
+		<dict>
+			<key>Kind</key>
+			<string>Bundled</string>
+			<key>Identifier</key>
+			<string>com.vphone.patchset.guest.identity</string>
+		</dict>
+	</array>
+	<key>Selection</key>
+	<dict>
+		<key>Kind</key>
+		<string>Block</string>
+		<key>Patches</key>
+		<array>
+			<string>kernelcache_frida.thread_set_state_entitlement_flag</string>
+			<string>kernelcache_frida.vm_map_delete_immutable_code</string>
+		</array>
+	</dict>
+</dict>
+</plist>

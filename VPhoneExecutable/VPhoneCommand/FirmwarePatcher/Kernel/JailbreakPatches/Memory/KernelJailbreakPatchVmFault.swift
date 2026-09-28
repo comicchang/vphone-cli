@@ -2,8 +2,8 @@
 //
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Force the upstream cs_bypass fast-path in `_vm_fault_enter_prepare`.
@@ -79,10 +79,10 @@ extension KernelJailbreakPatcher {
             let insns = disasm.disassemble(in: buffer.data, at: off, count: 1)
             guard let insn = insns.first else { off += 4; continue }
             if insn.mnemonic == "ldr",
-               let ops = insn.aarch64?.operands, ops.count >= 2,
-               ops[0].type == AARCH64_OP_REG,
-               ops[1].type == AARCH64_OP_MEM,
-               ops[1].mem.base != AARCH64_REG_INVALID,
+               let ops = insn.detail?.operands, ops.count >= 2,
+               ops[0].type == .register,
+               ops[1].type == .memory,
+               ops[1].mem.base != .invalid,
                ops[1].mem.disp == 0x28
             {
                 if disasm.firstRegisterName(insn)?.hasPrefix("w") ?? false {
@@ -102,20 +102,20 @@ extension KernelJailbreakPatcher {
             let insns = disasm.disassemble(in: buffer.data, at: off, count: 1)
             guard let gate = insns.first else { off += 4; continue }
             guard gate.mnemonic == "tbz",
-                  let gateOps = gate.aarch64?.operands, gateOps.count == 3,
-                  gateOps[0].type == AARCH64_OP_REG,
+                  let gateOps = gate.detail?.operands, gateOps.count == 3,
+                  gateOps[0].type == .register,
                   flagRegs.contains(gateOps[0].reg.rawValue),
-                  gateOps[1].type == AARCH64_OP_IMM, gateOps[1].imm == 3,
-                  gateOps[2].type == AARCH64_OP_IMM
+                  gateOps[1].type == .immediate, gateOps[1].imm == 3,
+                  gateOps[2].type == .immediate
             else { off += 4; continue }
 
             // Check mov Wt, #0
             let movInsns = disasm.disassemble(in: buffer.data, at: off + 4, count: 1)
             guard let movInsn = movInsns.first,
                   movInsn.mnemonic == "mov",
-                  let movOps = movInsn.aarch64?.operands, movOps.count == 2,
-                  movOps[0].type == AARCH64_OP_REG,
-                  movOps[1].type == AARCH64_OP_IMM, movOps[1].imm == 0
+                  let movOps = movInsn.detail?.operands, movOps.count == 2,
+                  movOps[0].type == .register,
+                  movOps[1].type == .immediate, movOps[1].imm == 0
             else { off += 4; continue }
             guard disasm.firstRegisterName(movInsn)?.hasPrefix("w") ?? false else { off += 4; continue }
 
@@ -123,8 +123,8 @@ extension KernelJailbreakPatcher {
             let bInsns = disasm.disassemble(in: buffer.data, at: off + 8, count: 1)
             guard let bInsn = bInsns.first,
                   bInsn.mnemonic == "b",
-                  let bOps = bInsn.aarch64?.operands, bOps.count == 1,
-                  bOps[0].type == AARCH64_OP_IMM
+                  let bOps = bInsn.detail?.operands, bOps.count == 1,
+                  bOps[0].type == .immediate
             else { off += 4; continue }
 
             hits.append(off)

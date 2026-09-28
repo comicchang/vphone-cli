@@ -24,6 +24,7 @@ import CryptoKit
 @testable import FirmwarePatcher
 import Foundation
 import Testing
+import VPhonePatchKit
 
 // MARK: - Fixture discovery
 
@@ -283,8 +284,8 @@ struct CustomFirmwareCacheLoaderGateTests {
         #expect(adrp.mnemonic == "adrp")
         #expect(add.mnemonic == "add")
 
-        let page = try #require(adrp.aarch64?.operands.last?.imm)
-        let pageOffset = try #require(add.aarch64?.operands.last?.imm)
+        let page = try #require(adrp.detail?.operands.last?.imm)
+        let pageOffset = try #require(add.detail?.operands.last?.imm)
         #expect(UInt64(page + pageOffset) == anchor.stringVMA)
 
         // And the xref is inside __TEXT,__text, which is the only place a gate

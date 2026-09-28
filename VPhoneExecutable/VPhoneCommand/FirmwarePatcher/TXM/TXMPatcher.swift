@@ -3,8 +3,8 @@
 // Implements the trustcache bypass patch.
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// Patcher for TXM trustcache bypass.
 ///
@@ -12,9 +12,12 @@ import Foundation
 ///   1. Trustcache binary-search BL → mov x0, #0
 ///      (in the AMFI cert verification function identified by the
 ///       unique constant 0x2446 loaded into w19)
-public class TXMPatcher: Patcher {
+public class TXMPatcher: BufferedPatcher {
     public let component = "txm"
     public let verbose: Bool
+
+    /// Which patches the resolved preset turned on. Unrestricted by default.
+    public var gate: VPhonePatchGate = .unrestricted
 
     let buffer: BinaryBuffer
     let disasm = ARM64Disassembler()
@@ -52,6 +55,8 @@ public class TXMPatcher: Patcher {
     // MARK: - Emit
 
     func emit(_ offset: Int, _ patchBytes: Data, patchID: String, description: String) {
+        guard gateAllows(patchID) else { return }
+
         let originalBytes = buffer.readBytes(at: offset, count: patchBytes.count)
 
         let beforeInsn = disasm.disassembleOne(in: buffer.original, at: offset)
@@ -145,11 +150,11 @@ extension TXMPatcher {
             let i4 = insns[i + 4]
             let i5 = insns[i + 5]
 
-            guard isLdrRegFromBaseImm(i0, dest: AARCH64_REG_X1, base: AARCH64_REG_X20, disp: 0x38) else { continue }
-            guard isAddImmediate(i1, dest: AARCH64_REG_X2, base: AARCH64_REG_SP, imm: 4) else { continue }
+            guard isLdrRegFromBaseImm(i0, dest: .x(1), base: .x(20), disp: 0x38) else { continue }
+            guard isAddImmediate(i1, dest: .x(2), base: .sp, imm: 4) else { continue }
             guard isBLOrPatchedMovX0Zero(i2) else { continue }
             guard isLdpX0X1FromX20_0x30(i3) else { continue }
-            guard isAddImmediate(i4, dest: AARCH64_REG_X2, base: AARCH64_REG_SP, imm: 8) else { continue }
+            guard isAddImmediate(i4, dest: .x(2), base: .sp, imm: 8) else { continue }
             guard i5.mnemonic == "bl" else { continue }
 
             matches.append(Int(i2.address))
@@ -181,7 +186,7 @@ extension TXMPatcher {
             let i2 = insns[i + 2]
             let i3 = insns[i + 3]
 
-            guard isMovImm(i0, dest: AARCH64_REG_W2, imm: 0x14) else { continue }
+            guard isMovImm(i0, dest: .w(2), imm: 0x14) else { continue }
             guard isBLOrPatchedMovX0Zero(i1) else { continue }
             guard isCBZW0(i2) else { continue }
             guard isTBZFamilyBit31(i3) else { continue }
@@ -212,64 +217,64 @@ extension TXMPatcher {
         return nil
     }
 
-    private func isMovImm(_ insn: Instruction, dest: aarch64_reg, imm: Int64) -> Bool {
+    private func isMovImm(_ insn: ARM64Instruction, dest: ARM64Register, imm: Int64) -> Bool {
         guard insn.mnemonic == "mov",
-              let ops = insn.aarch64?.operands, ops.count == 2,
-              ops[0].type == AARCH64_OP_REG, ops[0].reg == dest,
-              ops[1].type == AARCH64_OP_IMM, ops[1].imm == imm
+              let ops = insn.detail?.operands, ops.count == 2,
+              ops[0].type == .register, ops[0].reg == dest,
+              ops[1].type == .immediate, ops[1].imm == imm
         else { return false }
         return true
     }
 
-    private func isAddImmediate(_ insn: Instruction, dest: aarch64_reg, base: aarch64_reg, imm: Int64) -> Bool {
+    private func isAddImmediate(_ insn: ARM64Instruction, dest: ARM64Register, base: ARM64Register, imm: Int64) -> Bool {
         guard insn.mnemonic == "add",
-              let ops = insn.aarch64?.operands, ops.count == 3,
-              ops[0].type == AARCH64_OP_REG, ops[0].reg == dest,
-              ops[1].type == AARCH64_OP_REG, ops[1].reg == base,
-              ops[2].type == AARCH64_OP_IMM, ops[2].imm == imm
+              let ops = insn.detail?.operands, ops.count == 3,
+              ops[0].type == .register, ops[0].reg == dest,
+              ops[1].type == .register, ops[1].reg == base,
+              ops[2].type == .immediate, ops[2].imm == imm
         else { return false }
         return true
     }
 
-    private func isLdrRegFromBaseImm(_ insn: Instruction, dest: aarch64_reg, base: aarch64_reg, disp: Int32) -> Bool {
+    private func isLdrRegFromBaseImm(_ insn: ARM64Instruction, dest: ARM64Register, base: ARM64Register, disp: Int32) -> Bool {
         guard insn.mnemonic == "ldr",
-              let ops = insn.aarch64?.operands, ops.count >= 2,
-              ops[0].type == AARCH64_OP_REG, ops[0].reg == dest,
-              ops[1].type == AARCH64_OP_MEM,
+              let ops = insn.detail?.operands, ops.count >= 2,
+              ops[0].type == .register, ops[0].reg == dest,
+              ops[1].type == .memory,
               ops[1].mem.base == base,
               ops[1].mem.disp == disp
         else { return false }
         return true
     }
 
-    private func isLdpX0X1FromX20_0x30(_ insn: Instruction) -> Bool {
+    private func isLdpX0X1FromX20_0x30(_ insn: ARM64Instruction) -> Bool {
         guard insn.mnemonic == "ldp",
-              let ops = insn.aarch64?.operands, ops.count >= 3,
-              ops[0].type == AARCH64_OP_REG, ops[0].reg == AARCH64_REG_X0,
-              ops[1].type == AARCH64_OP_REG, ops[1].reg == AARCH64_REG_X1,
-              ops[2].type == AARCH64_OP_MEM,
-              ops[2].mem.base == AARCH64_REG_X20,
+              let ops = insn.detail?.operands, ops.count >= 3,
+              ops[0].type == .register, ops[0].reg == .x(0),
+              ops[1].type == .register, ops[1].reg == .x(1),
+              ops[2].type == .memory,
+              ops[2].mem.base == .x(20),
               ops[2].mem.disp == 0x30
         else { return false }
         return true
     }
 
-    private func isBLOrPatchedMovX0Zero(_ insn: Instruction) -> Bool {
+    private func isBLOrPatchedMovX0Zero(_ insn: ARM64Instruction) -> Bool {
         insn.mnemonic == "bl" || buffer.readU32(at: Int(insn.address)) == ARM64.movX0_0_U32
     }
 
-    private func isCBZW0(_ insn: Instruction) -> Bool {
+    private func isCBZW0(_ insn: ARM64Instruction) -> Bool {
         guard insn.mnemonic == "cbz",
-              let ops = insn.aarch64?.operands, ops.count == 2,
-              ops[0].type == AARCH64_OP_REG, ops[0].reg == AARCH64_REG_W0
+              let ops = insn.detail?.operands, ops.count == 2,
+              ops[0].type == .register, ops[0].reg == .w(0)
         else { return false }
         return true
     }
 
-    private func isTBZFamilyBit31(_ insn: Instruction) -> Bool {
+    private func isTBZFamilyBit31(_ insn: ARM64Instruction) -> Bool {
         guard insn.mnemonic == "tbnz" || insn.mnemonic == "tbz",
-              let ops = insn.aarch64?.operands, ops.count == 3,
-              ops[1].type == AARCH64_OP_IMM, ops[1].imm == 0x1F
+              let ops = insn.detail?.operands, ops.count == 3,
+              ops[1].type == .immediate, ops[1].imm == 0x1F
         else { return false }
         return true
     }

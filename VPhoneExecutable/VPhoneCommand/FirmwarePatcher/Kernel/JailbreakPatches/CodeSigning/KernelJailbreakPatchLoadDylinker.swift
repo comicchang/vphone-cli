@@ -7,6 +7,7 @@
 // Patch: replace BL with unconditional B to <allow>, skipping the policy check.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Bypass the load_dylinker policy gate in the dyld path.
@@ -67,7 +68,7 @@ extension KernelJailbreakPatcher {
             guard let i1 = insns1.first, i1.mnemonic == "cbz" else { continue }
             guard i1.operandString.hasPrefix("w0, ") else { continue }
 
-            guard let detail1 = i1.aarch64, detail1.operands.count >= 2 else { continue }
+            guard let detail1 = i1.detail, detail1.operands.count >= 2 else { continue }
             let allowTarget = Int(detail1.operands.last!.imm)
 
             // Selector: deny path sets w0 = 2 immediately after CBZ.

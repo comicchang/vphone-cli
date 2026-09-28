@@ -38,6 +38,7 @@
 // the Keystone-backed ARM64Encoder.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     @discardableResult

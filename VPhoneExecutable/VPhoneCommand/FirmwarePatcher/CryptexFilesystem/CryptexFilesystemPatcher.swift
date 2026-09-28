@@ -19,9 +19,10 @@ import Foundation
 import Img4tool
 import VPhoneArchiveKit
 import VPhoneCoreKit
+import VPhonePatchKit
 
 /// Patcher for the Filesystem payload.
-public final class CryptexFilesystemPatcher: Patcher {
+public final class CryptexFilesystemPatcher: BufferedPatcher {
     public let component = "Filesystem"
     public let restoreDir: URL
     public let verbose: Bool
@@ -109,7 +110,7 @@ public final class CryptexFilesystemPatcher: Patcher {
         rebuiltData = try serializePayload(updatedManifest)
 
         guard attachedDevices.isEmpty else {
-            throw FirmwarePatcher.PatcherError.patchVerificationFailed("The filesystem image is still attached. Detach it, then try again.")
+            throw VPhonePatchKit.PatcherError.patchVerificationFailed("The filesystem image is still attached. Detach it, then try again.")
         }
 
         return 1
@@ -157,7 +158,7 @@ public final class CryptexFilesystemPatcher: Patcher {
         }
 
         guard attachedDevices.isEmpty else {
-            throw FirmwarePatcher.PatcherError.patchVerificationFailed("The filesystem image is still attached. Detach it, then try again.")
+            throw VPhonePatchKit.PatcherError.patchVerificationFailed("The filesystem image is still attached. Detach it, then try again.")
         }
 
         print("- Finalizing merged image…")
@@ -177,7 +178,7 @@ public final class CryptexFilesystemPatcher: Patcher {
 
     func copyCryptex(targetMount: String, appOS: Bool = false, systemOS: Bool = false) throws {
         guard appOS || systemOS, !(appOS && systemOS) else {
-            throw FirmwarePatcher.PatcherError.patchVerificationFailed("Specify exactly one cryptex to copy: AppOS or SystemOS.")
+            throw VPhonePatchKit.PatcherError.patchVerificationFailed("Specify exactly one cryptex to copy: AppOS or SystemOS.")
         }
 
         let osPath = if appOS {

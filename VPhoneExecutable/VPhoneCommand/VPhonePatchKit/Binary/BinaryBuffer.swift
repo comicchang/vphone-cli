@@ -5,7 +5,7 @@ import Foundation
 extension Data {
     /// Load a little-endian integer without assuming the buffer is naturally aligned.
     @inlinable
-    func loadLE<T: FixedWidthInteger>(_: T.Type, at offset: Int) -> T {
+    public func loadLE<T: FixedWidthInteger>(_: T.Type, at offset: Int) -> T {
         precondition(offset >= 0 && offset + MemoryLayout<T>.size <= count)
         var value: T = .zero
         _ = Swift.withUnsafeMutableBytes(of: &value) { dst in
@@ -35,14 +35,6 @@ public final class BinaryBuffer: @unchecked Sendable {
         let rebased = data.startIndex == 0 ? data : Data(data)
         self.data = rebased
         original = rebased
-    }
-
-    public convenience init(contentsOf url: URL) throws {
-        // Read, not mapped. A `BinaryBuffer` exists to be mutated, and what it
-        // is built from — a kernelcache, an iBoot — is written back over the
-        // path it came from. See InPlaceRewrite.swift for why a mapping cannot
-        // survive that.
-        try self.init(Data(contentsOfFileToRewrite: url))
     }
 
     // MARK: - Read Helpers

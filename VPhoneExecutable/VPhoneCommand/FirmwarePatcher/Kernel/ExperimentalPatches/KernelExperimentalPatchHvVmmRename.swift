@@ -75,6 +75,7 @@
 //     is already 'X' the patcher skips that occurrence.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelExperimentalPatcher {
     /// Apply Part A (OID rename) + Part B (kernel-internal caller

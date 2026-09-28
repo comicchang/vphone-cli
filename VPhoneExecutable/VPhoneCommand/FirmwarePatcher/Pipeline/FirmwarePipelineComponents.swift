@@ -7,6 +7,7 @@
 // Split out of FirmwarePipeline.swift; the execution loop stays there.
 
 import Foundation
+import VPhonePatchKit
 
 extension FirmwarePipeline {
     // MARK: - Component List Builder
@@ -16,47 +17,70 @@ extension FirmwarePipeline {
     /// - Parameters:
     ///   - restoreDir: The `*Restore*` directory `patchAll()` resolved, captured by value
     ///     into the patcher factory closures below.
-    ///   - iosBaseIs18: True when the iPhone base is iOS 18.x (read from
-    ///     `iPhone-BuildManifest.plist`). Gates the skywalk-netagent boot-arg workaround
-    ///     (18.x-specific mDNSResponder crash-loop).
-    ///   - iosBaseIs27: True when the iPhone base is iOS 27.x. Gates the iOS-27-only JB
-    ///     kernel patches (`KernelJailbreakPatcher.applyIOS27`); false for 18.x/26.x so those
-    ///     bases are byte-identical to pre-branch.
-    ///   - cloudOSIsFridaCapable: True when the cloudOS kernel is 26.4+; gates the opt-in
-    ///     Frida kernel patches.
+    ///   - iOSBase: The iPhone base `ProductVersion` read from `iPhone-BuildManifest.plist`,
+    ///     or nil when it could not be read. Two patchers still branch on the release
+    ///     itself rather than on a patch being selected: the skywalk-netagent boot-arg is
+    ///     18.x-only, and `KernelJailbreakPatcher.applyIOS27` changes the shapes a patch
+    ///     method looks for rather than whether it runs.
+    ///   - plan: The resolved preset, or nil when there is none. A patcher whose whole
+    ///     patch set the preset left out is not built at all: its records would be
+    ///     declared by nothing, and an undeclared record applies rather than being
+    ///     dropped (see ``VPhonePatchGate``), so leaving the set out has to mean
+    ///     leaving the patcher out.
+    ///   - gate: Handed to each patcher built below, so a blocked patch is never written.
     func buildComponentList(
         restoreDir: URL,
-        iosBaseIs18: Bool,
-        iosBaseIs27: Bool,
-        cloudOSIsFridaCapable: Bool,
+        iOSBase: VPhoneVersion?,
+        plan: VPhonePatchPlan? = nil,
+        gate: VPhonePatchGate = .unrestricted,
     ) -> [ComponentDescriptor] {
         var components: [ComponentDescriptor] = []
 
-        // Captured by value into the patcher factory closures below (avoids
-        // capturing self). Always on for iOS 18 bases: 18.6.2's runningboardd/
-        // SpringBoard trips GUARD_TYPE_MACH_PORT flavor 10, crash-looping the
-        // UI, and the VM won't boot without this patch there. Otherwise off by
-        // default and opt-in via `forceExcGuard` (--force-exc-guard):
-        // some third-party apps shipping crash-reporting/RASP SDKs call
-        // task_swap_exception_ports(), which the research kernel can enforce
-        // as a fatal EXC_GUARD/GUARD_TYPE_MACH_PORT/KOBJECT_REPLY_PORT_SEMANTICS
-        // violation (see upstream issue #291 / PR #297) — but this isn't
-        // required for the VM itself to boot on 26.x, so it stays opt-in
-        // rather than always-on for regular/jb/exp.
-        let applyExcGuard = iosBaseIs18 || forceExcGuard
+        /// Whether the plan kept a bundled set. True when there is no plan, so a
+        /// directly built pipeline runs every patcher its variant names.
+        func includesSet(_ identifier: String) -> Bool {
+            plan?.includesPatchSet(identifier) ?? true
+        }
 
-        // Same capture-by-value; true only for iOS 27 bases. Gates the iOS-27-only
-        // JB kernel patches so 18.x/26.x bases apply none of them.
-        let applyIOS27 = iosBaseIs27
+        let includeBootChain = includesSet(FirmwareBootChainPatchSet.identifier)
+        let includeKernelBase = includesSet(FirmwareKernelBasePatchSet.identifier)
+        let includeKernelJailbreak = includesSet(FirmwareKernelJailbreakPatchSet.identifier)
+        let includeHypervisor = includesSet(FirmwareKernelHypervisorPatchSet.identifier)
+        let includeDeviceTree = includesSet(FirmwareDeviceTreePatchSet.identifier)
 
-        // Opt-in Frida Stalker kernel relaxations (--frida), gated to cloudOS 26.4+.
-        let applyFrida = enableFrida && cloudOSIsFridaCapable
+        /// Whether the plan turned a patch on. Without a plan, fall back to the
+        /// release the patch is pinned to, which is the same answer the standard
+        /// preset gives.
+        func isEnabled(_ identifier: String, fallback: Bool) -> Bool {
+            plan?.isEnabled(identifier) ?? fallback
+        }
+
+        let baseIs18 = iOSBase?.major == 18
+        let baseIs27 = iOSBase?.major == 27
+
+        // The Mach port guard disable. Pinned to iOS 18, whose runningboardd and
+        // SpringBoard trip GUARD_TYPE_MACH_PORT flavor 10 and crash-loop the UI —
+        // the VM does not boot there without it. On 26.x and 27.x it only hides
+        // violations, so it is off unless a VM checks it on.
+        let applyExcGuard = isEnabled("kernel.thread_guard_violation", fallback: baseIs18)
+
+        // Not a selection: `applyIOS27` changes which shapes the JB patch methods
+        // look for, and which sandbox hook is left real for the fpfs trampoline.
+        // It follows the base release, and the gate decides separately whether each
+        // of those patches is written.
+        let applyIOS27 = baseIs27
+
+        // Frida Stalker relaxations, off unless the VM asked for them. Their own
+        // cloudOS 26.4+ gate decides whether they then land.
+        let applyFrida = FirmwareKernelFridaPatchSet.manifest.patches.contains {
+            isEnabled($0.identifier, fallback: false)
+        }
 
         // iOS 18 bases: disable the skywalk flowswitch netagents via boot-arg so
         // Network.framework uses the BSD path (the 26.1-kernel skywalk
         // channel-create traps in the 18.x Network.framework and crash-loops
         // mDNSResponder → no DNS). Empty on 26.x bases (stock boot-args).
-        let extraBootArgs = iosBaseIs18 ? "if_attach_nx=0x3" : ""
+        let extraBootArgs = baseIs18 ? "if_attach_nx=0x3" : ""
 
         // 1. AVPBooter — always present, lives in VM root.
         //    Patched for every non-less variant (regular/dev/jb/exp).
@@ -65,10 +89,12 @@ extension FirmwarePipeline {
             inRestoreDir: false,
             searchPatterns: ["AVPBooter*.bin"],
             patcherFactories: {
-                if variant != .less {
+                if variant != .less, includeBootChain {
                     return [
                         { data, verbose in
-                            AVPBooterPatcher(data: data, verbose: verbose)
+                            let p = AVPBooterPatcher(data: data, verbose: verbose)
+                            p.gate = gate
+                            return p
                         },
                     ]
                 }
@@ -86,18 +112,24 @@ extension FirmwarePipeline {
                 case .less:
                     []
                 case .regular, .dev:
-                    [{ data, verbose in
-                        IBootPatcher(data: data, mode: .ibss, verbose: verbose)
-                    }]
+                    includeBootChain ? [{ data, verbose in
+                        let p = IBootPatcher(data: data, mode: .ibss, verbose: verbose)
+                        p.gate = gate
+                        return p
+                    }] : []
                 case .jb, .exp:
-                    [
+                    includeBootChain ? [
                         { data, verbose in
-                            IBootPatcher(data: data, mode: .ibss, verbose: verbose)
+                            let p = IBootPatcher(data: data, mode: .ibss, verbose: verbose)
+                            p.gate = gate
+                            return p
                         },
                         { data, verbose in
-                            IBootJailbreakPatcher(data: data, mode: .ibss, verbose: verbose)
+                            let p = IBootJailbreakPatcher(data: data, mode: .ibss, verbose: verbose)
+                            p.gate = gate
+                            return p
                         },
-                    ]
+                    ] : []
                 }
             }(),
         ))
@@ -107,11 +139,12 @@ extension FirmwarePipeline {
             name: "iBEC",
             inRestoreDir: true,
             searchPatterns: ["Firmware/dfu/iBEC.vresearch101.RELEASE.im4p"],
-            patcherFactories: [{ data, verbose in
+            patcherFactories: includeBootChain ? [{ data, verbose in
                 let p = IBootPatcher(data: data, mode: .ibec, verbose: verbose)
                 p.extraBootArgs = extraBootArgs
+                p.gate = gate
                 return p
-            }],
+            }] : [],
         ))
 
         // 4. LLB - Not required by the less variant, still added for the serial logs.
@@ -119,11 +152,12 @@ extension FirmwarePipeline {
             name: "LLB",
             inRestoreDir: true,
             searchPatterns: ["Firmware/all_flash/LLB.vresearch101.RELEASE.im4p"],
-            patcherFactories: [{ data, verbose in
+            patcherFactories: includeBootChain ? [{ data, verbose in
                 let p = IBootPatcher(data: data, mode: .llb, verbose: verbose)
                 p.extraBootArgs = extraBootArgs
+                p.gate = gate
                 return p
-            }],
+            }] : [],
         ))
 
         // 5. TXM — dev/jb/exp variants use TXMDevPatcher (adds entitlements, debugger, dev-mode)
@@ -136,13 +170,17 @@ extension FirmwarePipeline {
                 case .less:
                     []
                 case .regular:
-                    [{ data, verbose in
-                        TXMPatcher(data: data, verbose: verbose)
-                    }]
+                    includeBootChain ? [{ data, verbose in
+                        let p = TXMPatcher(data: data, verbose: verbose)
+                        p.gate = gate
+                        return p
+                    }] : []
                 case .dev, .jb, .exp:
-                    [{ data, verbose in
-                        TXMDevPatcher(data: data, verbose: verbose)
-                    }]
+                    includeBootChain ? [{ data, verbose in
+                        let p = TXMDevPatcher(data: data, verbose: verbose)
+                        p.gate = gate
+                        return p
+                    }] : []
                 }
             }(),
         ))
@@ -158,43 +196,32 @@ extension FirmwarePipeline {
                 case .less:
                     []
                 case .regular:
-                    [{ data, verbose in
-                        KernelPatcher(data: data, verbose: verbose, isDev: false, applyExcGuard: applyExcGuard)
-                    }]
+                    includeKernelBase ? [{ data, verbose in
+                        let p = KernelPatcher(
+                            data: data,
+                            verbose: verbose,
+                            isDev: false,
+                            applyExcGuard: applyExcGuard,
+                        )
+                        p.gate = gate
+                        return p
+                    }] : []
                 case .dev:
-                    [{ data, verbose in
-                        KernelPatcher(data: data, verbose: verbose, isDev: true)
-                    }]
-                case .jb:
-                    [
-                        { data, verbose in
-                            KernelPatcher(data: data, verbose: verbose, isDev: false, applyExcGuard: applyExcGuard)
-                        },
-                        { data, verbose in
-                            let p = KernelJailbreakPatcher(data: data, verbose: verbose)
-                            p.applyIOS27 = applyIOS27
-                            p.applyFrida = applyFrida
-                            return p
-                        },
-                        { data, verbose in
-                            KernelExperimentalPatcher(data: data, verbose: verbose)
-                        },
-                    ]
-                case .exp:
-                    [
-                        { data, verbose in
-                            KernelPatcher(data: data, verbose: verbose, isDev: false, applyExcGuard: applyExcGuard)
-                        },
-                        { data, verbose in
-                            let p = KernelJailbreakPatcher(data: data, verbose: verbose)
-                            p.applyIOS27 = applyIOS27
-                            p.applyFrida = applyFrida
-                            return p
-                        },
-                        { data, verbose in
-                            KernelExperimentalPatcher(data: data, verbose: verbose)
-                        },
-                    ]
+                    includeKernelBase ? [{ data, verbose in
+                        let p = KernelPatcher(data: data, verbose: verbose, isDev: true)
+                        p.gate = gate
+                        return p
+                    }] : []
+                case .jb, .exp:
+                    kernelJailbreakFactories(
+                        applyExcGuard: applyExcGuard,
+                        applyIOS27: applyIOS27,
+                        applyFrida: applyFrida,
+                        includeBase: includeKernelBase,
+                        includeJailbreak: includeKernelJailbreak,
+                        includeHypervisor: includeHypervisor,
+                        gate: gate,
+                    )
                 }
             }(),
         ))
@@ -206,13 +233,15 @@ extension FirmwarePipeline {
             name: "DeviceTree",
             inRestoreDir: true,
             searchPatterns: ["Firmware/all_flash/DeviceTree.vphone600ap.im4p"],
-            patcherFactories: [{ data, verbose in
-                DeviceTreePatcher(
+            patcherFactories: includeDeviceTree ? [{ data, verbose in
+                let p = DeviceTreePatcher(
                     data: data,
                     verbose: verbose,
                     includeIdentityPatches: dtIncludeIdentity,
                 )
-            }],
+                p.gate = gate
+                return p
+            }] : [],
         ))
 
         // 8. Filesystem
@@ -254,6 +283,79 @@ extension FirmwarePipeline {
             }(),
         ))
 
-        return components
+        return appendingExternalPatchers(to: components, plan: plan, gate: gate, iOSBase: iOSBase)
+    }
+
+    // MARK: - External Patch Sets
+
+    /// Give every loaded `.vphonepatchset` its turn on each component.
+    ///
+    /// A no-op unless the preset named an external set, which no shipped preset
+    /// does. The manifest decides which components a set is asked about, so this
+    /// never invents work for a set whose patches are off.
+    private func appendingExternalPatchers(
+        to components: [ComponentDescriptor],
+        plan: VPhonePatchPlan?,
+        gate: VPhonePatchGate,
+        iOSBase: VPhoneVersion?,
+    ) -> [ComponentDescriptor] {
+        guard let plan, !loadedPatchSets.isEmpty else { return components }
+        let context = VPhonePatchSetContext(
+            iOSBase: iOSBase,
+            cloudOS: cloudOSProductVersion,
+            gate: gate,
+            parameters: plan.parameters,
+            verbose: verbose,
+        )
+        return components.map { descriptor in
+            guard let component = VPhoneFirmwareComponent(rawValue: descriptor.name) else {
+                return descriptor
+            }
+            return descriptor.appending(
+                loadedPatchSets.factories(for: component, plan: plan, context: context),
+            )
+        }
+    }
+
+    // MARK: - Kernel Factories
+
+    /// The kernelcache patcher chain the JB and EXP variants share.
+    ///
+    /// Each patcher corresponds to one bundled patch set, and a set the preset
+    /// left out drops its patcher rather than being filtered afterwards.
+    private func kernelJailbreakFactories(
+        applyExcGuard: Bool,
+        applyIOS27: Bool,
+        applyFrida: Bool,
+        includeBase: Bool,
+        includeJailbreak: Bool,
+        includeHypervisor: Bool,
+        gate: VPhonePatchGate,
+    ) -> [(Data, Bool) throws -> any Patcher] {
+        var factories: [(Data, Bool) throws -> any Patcher] = []
+        if includeBase {
+            factories.append { data, verbose in
+                let p = KernelPatcher(data: data, verbose: verbose, isDev: false, applyExcGuard: applyExcGuard)
+                p.gate = gate
+                return p
+            }
+        }
+        if includeJailbreak {
+            factories.append { data, verbose in
+                let p = KernelJailbreakPatcher(data: data, verbose: verbose)
+                p.applyIOS27 = applyIOS27
+                p.applyFrida = applyFrida
+                p.gate = gate
+                return p
+            }
+        }
+        if includeHypervisor {
+            factories.append { data, verbose in
+                let p = KernelExperimentalPatcher(data: data, verbose: verbose)
+                p.gate = gate
+                return p
+            }
+        }
+        return factories
     }
 }

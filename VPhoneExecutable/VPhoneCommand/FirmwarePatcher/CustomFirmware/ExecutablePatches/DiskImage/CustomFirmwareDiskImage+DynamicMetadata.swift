@@ -1,4 +1,5 @@
 import Foundation
+import VPhonePatchKit
 
 extension CustomFirmwareDiskImage {
     // MARK: - ObjC metadata

@@ -12,6 +12,7 @@
 // The sysent entries use arm64e chained auth-rebase fixup pointers.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     // MARK: - Constants

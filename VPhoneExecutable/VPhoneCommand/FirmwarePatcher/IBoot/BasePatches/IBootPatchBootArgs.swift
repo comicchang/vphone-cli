@@ -2,8 +2,8 @@
 //
 // Part of IBootPatcher; see IBootPatcher.swift for the patch schedule by mode.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension IBootPatcher {
     // MARK: - 3. Boot-Args (iBEC / LLB)
@@ -114,7 +114,7 @@ extension IBootPatcher {
                 // First operand of ADRP must be x2
                 guard a.operandString.hasPrefix("x2,") else { continue }
 
-                guard let aDetail = a.aarch64, let bDetail = b.aarch64 else { continue }
+                guard let aDetail = a.detail, let bDetail = b.detail else { continue }
                 guard aDetail.operands.count >= 2, bDetail.operands.count >= 3 else { continue }
 
                 // ADRP Rd must equal ADD Rn (same register)

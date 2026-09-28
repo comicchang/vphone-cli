@@ -1,4 +1,5 @@
 import Foundation
+import VPhonePatchKit
 
 public extension DyldSharedCacheHypervisorVirtualMachinePatcher {
     /// One occurrence of the pristine cstring in a standalone Mach-O.

@@ -2,8 +2,8 @@
 //
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// NOP the upstream early `pid == 0` reject gate in `task_for_pid`.
@@ -73,9 +73,9 @@ extension KernelJailbreakPatcher {
 
         // cbz wPid, fail
         guard cbzPid.mnemonic == "cbz",
-              let cbzPidOps = cbzPid.aarch64?.operands, cbzPidOps.count == 2,
-              cbzPidOps[0].type == AARCH64_OP_REG,
-              cbzPidOps[1].type == AARCH64_OP_IMM
+              let cbzPidOps = cbzPid.detail?.operands, cbzPidOps.count == 2,
+              cbzPidOps[0].type == .register,
+              cbzPidOps[1].type == .immediate
         else { return nil }
         let failTarget = cbzPidOps[1].imm
 
@@ -91,9 +91,9 @@ extension KernelJailbreakPatcher {
 
         // cbz x0, fail (same target)
         guard cbzRet.mnemonic == "cbz",
-              let cbzRetOps = cbzRet.aarch64?.operands, cbzRetOps.count == 2,
-              cbzRetOps[0].type == AARCH64_OP_REG,
-              cbzRetOps[1].type == AARCH64_OP_IMM,
+              let cbzRetOps = cbzRet.detail?.operands, cbzRetOps.count == 2,
+              cbzRetOps[0].type == .register,
+              cbzRetOps[1].type == .immediate,
               cbzRetOps[1].imm == failTarget
         else { return nil }
         // x0
@@ -101,8 +101,8 @@ extension KernelJailbreakPatcher {
 
         // Look backward for ldr wPid, [x?, #8] and ldr xTaskPtr, [x?, #0x10]
         let scanStart = max(funcStart, off - 0x18)
-        var pidLoad: Instruction? = nil
-        var taskptrLoad: Instruction? = nil
+        var pidLoad: ARM64Instruction? = nil
+        var taskptrLoad: ARM64Instruction? = nil
         var prevOff = scanStart
         while prevOff < off {
             let prevInsns = disasm.disassemble(in: buffer.data, at: prevOff, count: 1)
@@ -117,37 +117,37 @@ extension KernelJailbreakPatcher {
         }
         guard let pid = pidLoad, taskptrLoad != nil else { return nil }
         // pid register must match cbz operand
-        guard let pidOps = pid.aarch64?.operands, !pidOps.isEmpty,
+        guard let pidOps = pid.detail?.operands, !pidOps.isEmpty,
               pidOps[0].reg == cbzPidOps[0].reg
         else { return nil }
 
         return off
     }
 
-    private func isMovImmZero(_ insn: Instruction, dstName: String) -> Bool {
+    private func isMovImmZero(_ insn: ARM64Instruction, dstName: String) -> Bool {
         guard insn.mnemonic == "mov",
-              let ops = insn.aarch64?.operands, ops.count == 2,
-              ops[0].type == AARCH64_OP_REG,
-              ops[1].type == AARCH64_OP_IMM, ops[1].imm == 0
+              let ops = insn.detail?.operands, ops.count == 2,
+              ops[0].type == .register,
+              ops[1].type == .immediate, ops[1].imm == 0
         else { return false }
         return disasm.firstRegisterName(insn) == dstName
     }
 
-    private func isWLdrFromXImm(_ insn: Instruction, imm: Int32) -> Bool {
+    private func isWLdrFromXImm(_ insn: ARM64Instruction, imm: Int32) -> Bool {
         guard insn.mnemonic == "ldr",
-              let ops = insn.aarch64?.operands, ops.count >= 2,
-              ops[0].type == AARCH64_OP_REG,
-              ops[1].type == AARCH64_OP_MEM,
+              let ops = insn.detail?.operands, ops.count >= 2,
+              ops[0].type == .register,
+              ops[1].type == .memory,
               ops[1].mem.disp == imm
         else { return false }
         return disasm.firstRegisterName(insn)?.hasPrefix("w") ?? false
     }
 
-    private func isXLdrFromXImm(_ insn: Instruction, imm: Int32) -> Bool {
+    private func isXLdrFromXImm(_ insn: ARM64Instruction, imm: Int32) -> Bool {
         guard insn.mnemonic == "ldr",
-              let ops = insn.aarch64?.operands, ops.count >= 2,
-              ops[0].type == AARCH64_OP_REG,
-              ops[1].type == AARCH64_OP_MEM,
+              let ops = insn.detail?.operands, ops.count >= 2,
+              ops[0].type == .register,
+              ops[1].type == .memory,
               ops[1].mem.disp == imm
         else { return false }
         return disasm.firstRegisterName(insn)?.hasPrefix("x") ?? false

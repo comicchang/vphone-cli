@@ -1,5 +1,79 @@
 # Patch Comparison: Regular / Development / Jailbreak / Experimental
 
+> **Patch sets and presets (2026-09-28):** every patch is now *declared*, and
+> selection happens before any byte is written. The declarations live in nine
+> bundled patch sets under `VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/`
+> (`bootchain`, `kernel.base`, `kernel.jailbreak`, `kernel.hypervisor`,
+> `kernel.frida`, `devicetree`, `guest.system`, `guest.display`,
+> `guest.identity`), listed by `FirmwarePatchSetCatalog`. A declaration's
+> identifier is the record identifier the patcher already emits, or the common
+> prefix when one patch writes several sites — so `jb.kcall10` is one selectable
+> patch covering its four records, and `sandbox_ext` covers every
+> `sandbox_ext_<index>`. 115 patches are declared in total. `vphone-cli fw patches`
+> prints them; `--json` is what the Launchpad patch editor reads.
+>
+> Two presets ship, prewritten, in
+> `VPhone.bundle/Contents/Resources/patches_presets/`. Both name all nine sets and
+> differ only in their selection: `standard` (the default, and what a VM gets
+> unless `--preset` says otherwise) blocks the two Frida Stalker relaxations;
+> `extended` blocks nothing. A VM records only the boxes its owner changed, in
+> `<vm>/PatchSelection.plist`, and `fw patch` writes what it resolved to
+> `<vm>/PatchPlan.plist` for `cfw install` to reuse.
+>
+> **Patch sets also load from outside the bundle.** A `.vphonepatchset` is a macOS
+> loadable bundle whose `Contents/Resources/Manifest.plist` is read before any of
+> its code is mapped, and whose executable exports one symbol,
+> `vphone_patch_set_principal`, returning a `VPhonePatchSetPrincipal` that hands the
+> pipeline one `BufferedPatcher` per component the plan enabled. Not
+> `NSPrincipalClass`: PatchKit is built for library evolution, so a subclass of a
+> PatchKit class is registered with the ObjC runtime only when its metadata is first
+> realized, and `Bundle.principalClass` therefore resolves to the wrong class
+> entirely. `VPhoneExecutable/VPhoneCommand/VPhonePatchSetExample` is the template
+> and is what the loader tests load.
+>
+> An external set can patch the boot chain only, and reaches a run through a preset
+> in `~/.vphone/patches_presets/` naming it by identifier *and* path — the manifest
+> at that path has to declare that identifier. `vphone-cli patchset import` copies a
+> set into `~/.vphone/patchsets` and ad hoc signs it, which is what makes a bundle
+> straight out of Xcode loadable at all: the linker signs the Mach-O but seals no
+> resources, so `codesign --verify` rejects it until one `codesign --force --sign -`
+> pass over the bundle fixes it. The signature is re-verified from disk at every
+> load. Root `cfw install` loads no external set, so nothing here is on a privileged
+> path.
+>
+> **Version gates replaced three flags.** The patches `--frida`,
+> `--force-exc-guard` and `--force-dsc-maxslide` controlled now carry a structured
+> `VPhonePatchApplicability`: `kernel.thread_guard_violation` is pinned to
+> `iOSBase: .major(18)` (whose runningboardd trips a flavor-10 Mach port guard and
+> crash-loops the UI), `dsc_maxslide.zero` to `.major(27)`, and the two
+> `kernelcache_frida.*` patches to `cloudOS: .atLeast(26, 4)`. A preset can turn a
+> patch off, and a VM can turn one on that its preset leaves off, but neither can
+> widen a version gate — so forcing the guard or the slide onto a 26.x base is no
+> longer possible. That capability was opt-in for third-party RASP SDKs and was
+> never required to boot.
+>
+> Two of the three flags are gone from the surface as well: `--force-exc-guard` no
+> longer exists, and `--frida` survives only on the `patch-component` developer
+> subcommand, not on `vm create` or `fw patch`. `--force-dsc-maxslide` is **still
+> plumbed** through `vm create`, `VPhoneVirtualMachineCreateOptions`, the Launchpad
+> helper protocol and the Launchpad new-machine sheet, where it now reaches an
+> installer branch the plan has already decided; removing that chain is outstanding
+> and touches the privileged helper's XPC signature, so it is its own change.
+>
+> The `iosBaseIs18` / `iosBaseIs27` booleans are gone from the pipeline too: it now
+> carries a parsed `VPhoneVersion` (major, minor, patch). Two things still branch
+> on the release rather than on a selection, because they change *which shapes a
+> patch looks for* rather than whether it runs: the 18.x skywalk-netagent
+> boot-arg, and `KernelJailbreakPatcher.applyIOS27`.
+>
+> **Byte-identity check (2026-09-28):** the golden corpus was re-run over cloudOS
+> 26.4 with iOS 26.1, 26.4 and 27.0 bases. `--preset standard` reproduced the
+> pre-patch-set output for all three, digest for digest, and `--preset extended`
+> reproduced the old `--frida` case exactly. No run emitted the
+> `declared by no patch set` warning, so every record the boot chain emits is
+> covered by a declaration. The one case that no longer exists is
+> `--force-exc-guard` on a 26.1 base, for the reason above.
+
 > **Current product scope (September 2026):** the tables below preserve the
 > historical patch comparison. The public runtime now exposes only JB. Guest
 > package managers, Procursus, and first-boot package setup are outside this

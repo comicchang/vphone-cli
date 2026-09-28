@@ -9,6 +9,7 @@
 //     EXPPatches/KernelExperimentalPatchHvVmmRename.swift for the implementation.
 
 import Foundation
+import VPhonePatchKit
 
 /// Experimental kernel patcher.
 ///
@@ -16,7 +17,7 @@ import Foundation
 /// encoders, code-cave finder, string-anchored function finders, etc.) from
 /// `KernelJailbreakPatcherBase` so EXP-specific patches can use the same helpers
 /// as JB ones without duplicating them.
-public final class KernelExperimentalPatcher: KernelJailbreakPatcherBase, Patcher {
+public final class KernelExperimentalPatcher: KernelJailbreakPatcherBase, BufferedPatcher {
     public let component = "kernelcache_exp"
 
     public func findAll() throws -> [PatchRecord] {

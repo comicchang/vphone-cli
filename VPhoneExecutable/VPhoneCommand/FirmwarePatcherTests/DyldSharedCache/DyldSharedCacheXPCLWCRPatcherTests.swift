@@ -20,11 +20,11 @@
 // `cp -c` — APFS `clonefile`, so instant and near-free — under the system
 // temporary directory, or `VPHONE_DSC_SCRATCH` when it is set.
 
-import Capstone
 import CryptoKit
 @testable import FirmwarePatcher
 import Foundation
 import Testing
+import VPhonePatchKit
 
 // MARK: - The frozen reference
 
@@ -383,7 +383,7 @@ struct DyldSharedCacheXPCLWCRParityTests {
 @Suite(.serialized, .enabled(if: LWCRFixture.runs, LWCRFixture.skipReason))
 struct DyldSharedCacheXPCLWCRShapeTests {
     /// `_xpc_token_satisfies_lwcr` as it is disassembled out of a cache.
-    private func functionStream(in directory: URL) throws -> [Instruction] {
+    private func functionStream(in directory: URL) throws -> [ARM64Instruction] {
         let chunks = try DyldSharedCacheChunkSet(directory: directory)
         var address: UInt64?
         for candidate in DyldSharedCacheXPCLWCRPatcher.symbolCandidates {
@@ -437,7 +437,7 @@ struct DyldSharedCacheXPCLWCRShapeTests {
             DyldSharedCacheXPCLWCRPatcher.findConsistencyCheck(in: stream, disassembler: disassembler),
         )
         #expect(site.cset.mnemonic == "cset")
-        #expect(site.cset.aarch64?.conditionCode == AArch64CC_NE)
+        #expect(site.cset.detail?.conditionCode == .ne)
         #expect(site.eor.mnemonic == "eor")
         #expect(site.tbz.mnemonic == "tbz")
         #expect(site.eor.address == site.cset.address + 4)
@@ -477,7 +477,7 @@ struct DyldSharedCacheXPCLWCRShapeTests {
             DyldSharedCacheXPCLWCRPatcher.findPatchedShape(in: stream, disassembler: disassembler),
         )
         #expect(already.mnemonic == "cset")
-        #expect(already.aarch64?.conditionCode == AArch64CC_EQ)
+        #expect(already.detail?.conditionCode == .eq)
         #expect(already.address == outcome.records[0].virtualAddress)
     }
 

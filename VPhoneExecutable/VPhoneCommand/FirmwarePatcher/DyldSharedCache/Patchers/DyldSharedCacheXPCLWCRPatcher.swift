@@ -49,8 +49,8 @@
 // cache per 16 KiB page; the resulting cdHash change is accepted by the JB's
 // always-true AMFI cdhash-trust patch.
 
-import Capstone
 import Foundation
+import VPhonePatchKit
 
 /// Patches `_xpc_token_satisfies_lwcr` in the shared cache's libxpc.
 public enum DyldSharedCacheXPCLWCRPatcher {
@@ -253,9 +253,9 @@ public enum DyldSharedCacheXPCLWCRPatcher {
 
     /// The three instructions the patch rewrites.
     struct ConsistencyCheck {
-        let cset: Instruction
-        let eor: Instruction
-        let tbz: Instruction
+        let cset: ARM64Instruction
+        let eor: ARM64Instruction
+        let tbz: ARM64Instruction
     }
 
     /// Locate the LWCR self-consistency idiom.
@@ -269,7 +269,7 @@ public enum DyldSharedCacheXPCLWCRPatcher {
     /// `cset` and the `tbz` are common shapes on their own, and the register
     /// dataflow between the three is what makes the match unambiguous.
     static func findConsistencyCheck(
-        in instructions: [Instruction],
+        in instructions: [ARM64Instruction],
         disassembler: ARM64Disassembler,
     ) -> ConsistencyCheck? {
         guard instructions.count >= 2 else { return nil }
@@ -290,14 +290,14 @@ public enum DyldSharedCacheXPCLWCRPatcher {
             else { continue }
 
             // The `cset wC, ne` feeding the xor, within a short window back.
-            var cset: Instruction?
+            var cset: ARM64Instruction?
             var back = index - 1
             while back >= 0, back >= index - 5 {
                 let candidate = instructions[back]
                 if candidate.mnemonic == "cset", register(candidate, 0, disassembler) == source {
-                    // The condition is read off Capstone's decode, not the
-                    // printed operand text.
-                    if candidate.aarch64?.conditionCode == AArch64CC_NE {
+                    // The condition is read off the decode, not the printed
+                    // operand text.
+                    if candidate.detail?.conditionCode == .ne {
                         cset = candidate
                     }
                     break
@@ -323,15 +323,15 @@ public enum DyldSharedCacheXPCLWCRPatcher {
     /// that search looks for the very instructions this patch replaced. On an
     /// already-patched cache the idiom is gone by construction.
     static func findPatchedShape(
-        in instructions: [Instruction],
+        in instructions: [ARM64Instruction],
         disassembler: ARM64Disassembler,
-    ) -> Instruction? {
+    ) -> ARM64Instruction? {
         guard instructions.count >= 3 else { return nil }
         for index in 0 ..< (instructions.count - 2) {
             let cset = instructions[index]
             guard cset.mnemonic == "cset",
                   register(cset, 0, disassembler) == "w0",
-                  cset.aarch64?.conditionCode == AArch64CC_EQ,
+                  cset.detail?.conditionCode == .eq,
                   instructions[index + 1].mnemonic == "nop",
                   instructions[index + 2].mnemonic == "nop"
             else { continue }
@@ -345,7 +345,7 @@ public enum DyldSharedCacheXPCLWCRPatcher {
                     back -= 1
                     continue
                 }
-                let operands = candidate.aarch64?.operands ?? []
+                let operands = candidate.detail?.operands ?? []
                 if operands.count == 2, let value = immediate(candidate, 1), value == 0 {
                     return cset
                 }
@@ -367,9 +367,9 @@ public enum DyldSharedCacheXPCLWCRPatcher {
         in chunks: DyldSharedCacheChunkSet,
         at vma: UInt64,
         disassembler: ARM64Disassembler,
-    ) throws -> [Instruction] {
+    ) throws -> [ARM64Instruction] {
         let window = try chunks.readAtVMA(vma, length: maxInstructions * 4, allowShort: true)
-        var result: [Instruction] = []
+        var result: [ARM64Instruction] = []
         for insn in disassembler.disassemble(window, at: vma) {
             result.append(insn)
             if insn.mnemonic == "ret" || insn.mnemonic == "retab" {
@@ -383,21 +383,21 @@ public enum DyldSharedCacheXPCLWCRPatcher {
 
     /// Canonical name of operand `index` when it is a register, else `nil`.
     static func register(
-        _ insn: Instruction,
+        _ insn: ARM64Instruction,
         _ index: Int,
         _ disassembler: ARM64Disassembler,
     ) -> String? {
-        guard let operands = insn.aarch64?.operands, index < operands.count else { return nil }
+        guard let operands = insn.detail?.operands, index < operands.count else { return nil }
         let operand = operands[index]
-        guard operand.type == AARCH64_OP_REG else { return nil }
-        return disassembler.registerName(UInt32(operand.reg.rawValue))
+        guard operand.type == .register else { return nil }
+        return operand.reg.name
     }
 
     /// Value of operand `index` when it is an immediate, else `nil`.
-    static func immediate(_ insn: Instruction, _ index: Int) -> Int64? {
-        guard let operands = insn.aarch64?.operands, index < operands.count else { return nil }
+    static func immediate(_ insn: ARM64Instruction, _ index: Int) -> Int64? {
+        guard let operands = insn.detail?.operands, index < operands.count else { return nil }
         let operand = operands[index]
-        guard operand.type == AARCH64_OP_IMM else { return nil }
+        guard operand.type == .immediate else { return nil }
         return operand.imm
     }
 
@@ -431,7 +431,7 @@ public enum DyldSharedCacheXPCLWCRPatcher {
         )
     }
 
-    private static func text(_ insn: Instruction) -> String {
+    private static func text(_ insn: ARM64Instruction) -> String {
         insn.operandString.isEmpty ? insn.mnemonic : "\(insn.mnemonic) \(insn.operandString)"
     }
 

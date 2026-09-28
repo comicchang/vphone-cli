@@ -7,6 +7,7 @@
 //   replace B.cond with unconditional B to same target.
 
 import Foundation
+import VPhonePatchKit
 
 extension KernelJailbreakPatcher {
     /// Skip kernel-map panic in _convert_port_to_map_with_flavor.

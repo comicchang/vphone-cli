@@ -11,6 +11,14 @@ public struct MachOSegmentInfo: Sendable {
     public let vmSize: UInt64
     public let fileOffset: UInt64
     public let fileSize: UInt64
+
+    public init(name: String, vmAddr: UInt64, vmSize: UInt64, fileOffset: UInt64, fileSize: UInt64) {
+        self.name = name
+        self.vmAddr = vmAddr
+        self.vmSize = vmSize
+        self.fileOffset = fileOffset
+        self.fileSize = fileSize
+    }
 }
 
 /// Minimal section info extracted from a Mach-O binary.
@@ -20,6 +28,14 @@ public struct MachOSectionInfo: Sendable {
     public let address: UInt64
     public let size: UInt64
     public let fileOffset: UInt32
+
+    public init(segmentName: String, sectionName: String, address: UInt64, size: UInt64, fileOffset: UInt32) {
+        self.segmentName = segmentName
+        self.sectionName = sectionName
+        self.address = address
+        self.size = size
+        self.fileOffset = fileOffset
+    }
 }
 
 // MARK: - MachO Parser

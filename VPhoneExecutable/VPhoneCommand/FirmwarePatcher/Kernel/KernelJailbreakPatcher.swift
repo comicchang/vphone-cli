@@ -3,15 +3,17 @@
 // Historical note: derived from the legacy Python firmware patcher during the Swift migration.
 
 import Foundation
+import VPhonePatchKit
 
 /// JB kernel patcher across 3 groups. Variant- and feature-gated methods can
 /// change the emitted record count; iOS-27-only patches are gated by `applyIOS27`
-/// and Frida Stalker relaxations by `applyFrida` (opt-in `--frida`).
+/// and Frida Stalker relaxations by `applyFrida`, which the pipeline sets from the
+/// plan — the `com.vphone.patchset.kernel.frida` patches, off in `standard`.
 ///
 /// Group A: Core gate-bypass methods
 /// Group B: Pattern/string anchored methods
 /// Group C: Shellcode/trampoline heavy methods
-public final class KernelJailbreakPatcher: KernelJailbreakPatcherBase, Patcher {
+public final class KernelJailbreakPatcher: KernelJailbreakPatcherBase, BufferedPatcher {
     public let component = "kernelcache_jb"
 
     /// Gates the iOS-27-only kernel patches. These target an iOS-27 userland running
@@ -23,8 +25,10 @@ public final class KernelJailbreakPatcher: KernelJailbreakPatcherBase, Patcher {
     /// set (override with --target-os).
     public var applyIOS27 = false
 
-    /// Opt-in Frida Stalker kernel relaxations (exposed as `--frida`). Baseline
-    /// JB/EXP firmware is byte-identical when false.
+    /// Opt-in Frida Stalker kernel relaxations. Set from the plan: `standard` blocks
+    /// both, `extended` and a per-VM checkmark turn them on, and their own
+    /// cloudOS 26.4+ gate then decides whether they land. Baseline JB/EXP firmware is
+    /// byte-identical when false.
     public var applyFrida = false
 
     public func findAll() throws -> [PatchRecord] {
@@ -73,8 +77,9 @@ public final class KernelJailbreakPatcher: KernelJailbreakPatcherBase, Patcher {
         patchVmFaultEnterPrepare()
         patchVmMapProtect()
 
-        // Opt-in Frida Stalker support (--frida): existing-thread follow
-        // (thread_set_state) + repeated VM_PROT_COPY overwrite (vm_map_delete).
+        // Opt-in Frida Stalker support, from the kernel.frida patch set:
+        // existing-thread follow (thread_set_state) + repeated VM_PROT_COPY
+        // overwrite (vm_map_delete).
         if applyFrida {
             patchThreadSetStateEntitlementFlag()
             patchVmMapDeleteImmutableCode()

@@ -69,6 +69,7 @@
 // `codesign -v`.
 
 import Foundation
+import VPhonePatchKit
 
 public enum CustomFirmwareJetsamPatcher {
     // MARK: - Anchors
