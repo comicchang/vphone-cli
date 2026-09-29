@@ -62,7 +62,7 @@ final class VPhoneAppBrowserModel {
             case let .uninstalling(name): String(localized: "Uninstalling \(name)…", bundle: VPhoneLocalization.bundle)
             case let .installing(file): String(localized: "Installing \(file)…", bundle: VPhoneLocalization.bundle)
             case .openingURL: String(localized: "Opening URL…", bundle: VPhoneLocalization.bundle)
-            case .repairingNetwork: String(localized: "Repairing network policy…", bundle: VPhoneLocalization.bundle)
+            case .repairingNetwork: String(localized: "Allowing network access…", bundle: VPhoneLocalization.bundle)
             }
         }
     }
@@ -449,11 +449,11 @@ final class VPhoneAppBrowserModel {
             status = VPhoneGuestToolStatus(
                 message: allowed
                     ? String(localized: "\(name) can use Wi-Fi and cellular data.", bundle: VPhoneLocalization.bundle)
-                    : String(localized: "The network policy of \(name) did not change. Try again after relaunching the app.", bundle: VPhoneLocalization.bundle),
+                    : String(localized: "Network access for \(name) did not change. Relaunch the app and try again.", bundle: VPhoneLocalization.bundle),
                 isError: !allowed,
             )
         } catch {
-            status = failure(String(localized: "Unable to repair the network policy of \(name).", bundle: VPhoneLocalization.bundle), error)
+            status = failure(String(localized: "Unable to allow network access for \(name).", bundle: VPhoneLocalization.bundle), error)
         }
         activity = nil
     }

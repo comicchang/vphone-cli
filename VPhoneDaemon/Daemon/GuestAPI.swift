@@ -78,6 +78,7 @@ enum GuestAPI {
                 "screenshot",
                 "device_info",
                 "display",
+                "display_orientation",
                 "audio",
                 "input_gestures",
                 "ui_inspection",
@@ -346,7 +347,7 @@ enum GuestAPI {
             let next = cache + ".next"
             let data = try Data(contentsOf: URL(fileURLWithPath: next), options: .mappedIfSafe)
             let actual = sha256Hex(data)
-            guard actual == expected else { throw GuestAPIError.invalidRequest("Update hash mismatch") }
+            guard actual == expected else { throw GuestAPIError.invalidRequest("The update is damaged. Try again.") }
             guard chmod(next, 0o755) == 0 else {
                 throw GuestAPIError.operationFailed("Could not make update executable")
             }

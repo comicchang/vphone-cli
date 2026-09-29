@@ -13,11 +13,11 @@ public enum VPhoneAPFSSnapshotError: Error, CustomStringConvertible {
         case let .prefixLengthMismatch(given, required):
             "--new-prefix must be exactly \(required) bytes (got \(given))"
         case let .cannotOpen(url, err):
-            "Could not open \(url.path): \(String(cString: strerror(err)))"
+            "Unable to open \(url.path): \(String(cString: strerror(err))). Check the file and try again."
         case let .cannotMap(url, err):
-            "Could not map \(url.path): \(String(cString: strerror(err)))"
+            "Unable to read \(url.path): \(String(cString: strerror(err))). Check the file and try again."
         case let .cannotAccess(url, operation, err):
-            "Could not \(operation) \(url.path): \(String(cString: strerror(err)))"
+            "Unable to \(operation) \(url.path): \(String(cString: strerror(err))). Check the file and try again."
         }
     }
 }

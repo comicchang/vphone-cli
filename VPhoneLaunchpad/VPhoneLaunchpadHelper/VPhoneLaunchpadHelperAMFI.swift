@@ -31,7 +31,7 @@ enum VPhoneLaunchpadHelperAMFI {
               info.st_uid == 0,
               info.st_mode & 0o022 == 0
         else {
-            throw VPhoneLaunchpadHelperError("vphone-escalator is missing or is not root-owned. Reinstall VPhone.bundle.")
+            throw VPhoneLaunchpadHelperError("A required tool in VPhone.bundle is missing or was changed. Reinstall VPhone.bundle.")
         }
 
         let process = Process()
@@ -44,13 +44,13 @@ enum VPhoneLaunchpadHelperAMFI {
         do {
             try process.run()
         } catch {
-            throw VPhoneLaunchpadHelperError("Unable to start vphone-escalator: \(error.localizedDescription)")
+            throw VPhoneLaunchpadHelperError("Unable to allow the bundle to run. Try again.")
         }
         let text = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         process.waitUntilExit()
         guard process.terminationReason == .exit, process.terminationStatus == 0 else {
-            throw VPhoneLaunchpadHelperError(text.isEmpty ? "vphone-escalator failed. Check the host's SIP settings." : text)
+            throw VPhoneLaunchpadHelperError(text.isEmpty ? "Unable to allow the bundle to run. Check the System Integrity Protection settings on this Mac." : text)
         }
     }
 }

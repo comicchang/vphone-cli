@@ -103,7 +103,7 @@ public struct VPhoneAPIClient: Sendable {
             throw error
         }
         guard (200 ..< 300).contains(response.statusCode), let result = value.result else {
-            throw VPhoneAPIError(code: "protocol", message: "Missing result (HTTP \(response.statusCode))")
+            throw VPhoneAPIError(code: "protocol", message: "The VM returned an incomplete response. Try again.")
         }
         return result
     }
@@ -138,7 +138,7 @@ public struct VPhoneAPIClient: Sendable {
         let url = try fileURL(guestPath)
         let (temporary, response) = try await session.download(for: authorized(URLRequest(url: url)))
         guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
-            throw VPhoneAPIError(code: "download", message: "Guest file download failed")
+            throw VPhoneAPIError(code: "download", message: "Unable to download the file from the VM. Try again.")
         }
         let destination = FileManager.default.temporaryDirectory
             .appendingPathComponent("vphone-" + UUID().uuidString)
@@ -164,7 +164,7 @@ public struct VPhoneAPIClient: Sendable {
         }
         guard let response = response as? HTTPURLResponse,
               response.statusCode == 200, let result = object["result"]
-        else { throw VPhoneAPIError(code: "upload", message: "Guest file upload failed") }
+        else { throw VPhoneAPIError(code: "upload", message: "Unable to upload the file to the VM. Try again.") }
         return result
     }
 
@@ -183,7 +183,7 @@ public struct VPhoneAPIClient: Sendable {
         guard guestPath.hasPrefix("/"), !guestPath.contains("\0"),
               var components = URLComponents(url: baseURL.appending(path: "v1/files/content"),
                                              resolvingAgainstBaseURL: false)
-        else { throw VPhoneAPIError(code: "path", message: "Guest path must be absolute") }
+        else { throw VPhoneAPIError(code: "path", message: "The VM file path must start with '/'. Enter an absolute path.") }
         components.queryItems = [URLQueryItem(name: "path", value: guestPath)]
         if let mode {
             components.queryItems?.append(URLQueryItem(name: "mode", value: mode))

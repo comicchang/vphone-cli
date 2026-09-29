@@ -9,8 +9,8 @@ public enum VPhoneLibraryError: Error, Equatable {
 extension VPhoneLibraryError: CustomStringConvertible, LocalizedError {
     public var description: String {
         switch self {
-        case let .notFound(name): "VM '\(name)' not found"
-        case let .alreadyExists(name): "VM '\(name)' already exists"
+        case let .notFound(name): "VM '\(name)' not found. Check the name and try again."
+        case let .alreadyExists(name): "VM '\(name)' already exists. Choose a different name."
         case let .invalidName(name):
             "Invalid VM name '\(name)'. Use a name that is not empty, has no '/', and does not start with '.'."
         }

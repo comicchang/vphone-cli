@@ -62,7 +62,7 @@ final class VPhoneLaunchpadCreationPipeline {
             case .waitDFU: String(localized: "Wait for DFU")
             case .restore: String(localized: "Restore")
             case .stopDFU: String(localized: "Stop machine")
-            case .installCFW: String(localized: "Install CFW")
+            case .installCFW: String(localized: "Install custom firmware")
             case .firstBoot: String(localized: "First boot")
             }
         }
@@ -355,7 +355,7 @@ final class VPhoneLaunchpadCreationPipeline {
                 onLine: output,
             )
             guard status == 0 else {
-                throw VPhoneLaunchpadError(String(localized: "Unable to install CFW. Check the log for details."), detail: log.tail)
+                throw VPhoneLaunchpadError(String(localized: "Unable to install custom firmware. Check the log for details."), detail: log.tail)
             }
 
         case .firstBoot:

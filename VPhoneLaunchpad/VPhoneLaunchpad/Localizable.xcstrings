@@ -1,9 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "" : {
-
-    },
     "%@ · %@ · Expires %@" : {
       "localizations" : {
         "en" : {
@@ -1444,6 +1441,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在“隐私与安全性”→“开发者工具”中允许 vphone-launchpad，然后点按“重新打开”。"
+          }
+        }
+      }
+    },
+    "Allow Network" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow Network"
+          }
+        }
+      }
+    },
+    "Allowing network access…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allowing network access…"
           }
         }
       }
@@ -4463,6 +4480,26 @@
         }
       }
     },
+    "Every patch in this bundle, including advanced ones that a freshly restored 26.4 guest may not survive." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every patch in this bundle, including advanced ones that a freshly restored 26.4 guest may not survive."
+          }
+        }
+      }
+    },
+    "Every patch in this bundle, including advanced ones that may stop a newly restored 26.4 machine from starting." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every patch in this bundle, including advanced ones that may stop a newly restored 26.4 machine from starting."
+          }
+        }
+      }
+    },
     "Every patch this bundle declares, including the Frida Stalker relaxations and the hv_vmm_present concealment that a freshly restored 26.4 guest does not survive." : {
       "localizations" : {
         "en" : {
@@ -5998,6 +6035,26 @@
         }
       }
     },
+    "Install custom firmware" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install custom firmware"
+          }
+        }
+      }
+    },
+    "Install with administrator access" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install with administrator access"
+          }
+        }
+      }
+    },
     "Install CFW" : {
       "localizations" : {
         "en" : {
@@ -7398,6 +7455,36 @@
         }
       }
     },
+    "Network Access" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Network Access"
+          }
+        }
+      }
+    },
+    "Network access is restricted" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Network access is restricted"
+          }
+        }
+      }
+    },
+    "Network access for %@ did not change. Relaunch the app and try again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Network access for %@ did not change. Relaunch the app and try again."
+          }
+        }
+      }
+    },
     "Network" : {
       "localizations" : {
         "en" : {
@@ -8654,6 +8741,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "补丁设置…"
+          }
+        }
+      }
+    },
+    "Patches every machine needs to start, with a working display and camera." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Patches every machine needs to start, with a working display and camera."
           }
         }
       }
@@ -11632,6 +11729,16 @@
         }
       }
     },
+    "Stored in %@ and managed by the helper." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stored in %@ and managed by the helper."
+          }
+        }
+      }
+    },
     "Stored in %@, owned by root and written only by the helper." : {
       "localizations" : {
         "en" : {
@@ -12901,6 +13008,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "udid-prediction.txt 中没有 ECID。"
+          }
+        }
+      }
+    },
+    "Unable to allow network access for %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to allow network access for %@."
+          }
+        }
+      }
+    },
+    "Unable to install custom firmware. Check the log for details." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to install custom firmware. Check the log for details."
           }
         }
       }

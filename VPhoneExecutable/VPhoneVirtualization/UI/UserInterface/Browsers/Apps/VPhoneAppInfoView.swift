@@ -161,10 +161,10 @@ struct VPhoneAppInfoView: View {
     }
 
     private func networkSection(_ detail: VPhoneAppDetail) -> some View {
-        VPhoneAppInfoSection(title: "Network Policy", error: detail.networkPolicyError) {
+        VPhoneAppInfoSection(title: "Network Access", error: detail.networkPolicyError) {
             if let policy = detail.networkPolicy {
                 Label {
-                    Text(policy.allowed ? "Wi-Fi and cellular data allowed" : "Network access may be restricted")
+                    Text(policy.allowed ? "Wi-Fi and cellular data allowed" : "Network access is restricted")
                 } icon: {
                     Image(systemName: policy.allowed ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                         .foregroundStyle(policy.allowed ? .green : .orange)
@@ -173,7 +173,7 @@ struct VPhoneAppInfoView: View {
                 if !policy.entries.isEmpty {
                     VPhoneAppInfoGrid(rows: policy.entries.map { ($0.title, $0.value) }, localizeTitles: false)
                 }
-                Button("Repair") { Task { await model.repairNetworkPolicy() } }
+                Button("Allow Network") { Task { await model.repairNetworkPolicy() } }
                     .controlSize(.small)
                     .disabled(policy.allowed || model.isBusy || !model.control.isConnected)
                     .help("Allow Wi-Fi and cellular data for this app")

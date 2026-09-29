@@ -581,7 +581,7 @@ struct VPhoneLaunchpadControlCommands {
             onLine: emit,
         )
         guard status == 0 else {
-            throw VPhoneLaunchpadError("cfw install exited with status \(status).")
+            throw VPhoneLaunchpadError("Unable to install custom firmware. Check the log for details.")
         }
         return ["name": machine.name, "bundle": version, "status": status]
     }
@@ -662,10 +662,10 @@ nonisolated enum VPhoneLaunchpadGuestSocket {
         let line = try JSONSerialization.data(withJSONObject: object) + Data([0x0A])
         let response = try await Task.detached { try exchange(line, socketPath: socketPath) }.value
         guard let json = try? JSONSerialization.jsonObject(with: response) else {
-            throw VPhoneLaunchpadError("The machine answered with something other than JSON.", detail: String(decoding: response.prefix(512), as: UTF8.self))
+            throw VPhoneLaunchpadError("The machine sent a reply that could not be read. Try again.", detail: String(decoding: response.prefix(512), as: UTF8.self))
         }
         if let dictionary = json as? [String: Any], dictionary["ok"] as? Bool == false {
-            throw VPhoneLaunchpadError("The guest refused the request.", detail: dictionary["error"] as? String)
+            throw VPhoneLaunchpadError("The machine refused the request. Try again.", detail: dictionary["error"] as? String)
         }
         return json
     }
@@ -697,7 +697,7 @@ nonisolated enum VPhoneLaunchpadGuestSocket {
             }
         }
         guard connected == 0 else {
-            throw VPhoneLaunchpadError("The machine's vphone.sock is not answering.", detail: String(cString: strerror(errno)))
+            throw VPhoneLaunchpadError("The machine is not responding. Make sure it is running, then try again.", detail: String(cString: strerror(errno)))
         }
         guard VPhoneLaunchpadControl.write(line, to: fd) else {
             throw VPhoneLaunchpadError("Unable to send the request to the machine.")

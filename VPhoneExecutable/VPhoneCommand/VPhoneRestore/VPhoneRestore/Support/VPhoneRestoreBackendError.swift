@@ -77,19 +77,19 @@ extension VPhoneRestoreBackendError: CustomStringConvertible {
     public var description: String {
         switch self {
         case .ecidEmpty:
-            "ECID is empty"
+            "The ECID is empty. Enter up to 16 hexadecimal digits."
         case let .ecidInvalid(value):
-            "Invalid ECID: \(value)"
+            "\(value) is not a valid ECID. Enter up to 16 hexadecimal digits."
         case let .ecidTooLarge(value):
             "ECID is too long: \(value). Enter up to 16 hexadecimal digits."
         case let .noRestoreDirectory(dir):
-            "No iPhone*_Restore directory found in \(dir.path)"
+            "No restore folder was found in \(dir.path). Prepare the firmware, then try again."
         case .multipleRestoreDirectories:
-            "Multiple iPhone*_Restore directories found; keep only one active restore tree"
+            "More than one restore folder was found. Keep only one, then try again."
         case let .recoveryProbeTimedOut(mode):
-            "Timed out waiting for \(mode) endpoint"
+            "The device did not enter \(mode) mode in time. Check the connection, then try again."
         case .recoveryDeviceUnreadable:
-            "The recovery endpoint stopped answering while it was being read"
+            "The device disconnected while it was being read. Reconnect it, then try again."
         case .restoreAlreadyRunning:
             "Another restore is already running. Wait for it to finish, then try again."
         case let .restoreDirectoryUnusable(dir):

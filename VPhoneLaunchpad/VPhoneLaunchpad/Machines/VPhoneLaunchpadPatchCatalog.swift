@@ -29,8 +29,8 @@ nonisolated struct VPhoneLaunchpadPatchCatalog: Decodable, Sendable {
 
         var displaySummary: String {
             switch identifier {
-            case "standard": String(localized: "The patches every vphone VM needs to boot, jailbroken, with a working display and camera.")
-            case "extended": String(localized: "Every patch this bundle declares, including the Frida Stalker relaxations and the hv_vmm_present concealment that a freshly restored 26.4 guest does not survive.")
+            case "standard": String(localized: "Patches every machine needs to start, with a working display and camera.")
+            case "extended": String(localized: "Every patch in this bundle, including advanced ones that may stop a newly restored 26.4 machine from starting.")
             default: summary
             }
         }

@@ -276,7 +276,7 @@ enum GuestIrisinInstaller {
             let packageData = try fetch(release.url, reportDownload: true)
             let digest = SHA256.hash(data: packageData).map { String(format: "%02x", $0) }.joined()
             guard digest == release.digest else {
-                throw GuestAPIError.operationFailed("Irisin release asset SHA-256 mismatch")
+                throw GuestAPIError.operationFailed("The download is damaged. Try again.")
             }
             try packageData.write(to: package, options: .atomic)
             tag = release.tag

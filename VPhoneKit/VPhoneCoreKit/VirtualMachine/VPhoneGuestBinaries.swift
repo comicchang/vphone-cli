@@ -14,7 +14,7 @@ public enum VPhoneGuestBinaries {
             switch self {
             case let .missing(name, searched):
                 """
-                Guest binary '\(name)' not found. Build the VPhone scheme in VPhone.xcworkspace.
+                \(name) not found. The app bundle is incomplete. Rebuild the VPhone scheme in Xcode.
                 Searched: \(searched.map(\.path).joined(separator: ", "))
                 """
             }

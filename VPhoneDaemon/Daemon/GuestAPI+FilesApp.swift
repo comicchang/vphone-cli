@@ -19,7 +19,7 @@ extension GuestAPI {
                 return container + "/File Provider Storage"
             }
         }
-        throw GuestAPIError.operationFailed("The Files app storage container was not found")
+        throw GuestAPIError.operationFailed("Files app storage not found. Open Files once and try again.")
     }
 
     /// Moves an uploaded file into On My iPhone › vphone-drop. Items there are

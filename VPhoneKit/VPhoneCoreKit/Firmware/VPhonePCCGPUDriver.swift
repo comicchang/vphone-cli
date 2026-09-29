@@ -12,9 +12,9 @@ public enum VPhonePCCGPUDriver {
         public var errorDescription: String? {
             switch self {
             case let .invalidBundle(path):
-                "GPU driver bundle is incomplete or has the wrong identifier: \(path.path)"
+                "The GPU driver at \(path.path) is incomplete or invalid. Download the firmware again and retry."
             case let .wrongPlatformVersion(path, expected, actual):
-                "GPU driver at \(path.path) is for iPhoneOS \(actual), expected cloudOS \(expected)"
+                "The GPU driver at \(path.path) is for iPhoneOS \(actual), but cloudOS \(expected) is required. Choose a matching driver and try again."
             }
         }
     }

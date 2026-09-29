@@ -381,7 +381,7 @@ struct VPhoneCustomFirmwareInstaller {
         let root = try work.directory.mountedVolume(name)
         let source = try root.mountedFrom()
         guard source == "/dev/\(device)" else {
-            throw ValidationError("Expected /dev/\(device) on \(work.file(name).path), found \(source). Try again.")
+            throw ValidationError("The VM disk image did not attach correctly. Try again.")
         }
         return root
     }

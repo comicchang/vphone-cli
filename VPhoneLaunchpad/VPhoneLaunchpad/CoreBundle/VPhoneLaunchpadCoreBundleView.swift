@@ -91,7 +91,7 @@ struct VPhoneLaunchpadCoreBundleView: View {
         } header: {
             Text("Installed")
         } footer: {
-            Text("Stored in \(VPhoneLaunchpadBundleStore.root.path), owned by root and written only by the helper.")
+            Text("Stored in \(VPhoneLaunchpadBundleStore.root.path) and managed by the helper.")
                 .foregroundStyle(.secondary)
         }
     }

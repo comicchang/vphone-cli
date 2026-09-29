@@ -26,7 +26,7 @@ extension VPhoneVirtualMachineManifest.PlatformFusing: ExpressibleByArgument {}
 public struct VPhoneBootCommand: ParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "boot",
-        abstract: "Boot a virtual iPhone (PV=3)",
+        abstract: "Boot a virtual iPhone",
         discussion: """
         Creates a Virtualization.framework VM with platform version 3 (vphone)
         and boots it from a manifest plist that describes all paths and hardware.
@@ -111,7 +111,7 @@ public struct VPhoneBootCommand: ParsableCommand {
            existingVariant != "jb"
         {
             throw ValidationError(
-                "This VM was created as '\(existingVariant)'. Only JB VMs are supported by this build.",
+                "This VM was created as '\(existingVariant)', which this build does not support. Create a new VM and try again.",
             )
         }
 

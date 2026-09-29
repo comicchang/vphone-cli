@@ -44,7 +44,7 @@ final class VPhoneLaunchpadCoreBundle {
             case .prepare: String(localized: "Prepare bundle")
             case .download: String(localized: "Download")
             case .verify: String(localized: "Verify SHA-256")
-            case .install: String(localized: "Install as root")
+            case .install: String(localized: "Install with administrator access")
             case .policy: String(localized: "Allow bundle to run")
             case .preflight: String(localized: "Host preflight")
             }
