@@ -40,10 +40,19 @@ enum GuestAPI {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
+    /// The address the host shows for the guest, from icli's
+    /// `"<interface> <address>"` strings: a 192.x IPv4 address (the NAT
+    /// network), then any other routable IPv4, then a routable IPv6. Loopback
+    /// and link-local addresses, which sort first, never qualify.
+    static func preferredAddress(_ addresses: [String]) -> String? {
+        let hosts = addresses.compactMap { $0.split(separator: " ", maxSplits: 1).last.map(String.init) }
+        let ipv4 = hosts.filter { !$0.contains(":") && !$0.hasPrefix("127.") && !$0.hasPrefix("169.254.") }
+        let ipv6 = hosts.filter { $0.contains(":") && $0 != "::1" && !$0.contains("%") && !$0.hasPrefix("fe80:") }
+        return ipv4.first { $0.hasPrefix("192.") } ?? ipv4.first ?? ipv6.first
+    }
+
     static func health() -> [String: Any] {
-        let addresses = networkInfo()["addresses"] as? [String] ?? []
-        let ip = addresses.first(where: { $0.hasPrefix("en") && !$0.contains("127.0.0.1") })?
-            .split(separator: " ").last.map(String.init)
+        let ip = preferredAddress(networkInfo()["addresses"] as? [String] ?? [])
         let version = ProcessInfo.processInfo.operatingSystemVersion
         return [
             "name": "vphoned",

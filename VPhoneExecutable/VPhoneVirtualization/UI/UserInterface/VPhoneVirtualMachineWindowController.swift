@@ -99,12 +99,30 @@ class VPhoneVirtualMachineWindowController: NSObject {
         monitor.start(control: control, window: window)
         touchIDMonitor = monitor
 
-        // Poll vphoned status for the Home button
+        // Poll vphoned status for the Home button and the subtitle
         _ = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self, let control = self.control else { return }
                 self.updateHomeButton(connected: control.isConnected)
+                self.updateSubtitle(control: control)
             }
+        }
+    }
+
+    // MARK: - Subtitle
+
+    /// `iOS <version> - <address>` from vphoned's health report, which picks
+    /// the IPv4 address first and falls back to IPv6; empty until it connects.
+    private func updateSubtitle(control: VPhoneGuestControl) {
+        guard let window = windowController?.window else { return }
+        var parts: [String] = []
+        if control.isConnected {
+            if let version = control.guestIOSVersion, !version.isEmpty { parts.append("iOS \(version)") }
+            if let address = control.guestIPAddress, !address.isEmpty { parts.append(address) }
+        }
+        let subtitle = parts.joined(separator: " - ")
+        if window.subtitle != subtitle {
+            window.subtitle = subtitle
         }
     }
 
