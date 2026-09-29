@@ -110,20 +110,62 @@ class VPhoneVirtualMachineWindowController: NSObject {
 
     // MARK: - Home Button
 
+    private static let homeImage = NSImage(
+        systemSymbolName: "circle.circle",
+        accessibilityDescription: VPhoneLocalization.text("Home"),
+    ) ?? NSImage()
+
+    /// `circle.circle` with a slash drawn across it; SF Symbols has no
+    /// `circle.circle.slash`. The slash cuts a gap in the circles like the
+    /// system's own slashed symbols.
+    private static let homeSlashImage: NSImage = {
+        let base = homeImage
+        let image = NSImage(size: base.size, flipped: false) { rect in
+            base.draw(in: rect)
+            let slash = NSBezierPath()
+            slash.move(to: NSPoint(x: rect.minX + 1, y: rect.maxY - 1))
+            slash.line(to: NSPoint(x: rect.maxX - 1, y: rect.minY + 1))
+            slash.lineCapStyle = .round
+            NSGraphicsContext.current?.compositingOperation = .clear
+            slash.lineWidth = 4
+            slash.stroke()
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+            NSColor.black.setStroke()
+            slash.lineWidth = 1.5
+            slash.stroke()
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = base.accessibilityDescription
+        return image
+    }()
+
     private func makeHomeAccessory() -> NSTitlebarAccessoryViewController {
-        let button = NSButton(image: NSImage(), target: self, action: #selector(homePressed))
-        button.bezelStyle = .toolbar
+        let button = NSButton(image: Self.homeImage, target: self, action: #selector(homePressed))
+        if #available(macOS 26.0, *) {
+            button.bezelStyle = .glass
+            button.borderShape = .circle
+        } else {
+            button.bezelStyle = .toolbar
+        }
+        button.controlSize = .large
         button.toolTip = VPhoneLocalization.text("Home Button")
         button.translatesAutoresizingMaskIntoConstraints = false
         homeButton = button
 
+        // A titlebar accessory takes its width from the view's frame, so the
+        // container is sized explicitly; otherwise the button collapses to 0.
+        let trailingInset: CGFloat = 12
         let container = NSView()
         container.addSubview(button)
         NSLayoutConstraint.activate([
             button.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            button.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
+            button.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -trailingInset),
             button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            button.widthAnchor.constraint(equalTo: button.heightAnchor),
         ])
+        let side = button.fittingSize.height
+        container.frame.size = NSSize(width: side + trailingInset, height: side)
 
         let accessory = NSTitlebarAccessoryViewController()
         accessory.view = container
@@ -136,10 +178,7 @@ class VPhoneVirtualMachineWindowController: NSObject {
     private func updateHomeButton(connected: Bool) {
         guard let homeButton else { return }
         homeButton.isEnabled = connected
-        homeButton.image = NSImage(
-            systemSymbolName: connected ? "circle.circle" : "circle.slash",
-            accessibilityDescription: VPhoneLocalization.text("Home"),
-        )
+        homeButton.image = connected ? Self.homeImage : Self.homeSlashImage
     }
 
     // MARK: - Actions
