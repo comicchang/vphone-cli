@@ -110,8 +110,8 @@ There is none, and adding any is a regression.
   `Build/ValidateBundle.sh` cannot see.
 - There is no counter-example left. `amfidont` used to be cited as one — a
   third-party tool the user installed into their own Python — and it is gone
-  too: the AMFI allowlist tool is `VPhoneExecutable/VPhoneEscalator`, one C
-  file built by Xcode for arm64e, with no runtime interpreter or LLDB.
+  too: the AMFI allowlist tool is `VPhoneExecutable/VPhoneEscalator`, a few C
+  files built by Xcode for arm64e, with no runtime interpreter or LLDB.
 
 ### Kernel patcher guardrails
 
