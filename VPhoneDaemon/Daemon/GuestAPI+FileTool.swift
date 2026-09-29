@@ -36,6 +36,8 @@ extension GuestAPI {
             return try changeMode(string(params, "path"), mode: string(params, "mode"))
         case "files.chown":
             return try changeOwner(string(params, "path"), owner: string(params, "owner"))
+        case "files.save_to_files_app":
+            return try saveToFilesApp(string(params, "path"), name: string(params, "name"))
         case "files.plist":
             return try readPlist(string(params, "path"))
         case "files.plist_set":

@@ -88,6 +88,7 @@ enum GuestAPI {
                 "app_details",
                 "system_control",
                 "file_tools",
+                "files_app_drop",
                 "packages",
                 "environment_update",
             ],

@@ -8019,6 +8019,40 @@
         }
       }
     },
+    "Dropped Files" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dropped Files"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ドロップしたファイル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "놓은 파일"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp đã thả"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖入的文件"
+          }
+        }
+      }
+    },
     "Edit" : {
       "localizations" : {
         "en" : {
@@ -19275,6 +19309,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已保存至 %@"
+          }
+        }
+      }
+    },
+    "Saved “%@” to On My iPhone › %@ in Files." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved “%1$@” to On My iPhone › %2$@ in Files."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%1$@」を“ファイル”の「このiPhone内 › %2$@」に保存しました。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@”을(를) 파일 앱의 ‘나의 iPhone › %2$@’에 저장했습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã lưu “%1$@” vào Trên iPhone › %2$@ trong ứng dụng Tệp."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已将“%1$@”保存到“文件”App 的“我的 iPhone › %2$@”。"
           }
         }
       }

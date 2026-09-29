@@ -323,6 +323,32 @@ final class VPhoneGuestControl {
         return result["msg"] as? String ?? "Installed \(localURL.lastPathComponent)."
     }
 
+    /// Where the Files app shows a dropped file: On My iPhone › vphone-drop.
+    static let dropFolder = "vphone-drop"
+
+    /// Uploads a file dropped on the window, then has vphoned move it into
+    /// the Files app's On My iPhone › vphone-drop. vphoned finds that storage,
+    /// keeps a name already taken by numbering the new one, and gives the
+    /// file the owner and mode the Files app uses. Returns the name used.
+    func saveDroppedFile(localURL: URL) async throws -> String {
+        guard guestCapabilities.contains("files_app_drop") else {
+            throw ControlError.unsupportedCapability("files_app_drop")
+        }
+        let data = try Data(contentsOf: localURL, options: .mappedIfSafe)
+        let path = "/var/root/Library/Caches/vphoned-drop-\(UUID().uuidString)"
+        try await createDirectory(path: "/var/root/Library/Caches")
+        try await uploadFile(path: path, data: data)
+        do {
+            let result = try await call(
+                "files.save_to_files_app", params: ["path": path, "name": localURL.lastPathComponent],
+            )
+            return result["name"] as? String ?? localURL.lastPathComponent
+        } catch {
+            try? await deleteFile(path: path)
+            throw error
+        }
+    }
+
     func installBootstrap(layout: String, localURL: URL? = nil) async throws -> [String: Any] {
         guard guestCapabilities.contains("bootstrap_install") else {
             throw ControlError.unsupportedCapability("bootstrap_install")

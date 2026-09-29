@@ -80,10 +80,13 @@ class VPhoneVirtualMachineView: VZVirtualMachineView {
         keySender.sendHome()
     }
 
-    // MARK: - Drag and Drop Install
+    // MARK: - Drag and Drop
 
+    /// Every dropped file goes through vphoned: an .ipa or .tipa is installed,
+    /// anything else is saved to the Files app's On My iPhone › vphone-drop.
+    /// Folders are not taken.
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
-        guard droppedInstallPackageURL(from: sender) != nil else { return [] }
+        guard !droppedFileURLs(from: sender).isEmpty else { return [] }
         updateDragHighlight(true)
         return .copy
     }
@@ -93,58 +96,69 @@ class VPhoneVirtualMachineView: VZVirtualMachineView {
     }
 
     override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool {
-        droppedInstallPackageURL(from: sender) != nil
+        !droppedFileURLs(from: sender).isEmpty
     }
 
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
         updateDragHighlight(false)
-        guard let url = droppedInstallPackageURL(from: sender) else { return false }
+        let urls = droppedFileURLs(from: sender)
+        guard !urls.isEmpty else { return false }
+        let packagesOnly = urls.allSatisfy(VPhoneInstallPackage.isSupportedFile)
+        let title = packagesOnly ? "Install App Package" : "Dropped Files"
 
         Task { @MainActor in
             guard let control, control.isConnected else {
                 VPhoneAlert.present(
-                    title: "Install App Package",
+                    title: title,
                     message: "The guest agent is not connected. Wait for it to connect, then try again.",
                     style: .warning,
                 )
                 return
             }
 
-            do {
-                let result = try await control.installIPA(localURL: url)
-                print("[install] \(result)")
-                VPhoneAlert.present(
-                    title: "Install App Package",
-                    message: VPhoneLocalization.installedMessage(
-                        for: url.lastPathComponent,
-                        detail: result,
-                    ),
-                    style: .informational,
-                )
-            } catch {
-                VPhoneAlert.present(
-                    title: "Install App Package",
-                    message: "Unable to install the app package. Check the file and guest connection, then try again.",
-                    style: .warning,
-                )
+            var lines: [String] = []
+            var failed = false
+            for url in urls {
+                let name = url.lastPathComponent
+                if VPhoneInstallPackage.isSupportedFile(url) {
+                    do {
+                        let result = try await control.installIPA(localURL: url)
+                        print("[install] \(result)")
+                        lines.append(VPhoneLocalization.installedMessage(for: name, detail: result))
+                    } catch {
+                        failed = true
+                        lines.append(VPhoneLocalization.format("Unable to install %@.", name))
+                    }
+                } else {
+                    do {
+                        let saved = try await control.saveDroppedFile(localURL: url)
+                        print("[drop] saved \(name) as \(saved)")
+                        lines.append(VPhoneLocalization.format(
+                            "Saved “%@” to On My iPhone › %@ in Files.", saved, VPhoneGuestControl.dropFolder,
+                        ))
+                    } catch {
+                        failed = true
+                        lines.append(VPhoneLocalization.format(
+                            "Unable to upload “%@”. Check the connection, then try again.", name,
+                        ))
+                    }
+                }
             }
+            VPhoneAlert.present(
+                title: title,
+                message: lines.joined(separator: "\n"),
+                style: failed ? .warning : .informational,
+            )
         }
         return true
     }
 
-    private func droppedInstallPackageURL(from sender: any NSDraggingInfo) -> URL? {
+    private func droppedFileURLs(from sender: any NSDraggingInfo) -> [URL] {
         let options: [NSPasteboard.ReadingOptionKey: Any] = [
             .urlReadingFileURLsOnly: true,
         ]
-        guard
-            let urls = sender.draggingPasteboard.readObjects(
-                forClasses: [NSURL.self],
-                options: options,
-            ) as? [URL]
-        else {
-            return nil
-        }
-        return urls.first(where: VPhoneInstallPackage.isSupportedFile)
+        let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL] ?? []
+        return urls.filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true }
     }
 
     private func updateDragHighlight(_ visible: Bool) {
