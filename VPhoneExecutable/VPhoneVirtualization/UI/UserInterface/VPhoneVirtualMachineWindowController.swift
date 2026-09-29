@@ -10,6 +10,7 @@ class VPhoneVirtualMachineWindowController: NSObject {
     private(set) var touchIDMonitor: VPhoneTouchIDMonitor?
     private var menuKeyMonitor: Any?
     private var homeButton: NSButton?
+    private var subtitleLabel: NSTextField?
 
     var captureView: VPhoneVirtualMachineView? {
         virtualMachineView
@@ -72,8 +73,10 @@ class VPhoneVirtualMachineWindowController: NSObject {
         toolbar.displayMode = .iconOnly
         window.toolbar = toolbar
         window.toolbarStyle = .unified
-        window.addTitlebarAccessoryViewController(makeHomeAccessory())
+        let homeAccessory = makeHomeAccessory()
+        window.addTitlebarAccessoryViewController(homeAccessory)
         updateHomeButton(connected: false)
+        installTitle(name, in: window, trailingInset: homeAccessory.view.frame.width)
 
         let controller = NSWindowController(window: window)
         controller.showWindow(nil)
@@ -109,10 +112,54 @@ class VPhoneVirtualMachineWindowController: NSObject {
         }
     }
 
-    // MARK: - Subtitle
+    // MARK: - Title
+
+    /// AppKit leaves a wider gap after the window buttons than before them, so
+    /// the title is drawn here instead: the gap after the zoom button equals
+    /// the close button's inset from the window edge. `window.title` and
+    /// `window.subtitle` are still set for the Window menu and accessibility.
+    private func installTitle(_ name: String, in window: NSWindow, trailingInset: CGFloat) {
+        guard let close = window.standardWindowButton(.closeButton),
+              let zoom = window.standardWindowButton(.zoomButton),
+              let titlebar = zoom.superview,
+              let frame = window.contentView?.superview
+        else { return }
+        window.titleVisibility = .hidden
+
+        let title = NSTextField(labelWithString: name)
+        title.font = .systemFont(ofSize: NSFont.systemFontSize + 2, weight: .bold)
+        let subtitle = NSTextField(labelWithString: "")
+        subtitle.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        subtitle.textColor = .secondaryLabelColor
+        subtitle.isHidden = true
+        for label in [title, subtitle] {
+            label.lineBreakMode = .byTruncatingTail
+            label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        }
+        subtitleLabel = subtitle
+
+        let stack = NSStackView(views: [title, subtitle])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 0
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        titlebar.addSubview(stack)
+        let inset = NSLayoutGuide(), gap = NSLayoutGuide()
+        frame.addLayoutGuide(inset)
+        frame.addLayoutGuide(gap)
+        NSLayoutConstraint.activate([
+            inset.leadingAnchor.constraint(equalTo: frame.leadingAnchor),
+            inset.trailingAnchor.constraint(equalTo: close.leadingAnchor),
+            gap.leadingAnchor.constraint(equalTo: zoom.trailingAnchor),
+            gap.trailingAnchor.constraint(equalTo: stack.leadingAnchor),
+            gap.widthAnchor.constraint(equalTo: inset.widthAnchor),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: frame.trailingAnchor, constant: -trailingInset - 8),
+            stack.centerYAnchor.constraint(equalTo: zoom.centerYAnchor),
+        ])
+    }
 
     /// `iOS <version> - <address>` from vphoned's health report, which picks
-    /// the IPv4 address first and falls back to IPv6; empty until it connects.
+    /// the IPv4 address first and falls back to IPv6; hidden until it connects.
     private func updateSubtitle(control: VPhoneGuestControl) {
         guard let window = windowController?.window else { return }
         var parts: [String] = []
@@ -123,6 +170,8 @@ class VPhoneVirtualMachineWindowController: NSObject {
         let subtitle = parts.joined(separator: " - ")
         if window.subtitle != subtitle {
             window.subtitle = subtitle
+            subtitleLabel?.stringValue = subtitle
+            subtitleLabel?.isHidden = subtitle.isEmpty
         }
     }
 
