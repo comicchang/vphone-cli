@@ -84,18 +84,27 @@ static void vpPrepareLoaderLink(const char *path) {
     }
 }
 
+// Every child chain-loads SystemHook, whatever its environment says: a shell
+// or sshd that rebuilds its child's environment would otherwise drop it.
+// DISABLE_TWEAKS and safe mode are honored in the child's constructor, which
+// then skips ElleKit. Only bootstrap, app and camera targets are logged and
+// get their loader links prepared.
+static VPInjectionEnvironment vpPrepareChild(const char *path, char *const envp[], const char *kind) {
+    VPInjectionEnvironment injected = vpInsertHook(envp, getenv("VPHONE_JB_ROOT"));
+    if (vpIsInjectionTarget(path)) {
+        vpPrepareLoaderLink(path);
+        char decision[64];
+        snprintf(decision, sizeof(decision), "%s%s%s", kind, !injected.values ? "unchanged" : "inserted",
+                 vpInjectionDisabled(envp) ? "-tweaks-disabled" : "");
+        vpLogSpawn(path, decision);
+    }
+    return injected;
+}
+
 static int vpSpawnP(pid_t *restrict pid, const char *restrict path, const posix_spawn_file_actions_t *restrict actions,
                     const posix_spawnattr_t *restrict attributes, char *const argv[restrict],
                     char *const envp[restrict]) {
-    if (!vpIsInjectionTarget(path))
-        return posix_spawnp(pid, path, actions, attributes, argv, envp);
-    vpPrepareLoaderLink(path);
-    if (vpInjectionDisabled(envp)) {
-        vpLogSpawn(path, "disabled");
-        return posix_spawnp(pid, path, actions, attributes, argv, envp);
-    }
-    VPInjectionEnvironment injected = vpInsertHook(envp, getenv("VPHONE_JB_ROOT"));
-    vpLogSpawn(path, injected.values ? "inserted" : "unchanged");
+    VPInjectionEnvironment injected = vpPrepareChild(path, envp, "");
     int status = posix_spawnp(pid, path, actions, attributes, argv, injected.values ? injected.values : envp);
     vpFreeEnvironment(&injected);
     return status;
@@ -104,30 +113,14 @@ static int vpSpawnP(pid_t *restrict pid, const char *restrict path, const posix_
 static int vpSpawn(pid_t *restrict pid, const char *restrict path, const posix_spawn_file_actions_t *restrict actions,
                    const posix_spawnattr_t *restrict attributes, char *const argv[restrict],
                    char *const envp[restrict]) {
-    if (!vpIsInjectionTarget(path))
-        return posix_spawn(pid, path, actions, attributes, argv, envp);
-    vpPrepareLoaderLink(path);
-    if (vpInjectionDisabled(envp)) {
-        vpLogSpawn(path, "disabled");
-        return posix_spawn(pid, path, actions, attributes, argv, envp);
-    }
-    VPInjectionEnvironment injected = vpInsertHook(envp, getenv("VPHONE_JB_ROOT"));
-    vpLogSpawn(path, injected.values ? "inserted" : "unchanged");
+    VPInjectionEnvironment injected = vpPrepareChild(path, envp, "");
     int status = posix_spawn(pid, path, actions, attributes, argv, injected.values ? injected.values : envp);
     vpFreeEnvironment(&injected);
     return status;
 }
 
 static int vpExecve(const char *path, char *const argv[], char *const envp[]) {
-    if (!vpIsInjectionTarget(path))
-        return execve(path, argv, envp);
-    vpPrepareLoaderLink(path);
-    if (vpInjectionDisabled(envp)) {
-        vpLogSpawn(path, "exec-disabled");
-        return execve(path, argv, envp);
-    }
-    VPInjectionEnvironment injected = vpInsertHook(envp, getenv("VPHONE_JB_ROOT"));
-    vpLogSpawn(path, injected.values ? "exec-inserted" : "exec-unchanged");
+    VPInjectionEnvironment injected = vpPrepareChild(path, envp, "exec-");
     int status = execve(path, argv, injected.values ? injected.values : envp);
     int savedErrno = errno;
     vpFreeEnvironment(&injected);
@@ -173,7 +166,10 @@ __attribute__((constructor)) static void vpLogProcess(void) {
     vpInXPCProxy = strcmp(path, "/usr/libexec/xpcproxy") == 0;
     vpInBootstrap = vpIsBootstrapPath(path, getenv("VPHONE_JB_ROOT"));
 
-    int fd = vpOpenLog("vphone-systemhook.log");
+    // Every process loads this hook; only the ones it acts on are logged.
+    int fd = vpInXPCProxy || vpInBootstrap || vpIsAppPath(path) || vpIsCameraDaemon(path)
+                 ? vpOpenLog("vphone-systemhook.log")
+                 : -1;
     if (fd >= 0) {
         char **arguments = *_NSGetArgv();
         dprintf(fd, "pid=%d path=%s label=%s root=%s\n", getpid(), path,
@@ -204,6 +200,9 @@ __attribute__((constructor)) static void vpLogProcess(void) {
     int used = snprintf(loader, sizeof(loader), "%s/usr/lib/TweakLoader.dylib", root);
     if (used <= 0 || (size_t)used >= sizeof(loader))
         return;
+    // dlopen is not a spawn: link TweakLoader's dependency directories, such
+    // as usr/lib/ellekit, before dyld looks for them.
+    vpEnsureRootHideLoaderLink(loader, root);
     vpLoadLibrary("tweakloader", loader);
 }
 

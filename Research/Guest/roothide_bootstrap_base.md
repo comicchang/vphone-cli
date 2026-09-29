@@ -44,16 +44,27 @@ package file, so reinstalling packages does not bring them back.
 | `root/var`, `root/etc` | directory `0755`, `0:0`, when missing |
 | `root/var/root` | directory `0700`, `0:0` |
 | `root/var/tmp` | link `../tmp` |
-| `root/dev` | link `/rootfs/dev`, the convention of RootHide's own `private/preboot → /rootfs/private/preboot` |
+| `root/dev` | link `/dev`; an existing link whose text is exactly `/rootfs/dev` is replaced |
+| `root/rootfs` | link `/`, the vroot bridge to the real root |
 | `root/etc/passwd`, `root/etc/group` | copies of `/private/etc/…`, `0644`, `0:0` |
 | `root/etc/master.passwd` | copy of `/private/etc/master.passwd`, created `0600`, `0:0` |
 | `root/etc/pwd.db`, `root/etc/spwd.db` | `root/usr/sbin/pwd_mkdb -p /etc/master.passwd`, then `0644` and `0600`; checked with `root/usr/bin/id root` when present |
 | `root/etc/ssh/ssh_host_*_key` | `root/usr/bin/ssh-keygen -A`, after the databases |
 
+Link text is read by the kernel, not by vroot. vroot shows the real root as
+`/rootfs`, but a link stored as `/rootfs/dev` resolves to the physical
+`/rootfs/dev`, which does not exist. vphoned wrote exactly that before #519,
+and nothing created `root/rootfs` either. Every shell then printed
+`/dev/null: Directory nonexistent` and sshd never started. On 26.6.2 in
+iGhostVT, a fresh tab still printed the error with `dev → /rootfs/dev` plus
+`rootfs → /`, and stopped printing it with `dev → /dev`. Irisin writes
+package links the same way: its `linkText` turns `/rootfs/x` into `/x`.
+
 Rules:
 
 - A missing item is created; an existing item is left alone whatever its type,
-  owner or mode. A `root/tmp` made by hand keeps its owner.
+  owner or mode. A `root/tmp` made by hand keeps its owner. The one
+  exception is the dangling `dev → /rootfs/dev` earlier vphoned wrote.
 - The databases are rebuilt only when either is missing or older than
   `master.passwd`, so a password changed with `passwd` survives a restart.
 - Host keys are generated only when `root/etc/ssh` exists (openssh is
@@ -62,8 +73,10 @@ Rules:
   libroothide through the `.jbroot` link `ensureRootHideLinks` seeds beside
   it, so its arguments are vroot paths.
 - On a first install the bootstrap has no `pwd_mkdb` or `ssh-keygen` yet.
-  Those steps are reported under `deferred` in the install result and run on
-  the next vphoned start after Irisin's Bootstrap Install.
+  Those steps are reported under `deferred` in the install result. They run
+  one second after the next package operation rewrites the root's
+  `Library/dpkg`, or on the next vphoned start, so sshd has host keys as soon
+  as openssh is installed.
 - Any other failure names the path. At install it rolls the install back like
   the other RootHide steps; at startup it is logged.
 
@@ -90,7 +103,8 @@ Irisin's Bootstrap Install and one restart, without manual changes:
 
 ```sh
 # under vroot, in iGhostVT or over ssh
-ls -ld /tmp /var/tmp /dev /var/root   # 1777 dir, link, link to /rootfs/dev, 0700 dir
+ls -ld /tmp /var/tmp /var/root        # 1777 dir, link, 0700 dir
+ls /dev /rootfs/private                # both list the real root's entries
 : > /dev/null && echo dev-ok
 id root && id mobile                  # both resolve
 ls -l /etc/pwd.db /etc/spwd.db /etc/ssh/ssh_host_*_key

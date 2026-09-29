@@ -59,9 +59,12 @@ static int vpIsBootstrapProgram(const char *path) {
     return length && strncmp(path, root, length) == 0 && path[length] == '/';
 }
 
-static int vpSpawn(pid_t *restrict pid, const char *restrict path, const posix_spawn_file_actions_t *restrict actions,
-                   const posix_spawnattr_t *restrict attributes, char *const argv[restrict],
-                   char *const envp[restrict]) {
+typedef int (*VPSpawnFunction)(pid_t *restrict, const char *restrict, const posix_spawn_file_actions_t *restrict,
+                               const posix_spawnattr_t *restrict, char *const[restrict], char *const[restrict]);
+
+static int vpSpawnWith(VPSpawnFunction spawn, pid_t *restrict pid, const char *restrict path,
+                       const posix_spawn_file_actions_t *restrict actions, const posix_spawnattr_t *restrict attributes,
+                       char *const argv[restrict], char *const envp[restrict]) {
     if (!vpBootRoot[0] && path && (vpIsAppProgram(path) || strstr(path, "/.jbroot-")))
         vpFindJBRoot(vpBootRoot);
     int bootstrapProgram = vpIsBootstrapProgram(path);
@@ -71,20 +74,36 @@ static int vpSpawn(pid_t *restrict pid, const char *restrict path, const posix_s
         if (linkStatus || (path && strstr(path, "/.jbroot-")))
             vpLogInjection("loader-link", path, linkStatus);
     }
-    if (!path || (strcmp(path, "/usr/libexec/xpcproxy") != 0 && !bootstrapProgram && !appProgram) ||
-        vpInjectionDisabled(envp)) {
-        int status = posix_spawn(pid, path, actions, attributes, argv, envp);
-        if (appProgram)
-            vpLogSpawn("app-disabled", path, status == 0 && pid ? *pid : -1, status);
-        return status;
-    }
+    // Every process chain-loads SystemHook, including one started with tweaks
+    // disabled: SystemHook itself honors DISABLE_TWEAKS and safe mode by not
+    // loading ElleKit. Only launchd re-executing itself is left alone.
+    if (!path || strcmp(path, "/sbin/launchd") == 0)
+        return spawn(pid, path, actions, attributes, argv, envp);
     VPInjectionEnvironment injected = vpInsertHook(envp, vpBootRoot);
-    int status = posix_spawn(pid, path, actions, attributes, argv, injected.values ? injected.values : envp);
-    vpLogInjection(injected.values ? "inserted" : "unchanged", path, status);
-    vpLogSpawn(injected.values ? "inserted" : "unchanged", path, status == 0 && pid ? *pid : -1,
-               status);
+    int status = spawn(pid, path, actions, attributes, argv, injected.values ? injected.values : envp);
+    if (bootstrapProgram || appProgram || strcmp(path, "/usr/libexec/xpcproxy") == 0) {
+        const char *event = !injected.values ? "unchanged" :
+                            vpInjectionDisabled(envp) ? "inserted-tweaks-disabled" : "inserted";
+        vpLogInjection(event, path, status);
+        vpLogSpawn(event, path, status == 0 && pid ? *pid : -1, status);
+    }
     vpFreeEnvironment(&injected);
     return status;
+}
+
+static int vpSpawn(pid_t *restrict pid, const char *restrict path, const posix_spawn_file_actions_t *restrict actions,
+                   const posix_spawnattr_t *restrict attributes, char *const argv[restrict],
+                   char *const envp[restrict]) {
+    return vpSpawnWith(posix_spawn, pid, path, actions, attributes, argv, envp);
+}
+
+// launchd starts jobs through posix_spawnp: xpcproxy, and each bootstrap
+// LaunchDaemon such as sshd or ighostvtd when it elides the proxy. Without
+// this none of them gets SystemHook.
+static int vpSpawnP(pid_t *restrict pid, const char *restrict path, const posix_spawn_file_actions_t *restrict actions,
+                    const posix_spawnattr_t *restrict attributes, char *const argv[restrict],
+                    char *const envp[restrict]) {
+    return vpSpawnWith(posix_spawnp, pid, path, actions, attributes, argv, envp);
 }
 
 // Neither bootstrap exists on the first boot. RootHide is chosen once and
@@ -279,5 +298,6 @@ __attribute__((used, section("__DATA,__interpose"))) static const struct {
 } vpInterpose[] = {
     {(const void *)vpGetValue, (const void *)xpc_dictionary_get_value},
     {(const void *)vpSpawn, (const void *)posix_spawn},
+    {(const void *)vpSpawnP, (const void *)posix_spawnp},
     {(const void *)vpMemoryStatus, (const void *)memorystatus_control},
 };

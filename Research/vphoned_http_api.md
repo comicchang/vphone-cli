@@ -127,11 +127,14 @@ the `.jbroot` loader links in the bootstrap root and standard executable and
 library directories. On startup it repairs missing links for an existing
 completed installation without replacing links that point elsewhere. These
 links let `@loader_path/.jbroot/usr/lib/...` dependencies resolve when a
-package manager later installs tools such as `dash`.
+package manager later installs tools such as `dash`. It then links every
+bootstrap directory that holds a Mach-O file, and repeats that walk one
+second after the root's `Library/dpkg` changes, so a package installed later
+by Irisin, apt or dpkg is linked without a reboot.
 The launchd and SystemHook spawn bridges also create a missing `.jbroot`
-beside a bootstrap executable just before it starts, covering applications
-installed after the initial bootstrap. The fixed links remain necessary for
-jobs whose launch path does not pass through either observed spawn bridge.
+beside a bootstrap executable and its in-root dependencies just before it
+starts, when the spawning process may write there. See
+`Research/roothide_loader_links.md`.
 `POST /v1/bootstrap/firmware` (RPC `bootstrap.firmware`)
 repairs the record for a bootstrap already identified by the completion marker
 without running another install. The reply includes the tag,
