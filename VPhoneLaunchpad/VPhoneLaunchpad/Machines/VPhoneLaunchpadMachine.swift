@@ -63,6 +63,11 @@ nonisolated struct VPhoneLaunchpadMachine: Decodable, Hashable, Identifiable, Se
         path
     }
 
+    /// The table's iOS sort key; a machine not yet restored sorts first.
+    var iosVersion: String {
+        restoreInfo?.ios.version ?? ""
+    }
+
     var networkDescription: String {
         switch network.mode {
         case "nat": String(localized: "NAT")

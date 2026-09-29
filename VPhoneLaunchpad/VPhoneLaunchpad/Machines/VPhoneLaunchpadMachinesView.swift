@@ -32,9 +32,20 @@ struct VPhoneLaunchpadMachinesView: View {
     @State private var sheet: Sheet?
     /// The machines the delete confirmation is for; empty when it is closed.
     @State private var deletion: [MachinePath] = []
+    @State private var filter = ""
+    /// Empty keeps the order `vm list` returns; a header click replaces it.
+    @State private var sortOrder: [KeyPathComparator<VPhoneLaunchpadMachine>] = []
 
     private var library: VPhoneLaunchpadMachineLibrary {
         model.machines
+    }
+
+    /// The machines the table shows: those matching the search, in the
+    /// header's order.
+    private var rows: [VPhoneLaunchpadMachine] {
+        let needle = filter.trimmingCharacters(in: .whitespaces)
+        let matching = needle.isEmpty ? library.machines : library.machines.filter { Self.matches($0, needle) }
+        return matching.sorted(using: sortOrder)
     }
 
     var body: some View {
@@ -43,9 +54,18 @@ struct VPhoneLaunchpadMachinesView: View {
         Group {
             if library.machines.isEmpty {
                 emptyState
+            } else if rows.isEmpty {
+                ContentUnavailableView.search(text: filter)
             } else {
                 table(selection: $library.selection)
             }
+        }
+        .searchable(text: $filter, placement: .toolbar, prompt: Text("Search machines"))
+        // A hidden machine stays out of the selection, so Start, Delete and
+        // the inspector act only on rows the table shows.
+        .onChange(of: filter) {
+            let visible = Set(rows.map(\.path))
+            library.selection.formIntersection(visible)
         }
         .inspector(isPresented: $model.showsInspector) {
             Group {
@@ -70,11 +90,7 @@ struct VPhoneLaunchpadMachinesView: View {
             // The toggle belongs to the inspector's own toolbar section. Put in
             // the content's toolbar, the section and its background were set up
             // at launch but not again after the inspector was hidden and shown.
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    inspectorToggle
-                }
-            }
+            .toolbar { inspectorToolbar }
         }
         .toolbar { toolbar }
         #if DEBUG
@@ -126,15 +142,11 @@ struct VPhoneLaunchpadMachinesView: View {
 
     // MARK: - Toolbar
 
+    /// The machine list's own tools. Host Setup and Core Bundle hold the
+    /// leading edge; the space pushes New Machine and the search field to the
+    /// list's trailing edge. What acts on the selection is in the inspector.
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        let selected = library.selectedMachines
-        let stopped = selected.filter { library.state(of: $0.path) == .stopped }
-        let running = selected.filter { library.state(of: $0.path) == .running }
-        // Host Setup and Core Bundle hold the leading edge; the space pushes
-        // everything here to the trailing edge: New Machine, then Start or
-        // Stop for the selection beside the actions menu. The inspector
-        // toggle is in the inspector.
         ToolbarItem(placement: .automatic) {
             Spacer()
         }
@@ -150,37 +162,55 @@ struct VPhoneLaunchpadMachinesView: View {
             .help("Create a machine")
             .disabled(model.bundles.activeVersion == nil)
         }
-        // Without it, macOS 26 draws New Machine in the same glass capsule
-        // as Start.
+        // Without it, macOS 15 puts the field at the window's trailing edge,
+        // past the inspector.
         if #available(macOS 26, *) {
-            ToolbarSpacer(.fixed)
+            DefaultToolbarItem(kind: .search)
         }
-        ToolbarItemGroup(placement: .automatic) {
-            if stopped.isEmpty, !running.isEmpty {
-                Button {
-                    stop(running)
-                } label: {
-                    Label("Stop", systemImage: "stop.fill")
-                }
-                .help("Stop \(running.map(\.name).joined(separator: ", "))")
-            } else {
-                Button {
-                    start(stopped)
-                } label: {
-                    Label("Start", systemImage: "play.fill")
-                }
-                .help("Start the selected machine")
-                .disabled(stopped.isEmpty)
+    }
+
+    /// The inspector toggle, then Start or Stop for the selection beside the
+    /// actions menu at the window's trailing edge. Those two go away with the
+    /// inspector; the context menu and a double-click still reach them.
+    @ToolbarContentBuilder
+    private var inspectorToolbar: some ToolbarContent {
+        let selected = library.selectedMachines
+        let stopped = selected.filter { library.state(of: $0.path) == .stopped }
+        let running = selected.filter { library.state(of: $0.path) == .running }
+        ToolbarItem(placement: .automatic) {
+            inspectorToggle
+        }
+        if model.showsInspector {
+            ToolbarItem(placement: .automatic) {
+                Spacer()
             }
-            Menu {
-                machineActions(selected)
-            } label: {
-                Label("Actions", systemImage: "ellipsis")
+            ToolbarItemGroup(placement: .automatic) {
+                if stopped.isEmpty, !running.isEmpty {
+                    Button {
+                        stop(running)
+                    } label: {
+                        Label("Stop", systemImage: "stop.fill")
+                    }
+                    .help("Stop \(running.map(\.name).joined(separator: ", "))")
+                } else {
+                    Button {
+                        start(stopped)
+                    } label: {
+                        Label("Start", systemImage: "play.fill")
+                    }
+                    .help("Start the selected machine")
+                    .disabled(stopped.isEmpty)
+                }
+                Menu {
+                    machineActions(selected)
+                } label: {
+                    Label("Actions", systemImage: "ellipsis")
+                }
+                .disabled(selected.isEmpty)
+                // A menu with its arrow gets a capsule of its own; without it
+                // the menu shares Start's.
+                .menuIndicator(.hidden)
             }
-            .disabled(selected.isEmpty)
-            // A menu with its arrow gets a capsule of its own; without it the
-            // menu shares Start's.
-            .menuIndicator(.hidden)
         }
     }
 
@@ -281,11 +311,11 @@ struct VPhoneLaunchpadMachinesView: View {
     // MARK: - Table
 
     private func table(selection: Binding<Set<MachinePath>>) -> some View {
-        Table(library.machines, selection: selection) {
+        Table(rows, selection: selection, sortOrder: $sortOrder) {
             TableColumn("Name", value: \.name)
                 .width(min: 90, ideal: 110)
             if library.spansLibraries {
-                TableColumn("Location") { machine in
+                TableColumn("Location", value: \.libraryRoot) { machine in
                     Text(verbatim: VPhoneLaunchpadMachineLocations.volumeName(machine.libraryRoot))
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -293,7 +323,8 @@ struct VPhoneLaunchpadMachinesView: View {
                 }
                 .width(min: 80, ideal: 110)
             }
-            TableColumn("iOS") { machine in
+            // Standard comparison orders 18.10 after 18.9.
+            TableColumn("iOS", value: \.iosVersion) { machine in
                 Text(verbatim: machine.restoreInfo.map { "\($0.ios.version) (\($0.ios.build))" } ?? "—")
             }
             .width(min: 110, ideal: 120)
@@ -304,15 +335,15 @@ struct VPhoneLaunchpadMachinesView: View {
                 )
             }
             .width(min: 150, ideal: 160)
-            TableColumn("CPU") { machine in
+            TableColumn("CPU", value: \.cpuCount) { machine in
                 Text(verbatim: "\(machine.cpuCount)").monospacedDigit()
             }
             .width(40)
-            TableColumn("Memory") { machine in
+            TableColumn("Memory", value: \.memoryMB) { machine in
                 Text(Self.memory(machine.memoryMB)).monospacedDigit()
             }
             .width(64)
-            TableColumn("Disk") { machine in
+            TableColumn("Disk", value: \.diskSizeBytes) { machine in
                 Text(Self.disk(machine.diskSizeBytes)).monospacedDigit()
             }
             .width(64)
@@ -400,6 +431,20 @@ struct VPhoneLaunchpadMachinesView: View {
         panel.present { url in
             Task { await library.importArchive(url) }
         }
+    }
+
+    // MARK: - Search
+
+    private static func matches(_ machine: VPhoneLaunchpadMachine, _ needle: String) -> Bool {
+        [
+            machine.name,
+            machine.restoreInfo?.ios.version,
+            machine.restoreInfo?.ios.build,
+            machine.udid,
+            VPhoneLaunchpadMachineLocations.volumeName(machine.libraryRoot),
+        ]
+        .compactMap(\.self)
+        .contains { $0.localizedCaseInsensitiveContains(needle) }
     }
 
     // MARK: - Formatting
