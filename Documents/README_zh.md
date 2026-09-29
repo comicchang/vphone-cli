@@ -2,65 +2,119 @@
 
 # vphone-cli
 
-> 查找旧版 1.x？请前往 [1.0.14 Release](https://github.com/Lakr233/vphone-cli/releases/tag/1.0.14)。
-
-在 Apple Silicon Mac 上创建和运行虚拟 iPhone。vphone-cli 使用 Apple 的 Virtualization.framework 和 PCC 研究虚拟机基础设施。
+在 Apple Silicon Mac 上运行虚拟 iPhone。
 
 ![在 macOS 上运行的虚拟 iPhone](demo.jpeg)
 
-2.x 会应用完整的固件补丁集，包含此前作为 EXP 提供的改动；目前不能选择不同的补丁方案。自包含的 `VPhone.bundle` 负责固件准备、恢复和虚拟机控制；`vphone-launchpad` 负责安装 bundle，并引导你创建和运行虚拟机。
+vphone-cli 使用 Apple 的 Virtualization.framework 和 PCC 研究虚拟机运行 iOS，适合安全研究、逆向和调试。
 
-推荐在 macOS 恢复模式中执行 `csrutil enable --without debug` 和 `csrutil allow-research-guests enable`。这样会保留 SIP，但放宽调试限制。Launchpad 会检查宿主机，并通过特权辅助程序让 AMFI 放行已验证的虚拟机程序；详见[宿主机设置](Guides/host-setup.md)。
+- **图形窗口**：在 Mac 上操作虚拟 iPhone 的屏幕，浏览 App 和文件，截图、录屏。
+- **自定义固件（Custom Firmware）**：系统已预先打好补丁，可以安装软件包环境。
+- **备份与克隆**：虚拟机可以导出、导入和克隆。
+- **自动化 API**：可选的本机 HTTP 和 WebSocket 接口。
+- **无需额外依赖**：运行时不需要 Xcode、Python 或 Homebrew。
 
-## 开始使用
+> 1.x 版本请前往 [1.0.14 Release](https://github.com/Lakr233/vphone-cli/releases/tag/1.0.14)。2.x 无法启动 1.x 创建的虚拟机，需要重新创建。
 
-推荐在运行 macOS 15 或更新版本的实体 Apple Silicon Mac 上使用已公证的 [vphone-launchpad 2.1.2](https://github.com/Lakr233/vphone-cli/releases/download/2.1.2/vphone-launchpad-2.1.2-notarized.zip)。运行发布版无需 Xcode、Python 或 Homebrew。
+## 准备工作
 
-1. 在 macOS 恢复模式中执行 `csrutil enable --without debug` 和 `csrutil allow-research-guests enable`，然后重新启动。详见[宿主机设置](Guides/host-setup.md)。
-2. 解压并打开 App，按 **Host Setup** 的提示授予开发者工具权限并安装特权辅助程序。
-3. 在 **Core Bundle** 中点击 **Download and Install**，安装最新的 `VPhone.bundle`。Launchpad 会验证下载内容，并完成虚拟机程序的宿主机准备。
-4. 在 **Machines** 中点击 **New Machine**，从目录选择固件组合，再点击 **Create**。Launchpad 完成首次启动检查后，虚拟机会保持运行。
+- 一台实体 Apple Silicon Mac，运行 macOS 15 或更新版本。macOS 虚拟机中无法使用。
+- 足够的磁盘空间。每台虚拟机默认使用 64 GB 虚拟磁盘，固件和临时文件另外占用空间。
+- 网络连接。恢复系统时需要在线获取签名票据。
+- 修改安全设置。进入 macOS 恢复模式，在终端中执行以下命令，然后重新启动：
 
-选择目录中的固件组合时会下载固件。即使使用本地 IPSW，创建虚拟机仍需联网获取恢复票据，并留出充足的磁盘空间。也可以自行提供兼容的 iPhone 和 cloudOS IPSW；已验证的组合见[兼容性说明](Guides/compatibility.md)。源码构建和命令行操作见[宿主机设置](Guides/host-setup.md)与[创建与运行指南](Guides/create-and-run.md)。
+  ```sh
+  csrutil enable --without debug
+  csrutil allow-research-guests enable
+  ```
 
-2.x 版只能启动以 `schemaVersion=2` 格式创建的虚拟机。旧版虚拟机需要重新创建。
+  SIP 仍保持开启，只放宽调试限制。原因和其他设置方式见[宿主机设置](Guides/host-setup.md)。
 
-## 定制固件 Bootstrap
+## 快速开始
 
-启动虚拟机后，在 macOS 菜单栏选择 **Guest > Install Bootstrap…**，再选择所需的环境布局。此操作会在访客系统内安装 Irisin。
-按住 Option 打开此菜单项可选取本地 Irisin `.deb`；按住 Option 打开 **Uninstall Bootstrap…** 会同时删除现存的 rootless 和 RootHide 环境，但不重启客体。普通卸载会在删除后重启。
+1. 下载最新的 [vphone-launchpad](https://github.com/Lakr233/vphone-cli/releases/latest)（`vphone-launchpad-<版本>.zip`），解压并打开。
+2. 在 **Host Setup** 中授予开发者工具权限，并安装辅助程序。
+3. 在 **Core Bundle** 中点击 **Download and Install**。Launchpad 会下载并校验 `VPhone.bundle`，然后允许其中的虚拟机程序在本机运行。
+4. 在 **Machines** 中点击 **New Machine**，选择一组固件，点击 **Create**。
 
-首次准备环境时，在 Irisin 中选中 `apt` 和 `bash`，长按**安装**按钮，然后选择**引导安装（Bootstrap Install）**。这种模式会先解压本次安装涉及的所有软件包，再重新执行安装流程，以绕过初始阶段的依赖循环：`debianutils` 需要 `bash`，而 `bash` 又需要已经配置好的 `debianutils`。首次准备完成后，即可使用普通安装模式。
+Launchpad 会下载固件、打补丁、恢复系统并首次启动。完成后虚拟机会继续运行。
 
-## 日常使用
+也可以使用自己的 iPhone 和 cloudOS IPSW，已验证的组合见[兼容性说明](Guides/compatibility.md)。
 
-虚拟机窗口提供 App 和文件浏览、剪贴板与偏好设置工具、截图、录屏及诊断功能。需要本机自动化接口时，可用 `--api-listen 127.0.0.1:8765` 启动；详见[访客 API](../Research/vphoned_http_api.md)。
+## 安装软件包环境
+
+虚拟机默认不带软件包管理器。安装步骤：
+
+1. 在菜单栏选择 **Apps > Install Bootstrap…**，布局选择 **roothide**（**rootless** 已弃用）。虚拟机中会安装 Irisin。
+2. 首次安装时，在 Irisin 中勾选 `apt` 和 `bash`，长按安装按钮，选择 **Bootstrap Install**。`bash` 和 `debianutils` 互相依赖，普通安装无法完成。
+3. 之后使用普通安装即可。
+
+要删除环境，选择 **Apps > Uninstall Bootstrap…**，删除后虚拟机会重启。
+
+按住 Option 打开 **Apps** 菜单，还有两个选项：
+
+- **Install Bootstrap from File…**：使用本地的 Irisin `.deb` 安装。
+- **Uninstall Bootstrap Without Restarting…**：删除环境，不重启虚拟机。
+
+## 命令行
+
+Launchpad 通过 `VPhone.bundle` 中的 `vphone-cli` 管理虚拟机，你也可以在终端中直接使用：
 
 | 操作 | 命令 |
 | --- | --- |
 | 列出虚拟机 | `vphone-cli vm list` |
-| 查看虚拟机 | `vphone-cli vm info myphone` |
-| 启动虚拟机窗口 | `vphone-cli vm launch myphone` |
+| 查看虚拟机信息 | `vphone-cli vm info myphone` |
+| 启动虚拟机 | `vphone-cli vm launch myphone` |
 | 停止虚拟机 | `vphone-cli vm stop myphone` |
-| 导出备份 | `vphone-cli vm export myphone --out myphone.tzst` |
-| 导入备份 | `vphone-cli vm import myphone.tzst --name restored` |
+| 克隆虚拟机 | `vphone-cli vm clone myphone copy` |
+| 导出虚拟机 | `vphone-cli vm export myphone --out myphone.tzst` |
+| 导入虚拟机 | `vphone-cli vm import myphone.tzst --name restored` |
 
-虚拟机默认保存在 `~/.vphone/`。更多命令可运行 `vphone-cli <group> --help` 查看。
+虚拟机默认保存在 `~/.vphone/`。运行 `vphone-cli <group> --help` 查看全部命令。不使用 Launchpad 创建虚拟机的方法见[创建与运行](Guides/create-and-run.md)。
 
-## 架构简述
+### 自动化 API
 
-`vphone-cli` 负责准备固件、恢复虚拟机并管理其生命周期。bundle 中的 `vphone-vm` 运行访客系统并管理 macOS 窗口。访客系统内的 `vphoned` 为窗口以及可选的 HTTP 和 WebSocket API 提供控制能力。Xcode 的 `VPhone` scheme 会构建并验证自包含的 `VPhone.bundle`。
+启动时加上 `--api-listen` 即可开启：
 
-## 仓库目录
+```sh
+vphone-cli vm launch myphone --api-listen 127.0.0.1:8765
+# 输出中会显示 [api] token: …
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8765/v1/health
+```
+
+每次启动都会生成新的 token。要使用固定的 token，请设置环境变量 `VPHONE_API_TOKEN`。不带 token 的请求和来自网页的请求都会被拒绝。接口说明见 [API 文档](../Research/vphoned_http_api.md)。
+
+## 遇到问题
+
+请先查看[故障排查](Guides/troubleshooting.md)，其中包括虚拟机程序被系统拒绝、恢复失败、停在 “Press home to continue” 等情况。如果仍未解决，请[提交 issue](https://github.com/Lakr233/vphone-cli/issues)。
+
+## 文档
+
+| 文档 | 内容 |
+| --- | --- |
+| [宿主机设置](Guides/host-setup.md) | SIP 与 AMFI 设置、源码构建、环境检查 |
+| [创建与运行](Guides/create-and-run.md) | 固件来源、创建流程、存储与备份 |
+| [兼容性说明](Guides/compatibility.md) | 已验证的固件组合 |
+| [故障排查](Guides/troubleshooting.md) | 常见错误及解决方法 |
+| [Launchpad 命令行](Guides/launchpad-cli.md) | 用 `vphone-launchpad-cli` 安装和测试本地构建 |
+| [研究记录](../Research/README.md) | 补丁与实现细节 |
+
+## 项目结构
+
+- `vphone-launchpad`：Mac App，负责下载和安装 `VPhone.bundle`、配置宿主机。单独发布。
+- `vphone-cli`：准备固件、打补丁、恢复系统、管理虚拟机。
+- `vphone-vm`：运行虚拟机并显示虚拟机窗口。
+- `vphoned`：虚拟机中的控制服务，窗口中的功能和 API 都通过它实现。
 
 | 路径 | 内容 |
 | --- | --- |
-| [`VPhoneExecutable/`](../VPhoneExecutable/) | CLI、虚拟机进程、固件补丁与恢复后端 |
+| [`VPhoneExecutable/`](../VPhoneExecutable/) | `vphone-cli`、`vphone-vm`、固件补丁与恢复 |
 | [`VPhoneKit/`](../VPhoneKit/) | 宿主机共享库与 API 客户端 |
-| [`VPhoneDaemon/`](../VPhoneDaemon/) | 访客控制服务 `vphoned` |
-| [`VPhoneGuestComponents/`](../VPhoneGuestComponents/) | 访客系统 hook 与辅助程序 |
-| [`Documents/`](README.md) | 设置、使用、兼容性和故障排查指南 |
-| [`Research/`](../Research/README.md) | 补丁与实现研究记录 |
+| [`VPhoneDaemon/`](../VPhoneDaemon/) | `vphoned` |
+| [`VPhoneGuestComponents/`](../VPhoneGuestComponents/) | 虚拟机中的 hook 与辅助程序 |
+| [`VPhoneLaunchpad/`](../VPhoneLaunchpad/) | Launchpad App 及其辅助程序 |
+
+从源码构建：`xcodebuild -workspace VPhone.xcworkspace -scheme VPhone build`，产物为 `VPhone.bundle`。
 
 ## 致谢
 

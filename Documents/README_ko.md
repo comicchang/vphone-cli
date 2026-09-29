@@ -2,65 +2,119 @@
 
 # vphone-cli
 
-> 이전 버전의 vphone-cli 1.x를 찾으신다면 [1.0.14 릴리스](https://github.com/Lakr233/vphone-cli/releases/tag/1.0.14)를 확인하세요.
-
-Apple Silicon Mac에서 가상 iPhone을 만들고 실행합니다. vphone-cli는 Apple의 Virtualization.framework와 PCC 연구용 VM 기반을 사용합니다.
+Apple Silicon Mac에서 가상 iPhone을 실행합니다.
 
 ![macOS에서 실행 중인 가상 iPhone](demo.jpeg)
 
-버전 2.x는 이전에 EXP로 제공하던 변경 사항을 포함한 전체 펌웨어 패치 세트를 적용합니다. 패치 구성은 선택할 수 없습니다. 독립적으로 실행 가능한 `VPhone.bundle`이 펌웨어 준비, 복원, VM 제어를 담당하고, `vphone-launchpad`가 bundle 설치와 VM 생성 및 실행을 안내합니다.
+vphone-cli는 Apple의 Virtualization.framework와 PCC 연구용 가상 머신으로 iOS를 실행하며, 보안 연구, 리버스 엔지니어링, 디버깅에 적합합니다.
 
-권장 호스트 설정은 macOS 복구 환경에서 `csrutil enable --without debug`와 `csrutil allow-research-guests enable`을 실행하는 것입니다. SIP를 켠 상태로 유지하면서 디버깅 제한을 완화합니다. Launchpad는 호스트를 확인하고 권한 있는 도우미를 사용하여 검증된 VM 바이너리가 AMFI를 통과하도록 허용합니다. 자세한 내용은 [호스트 설정](Guides/host-setup.md)을 참고하세요.
+- **그래픽 창**: Mac에서 가상 iPhone의 화면을 조작하고, 앱과 파일을 탐색하며, 스크린샷을 찍고 화면을 녹화합니다.
+- **커스텀 펌웨어(Custom Firmware)**: 시스템에 패치가 미리 적용되어 있어 패키지 환경을 설치할 수 있습니다.
+- **백업과 복제**: 가상 머신을 내보내고, 가져오고, 복제할 수 있습니다.
+- **자동화 API**: 선택적으로 사용할 수 있는 로컬 HTTP 및 WebSocket 인터페이스입니다.
+- **추가 의존성 없음**: 실행에 Xcode, Python, Homebrew가 필요하지 않습니다.
 
-## 시작하기
+> 1.x 버전은 [1.0.14 릴리스](https://github.com/Lakr233/vphone-cli/releases/tag/1.0.14)를 참고하세요. 2.x는 1.x에서 만든 가상 머신을 시작할 수 없으므로 다시 만들어야 합니다.
 
-macOS 15 이상을 실행하는 물리 Apple Silicon Mac에서는 공증된 [vphone-launchpad 2.1.2](https://github.com/Lakr233/vphone-cli/releases/download/2.1.2/vphone-launchpad-2.1.2-notarized.zip)를 사용하세요. 릴리스 버전을 실행할 때 Xcode, Python, Homebrew는 필요하지 않습니다.
+## 준비 사항
 
-1. macOS 복구 환경에서 `csrutil enable --without debug`와 `csrutil allow-research-guests enable`을 실행한 다음 재시동하세요. 자세한 내용은 [호스트 설정](Guides/host-setup.md)을 참고하세요.
-2. 압축을 풀고 앱을 여세요. **Host Setup**의 안내에 따라 개발자 도구 접근을 허용하고 권한 있는 도우미를 설치하세요.
-3. **Core Bundle**에서 **Download and Install**을 선택하여 최신 `VPhone.bundle`을 설치하세요. Launchpad가 다운로드를 검증하고 VM 바이너리를 호스트에서 사용할 수 있도록 준비합니다.
-4. **Machines**에서 **New Machine**을 선택하고 카탈로그에서 펌웨어 조합을 고른 다음 **Create**를 클릭하세요. Launchpad가 첫 부팅을 확인한 뒤에도 VM은 계속 실행됩니다.
+- macOS 15 이상을 실행하는 물리 Apple Silicon Mac. macOS 가상 머신에서는 사용할 수 없습니다.
+- 충분한 디스크 공간. 가상 머신마다 기본적으로 64 GB 가상 디스크를 사용하며, 펌웨어와 임시 파일이 별도로 공간을 차지합니다.
+- 네트워크 연결. 시스템을 복원할 때 서명 티켓을 온라인으로 받아야 합니다.
+- 보안 설정 변경. macOS 복구 모드로 진입하여 터미널에서 다음 명령을 실행한 뒤 재시동합니다.
 
-카탈로그의 펌웨어 조합을 선택하면 펌웨어가 다운로드됩니다. 로컬 IPSW를 사용하더라도 VM을 생성하려면 복원 티켓을 받을 네트워크 연결과 충분한 디스크 여유 공간이 필요합니다. 호환되는 iPhone 및 cloudOS IPSW를 직접 지정할 수도 있습니다. 검증된 조합은 [호환성 가이드](Guides/compatibility.md)를 참고하세요. 소스 빌드와 터미널 사용법은 [호스트 설정](Guides/host-setup.md) 및 [생성 및 실행 가이드](Guides/create-and-run.md)를 확인하세요.
+  ```sh
+  csrutil enable --without debug
+  csrutil allow-research-guests enable
+  ```
 
-2.x 버전은 `schemaVersion=2` 형식으로 생성한 VM만 시작할 수 있습니다. 이전 버전의 VM은 다시 만들어야 합니다.
+  SIP는 켜진 상태로 유지되며 디버깅 제한만 완화됩니다. 이유와 다른 설정 방법은 [호스트 설정](Guides/host-setup.md)을 참고하세요.
 
-## 커스텀 펌웨어 Bootstrap
+## 빠른 시작
 
-VM을 실행한 뒤 macOS 메뉴 막대에서 **Guest > Install Bootstrap…**을 선택하고 환경 레이아웃을 고르세요. 그러면 게스트에 Irisin이 설치됩니다.
-Option 키를 누른 채 이 메뉴를 열면 로컬 Irisin `.deb` 파일을 선택할 수 있습니다. **Uninstall Bootstrap…**의 Option 메뉴는 rootless와 RootHide 환경을 모두 삭제하지만 게스트를 재시동하지 않습니다. 일반 제거는 삭제 후 재시동합니다.
+1. 최신 [vphone-launchpad](https://github.com/Lakr233/vphone-cli/releases/latest)(`vphone-launchpad-<버전>.zip`)를 내려받아 압축을 풀고 엽니다.
+2. **Host Setup**에서 개발자 도구 권한을 부여하고 도우미 프로그램을 설치합니다.
+3. **Core Bundle**에서 **Download and Install**을 클릭합니다. Launchpad가 `VPhone.bundle`을 내려받아 검증한 뒤, 그 안의 가상 머신 프로그램이 이 Mac에서 실행되도록 허용합니다.
+4. **Machines**에서 **New Machine**을 클릭하고 펌웨어 조합을 선택한 뒤 **Create**를 클릭합니다.
 
-환경을 처음 준비할 때는 Irisin에서 `apt`와 `bash`를 선택하세요. **Install** 버튼을 길게 누른 다음 **Bootstrap Install**을 선택하세요. 이 모드는 이번 설치에 포함된 모든 패키지를 먼저 압축 해제한 뒤 설치 절차를 다시 실행합니다. 따라서 `debianutils`에는 `bash`가 필요하지만 `bash`에는 이미 설정된 `debianutils`가 필요한 초기 의존성 순환을 우회할 수 있습니다. 첫 준비가 끝나면 일반 설치 방식을 사용하면 됩니다.
+Launchpad가 펌웨어를 내려받고, 패치를 적용하고, 시스템을 복원한 뒤 첫 부팅을 진행합니다. 완료되면 가상 머신은 계속 실행됩니다.
 
-## 기본 사용법
+직접 준비한 iPhone 및 cloudOS IPSW를 사용할 수도 있습니다. 검증된 조합은 [호환성 안내](Guides/compatibility.md)를 참고하세요.
 
-VM 창에서 앱과 파일 탐색, 클립보드와 설정 관리, 스크린샷, 녹화, 진단 기능을 사용할 수 있습니다. 로컬 자동화에는 `--api-listen 127.0.0.1:8765` 옵션으로 실행하세요. 자세한 내용은 [게스트 API](../Research/vphoned_http_api.md)를 참고하세요.
+## 패키지 환경 설치
+
+가상 머신에는 기본적으로 패키지 관리자가 없습니다. 설치 방법은 다음과 같습니다.
+
+1. 메뉴 막대에서 **Apps > Install Bootstrap…**을 선택하고 레이아웃으로 **roothide**를 선택합니다(**rootless**는 더 이상 권장되지 않습니다). 가상 머신에 Irisin이 설치됩니다.
+2. 처음 설치할 때는 Irisin에서 `apt`와 `bash`를 선택하고 설치 버튼을 길게 누른 뒤 **Bootstrap Install**을 선택합니다. `bash`와 `debianutils`는 서로 의존하므로 일반 설치로는 완료할 수 없습니다.
+3. 이후에는 일반 설치를 사용하면 됩니다.
+
+환경을 삭제하려면 **Apps > Uninstall Bootstrap…**을 선택합니다. 삭제 후 가상 머신이 재시동됩니다.
+
+Option 키를 누른 채 **Apps** 메뉴를 열면 두 가지 항목이 더 있습니다.
+
+- **Install Bootstrap from File…**: 로컬 Irisin `.deb`로 설치합니다.
+- **Uninstall Bootstrap Without Restarting…**: 가상 머신을 재시동하지 않고 환경을 삭제합니다.
+
+## 명령줄
+
+Launchpad는 `VPhone.bundle` 안의 `vphone-cli`로 가상 머신을 관리하며, 터미널에서 직접 사용할 수도 있습니다.
 
 | 작업 | 명령 |
 | --- | --- |
-| VM 목록 | `vphone-cli vm list` |
-| VM 정보 | `vphone-cli vm info myphone` |
-| VM 창 시작 | `vphone-cli vm launch myphone` |
-| VM 중지 | `vphone-cli vm stop myphone` |
-| 백업 내보내기 | `vphone-cli vm export myphone --out myphone.tzst` |
-| 백업 가져오기 | `vphone-cli vm import myphone.tzst --name restored` |
+| 가상 머신 목록 보기 | `vphone-cli vm list` |
+| 가상 머신 정보 보기 | `vphone-cli vm info myphone` |
+| 가상 머신 시작 | `vphone-cli vm launch myphone` |
+| 가상 머신 중지 | `vphone-cli vm stop myphone` |
+| 가상 머신 복제 | `vphone-cli vm clone myphone copy` |
+| 가상 머신 내보내기 | `vphone-cli vm export myphone --out myphone.tzst` |
+| 가상 머신 가져오기 | `vphone-cli vm import myphone.tzst --name restored` |
 
-VM은 기본적으로 `~/.vphone/`에 저장됩니다. 다른 명령은 `vphone-cli <group> --help`에서 확인할 수 있습니다.
+가상 머신은 기본적으로 `~/.vphone/`에 저장됩니다. 전체 명령은 `vphone-cli <group> --help`로 확인하세요. Launchpad 없이 가상 머신을 만드는 방법은 [생성 및 실행](Guides/create-and-run.md)을 참고하세요.
 
-## 구성
+### 자동화 API
 
-`vphone-cli`는 펌웨어 준비, VM 복원 및 수명 주기 관리를 담당합니다. 번들에 포함된 `vphone-vm`이 게스트를 실행하고 macOS 창을 관리합니다. 게스트 내부의 `vphoned`는 창의 제어 기능과 선택적으로 공개하는 HTTP·WebSocket API를 제공합니다. Xcode의 `VPhone` scheme은 독립적으로 실행 가능한 `VPhone.bundle`을 빌드하고 검증합니다.
+시작할 때 `--api-listen`을 추가하면 활성화됩니다.
 
-## 저장소 안내
+```sh
+vphone-cli vm launch myphone --api-listen 127.0.0.1:8765
+# 출력에 [api] token: …이 표시됩니다
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8765/v1/health
+```
+
+시작할 때마다 새 token이 생성됩니다. 고정된 token을 사용하려면 환경 변수 `VPHONE_API_TOKEN`을 설정하세요. token이 없는 요청과 웹 페이지에서 온 요청은 모두 거부됩니다. 인터페이스 설명은 [API 문서](../Research/vphoned_http_api.md)를 참고하세요.
+
+## 문제가 생기면
+
+먼저 [문제 해결](Guides/troubleshooting.md)을 확인하세요. 시스템이 가상 머신 프로그램을 거부하는 경우, 복원 실패, “Press home to continue”에서 멈추는 경우 등을 다룹니다. 그래도 해결되지 않으면 [이슈를 등록](https://github.com/Lakr233/vphone-cli/issues)해 주세요.
+
+## 문서
+
+| 문서 | 내용 |
+| --- | --- |
+| [호스트 설정](Guides/host-setup.md) | SIP 및 AMFI 설정, 소스 빌드, 환경 점검 |
+| [생성 및 실행](Guides/create-and-run.md) | 펌웨어 출처, 생성 절차, 저장과 백업 |
+| [호환성 안내](Guides/compatibility.md) | 검증된 펌웨어 조합 |
+| [문제 해결](Guides/troubleshooting.md) | 자주 발생하는 오류와 해결 방법 |
+| [Launchpad 명령줄](Guides/launchpad-cli.md) | `vphone-launchpad-cli`로 로컬 빌드 설치 및 테스트 |
+| [연구 기록](../Research/README.md) | 패치와 구현 세부 사항 |
+
+## 프로젝트 구조
+
+- `vphone-launchpad`: `VPhone.bundle`을 내려받아 설치하고 호스트를 설정하는 Mac 앱입니다. 별도로 배포됩니다.
+- `vphone-cli`: 펌웨어 준비, 패치 적용, 시스템 복원, 가상 머신 관리를 담당합니다.
+- `vphone-vm`: 가상 머신을 실행하고 가상 머신 창을 표시합니다.
+- `vphoned`: 가상 머신 안의 제어 서비스로, 창의 기능과 API는 모두 이를 통해 동작합니다.
 
 | 경로 | 내용 |
 | --- | --- |
-| [`VPhoneExecutable/`](../VPhoneExecutable/) | CLI, VM 프로세스, 펌웨어 패치 도구, 복원 백엔드 |
+| [`VPhoneExecutable/`](../VPhoneExecutable/) | `vphone-cli`, `vphone-vm`, 펌웨어 패치와 복원 |
 | [`VPhoneKit/`](../VPhoneKit/) | 호스트 공용 라이브러리와 API 클라이언트 |
-| [`VPhoneDaemon/`](../VPhoneDaemon/) | 게스트 제어 데몬 `vphoned` |
-| [`VPhoneGuestComponents/`](../VPhoneGuestComponents/) | 게스트 후크와 지원 바이너리 |
-| [`Documents/`](README.md) | 설정, 사용법, 호환성, 문제 해결 가이드 |
-| [`Research/`](../Research/README.md) | 패치 및 구현 연구 기록 |
+| [`VPhoneDaemon/`](../VPhoneDaemon/) | `vphoned` |
+| [`VPhoneGuestComponents/`](../VPhoneGuestComponents/) | 가상 머신 안의 hook과 도우미 프로그램 |
+| [`VPhoneLaunchpad/`](../VPhoneLaunchpad/) | Launchpad 앱과 도우미 프로그램 |
+
+소스에서 빌드하려면 `xcodebuild -workspace VPhone.xcworkspace -scheme VPhone build`를 실행합니다. 결과물은 `VPhone.bundle`입니다.
 
 ## 감사의 말
 
