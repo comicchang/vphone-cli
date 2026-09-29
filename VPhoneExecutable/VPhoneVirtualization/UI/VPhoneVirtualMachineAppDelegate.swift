@@ -121,7 +121,7 @@ class VPhoneVirtualMachineAppDelegate: NSObject, NSApplicationDelegate {
                 screenScale: options.screenScale,
                 keySender: keySender,
                 control: control,
-                ecid: vm.ecidHex,
+                name: VPhoneDockName.name(forConfig: options.configURL),
                 sceneIdentifier: options.configURL
                     .deletingLastPathComponent()
                     .standardizedFileURL
