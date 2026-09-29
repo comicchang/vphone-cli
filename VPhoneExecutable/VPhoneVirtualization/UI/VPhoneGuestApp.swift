@@ -16,7 +16,8 @@ public enum VPhoneGuestApp {
     /// isolation was implicit, and moving the code into a function loses it.
     @MainActor
     public static func run(_ boot: VPhoneBootCommand) -> Never {
-        let app = NSApplication.shared
+        // The first `shared` call picks the class, so this must come first.
+        let app = VPhoneApplication.shared
         let delegate = VPhoneVirtualMachineAppDelegate(command: boot)
         app.delegate = delegate
         app.run()

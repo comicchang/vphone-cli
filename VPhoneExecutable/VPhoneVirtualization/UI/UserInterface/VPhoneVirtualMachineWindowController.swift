@@ -8,7 +8,6 @@ class VPhoneVirtualMachineWindowController: NSObject {
     private weak var control: VPhoneGuestControl?
     private weak var virtualMachineView: VPhoneVirtualMachineView?
     private(set) var touchIDMonitor: VPhoneTouchIDMonitor?
-    private var menuKeyMonitor: Any?
     private var homeButton: NSButton?
     private var subtitleLabel: NSTextField?
 
@@ -33,6 +32,7 @@ class VPhoneVirtualMachineWindowController: NSObject {
         view.capturesSystemKeys = true
         view.keySender = keySender
         view.control = control
+        view.clipboardSync = VPhoneClipboardSync(control: control)
         virtualMachineView = view
         let vmView: NSView = view
 
@@ -82,17 +82,6 @@ class VPhoneVirtualMachineWindowController: NSObject {
         let controller = NSWindowController(window: window)
         controller.showWindow(nil)
         windowController = controller
-
-        // capturesSystemKeys lets the VM view take every shortcut before the menu
-        // bar sees it. Offer each key press to the menu first; the guest gets
-        // only what no enabled menu item handles.
-        menuKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak window] event in
-            let handledByMenu = MainActor.assumeIsolated {
-                guard let window, event.window === window else { return false }
-                return NSApp.mainMenu?.performKeyEquivalent(with: event) == true
-            }
-            return handledByMenu ? nil : event
-        }
 
         keySender.window = window
         NSApp.activate(ignoringOtherApps: true)
@@ -209,8 +198,12 @@ class VPhoneVirtualMachineWindowController: NSObject {
         guard let window = windowController?.window else { return }
         var parts: [String] = []
         if control.isConnected {
-            if let version = control.guestIOSVersion, !version.isEmpty { parts.append("iOS \(version)") }
-            if let address = control.guestIPAddress, !address.isEmpty { parts.append(address) }
+            if let version = control.guestIOSVersion, !version.isEmpty {
+                parts.append("iOS \(version)")
+            }
+            if let address = control.guestIPAddress, !address.isEmpty {
+                parts.append(address)
+            }
         }
         let subtitle = parts.joined(separator: " - ")
         if window.subtitle != subtitle {

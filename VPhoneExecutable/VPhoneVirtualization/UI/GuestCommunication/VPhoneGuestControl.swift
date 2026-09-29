@@ -406,6 +406,26 @@ final class VPhoneGuestControl {
         )
     }
 
+    /// The guest clipboard without its image, read after the input already
+    /// queued so it sees the effect of a key sent before it.
+    func clipboardInfoAfterQueuedInput() async throws -> ClipboardContent {
+        let info = try await callAfterQueuedInput("clipboard.get")
+        return ClipboardContent(
+            text: info["text"] as? String,
+            types: info["types"] as? [String] ?? [],
+            hasImage: info["has_image"] as? Bool ?? false,
+            changeCount: info["change_count"] as? Int ?? 0,
+            imageData: nil,
+        )
+    }
+
+    /// The guest clipboard image as PNG.
+    func clipboardImagePNG() async throws -> Data {
+        let response = try await http(method: "GET", path: "/v1/clipboard/image")
+        guard response.status == 200 else { throw try httpError(response) }
+        return response.body
+    }
+
     func clipboardSet(text: String) async throws {
         _ = try await call("clipboard.set", params: ["text": text])
     }

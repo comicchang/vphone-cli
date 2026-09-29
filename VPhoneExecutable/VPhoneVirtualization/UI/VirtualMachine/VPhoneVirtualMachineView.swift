@@ -80,6 +80,25 @@ class VPhoneVirtualMachineView: VZVirtualMachineView {
         keySender.sendHome()
     }
 
+    // MARK: - Clipboard
+
+    /// The Edit menu's Copy, Cut and Paste reach the guest through here, so
+    /// ⌘C, ⌘X and ⌘V sync the clipboard. Without a connected agent the items
+    /// are disabled and the keys go to the guest unchanged.
+    var clipboardSync: VPhoneClipboardSync?
+
+    @objc func copy(_: Any?) {
+        clipboardSync?.copy(cut: false)
+    }
+
+    @objc func cut(_: Any?) {
+        clipboardSync?.copy(cut: true)
+    }
+
+    @objc func paste(_: Any?) {
+        clipboardSync?.paste()
+    }
+
     // MARK: - Drag and Drop
 
     /// Every dropped file goes through vphoned: an .ipa or .tipa is installed,
@@ -173,12 +192,10 @@ class VPhoneVirtualMachineView: VZVirtualMachineView {
 
     /// Convert screenshot pixel coordinates to NSView local coordinates.
     private func pixelToLocal(pixelX: Double, pixelY: Double, screenWidth: Int, screenHeight: Int) -> NSPoint {
-        let w = bounds.width
-        let h = bounds.height
-        let localX = pixelX / Double(screenWidth) * w
-        // Screenshot y=0 is top, NSView y=0 is bottom (non-flipped)
-        let localY = (1.0 - pixelY / Double(screenHeight)) * h
-        return NSPoint(x: localX, y: localY)
+        displayGeometry.viewPoint(normalized: CGPoint(
+            x: pixelX / Double(screenWidth),
+            y: pixelY / Double(screenHeight),
+        ))
     }
 
     /// Synthesize an NSEvent at a given window point.
@@ -310,55 +327,34 @@ class VPhoneVirtualMachineView: VZVirtualMachineView {
 
     // MARK: - Coordinate Helpers
 
+    /// The guest display as drawn in this view. Full screen letterboxes it,
+    /// so touches are measured against it rather than `bounds`.
+    private var displayGeometry: VPhoneDisplayGeometry {
+        VPhoneDisplayGeometry(
+            viewBounds: bounds,
+            displaySize: recordingGraphicsDisplay?.sizeInPixels ?? .zero,
+            isFlipped: isFlipped,
+        )
+    }
+
     private func normalizeCoordinate(_ localPoint: NSPoint) -> CGPoint {
-        let w = bounds.width
-        let h = bounds.height
-
-        guard w > 0, h > 0 else { return .zero }
-
-        var nx = Double(localPoint.x / w)
-        var ny = Double(localPoint.y / h)
-
-        // Clamp
-        nx = max(0.0, min(1.0, nx))
-        ny = max(0.0, min(1.0, ny))
-
-        if !isFlipped {
-            ny = 1.0 - ny
-        }
-
-        return CGPoint(x: nx, y: ny)
+        displayGeometry.normalizedPoint(localPoint)
     }
 
     private func hitTestEdge(at point: CGPoint) -> Int {
-        let w = bounds.width
-        let h = bounds.height
+        displayGeometry.edge(at: point).rawValue
+    }
+}
 
-        let edgeThreshold: CGFloat = 32.0
+// MARK: - Menu Validation
 
-        let distLeft = point.x
-        let distRight = w - point.x
-        let distTop = isFlipped ? point.y : (h - point.y)
-        let distBottom = isFlipped ? (h - point.y) : point.y
-
-        var minDist = distLeft
-        var edgeCode = 8 // Left
-
-        if distRight < minDist {
-            minDist = distRight
-            edgeCode = 4 // Right
+extension VPhoneVirtualMachineView: NSMenuItemValidation {
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        switch item.action {
+        case #selector(copy(_:)), #selector(cut(_:)), #selector(paste(_:)):
+            clipboardSync?.isAvailable == true
+        default:
+            true
         }
-
-        if distBottom < minDist {
-            minDist = distBottom
-            edgeCode = 2 // Bottom (Home bar swipe up)
-        }
-
-        if distTop < minDist {
-            minDist = distTop
-            edgeCode = 1 // Top (Notification Center)
-        }
-
-        return minDist < edgeThreshold ? edgeCode : 0
     }
 }
