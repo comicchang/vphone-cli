@@ -165,6 +165,24 @@ struct APFSSnapshotTests {
     }
 
     @Test
+    func `finds a record past a hole in a 128 GB sparse image`() throws {
+        // Mid-window, so skipping the holes must still land on the window
+        // boundary before it. Scanning every hole would take minutes.
+        let recordOffset = 100 * 1024 * 1024 * 1024 + 3 * 64 * 1024 * 1024 + 8 * VPhoneAPFSSnapshot.blockSize
+        let block = Self.makeValidBlock(payload: Self.snapshotName(hash: Self.validHash), at: 100)
+        let url = try Self.write([])
+        defer { try? FileManager.default.removeItem(at: url) }
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.seek(toOffset: UInt64(recordOffset))
+        try handle.write(contentsOf: Data(block))
+        try handle.truncate(atOffset: 128 * 1_000_000_000)
+        try handle.close()
+
+        let report = try VPhoneAPFSSnapshot.rename(imageAt: url, dryRun: true, log: { _ in })
+        #expect(report.blocks.map(\.blockOffset) == [recordOffset])
+    }
+
+    @Test
     func `renames snapshot records on both sides of a 64 MiB scan window`() throws {
         let name = Self.snapshotName(hash: Self.validHash)
         let first = Self.makeValidBlock(payload: name, at: 100)

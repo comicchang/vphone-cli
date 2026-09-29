@@ -229,10 +229,26 @@ public enum VPhoneAPFSSnapshot {
         // once can fill host RAM, even though the file is sparse. Each window
         // starts on a page and APFS block boundary, so scan() still sees each
         // complete metadata block and returns the same records.
+        //
+        // Only windows holding data are mapped. A 128 or 256 GB image has
+        // under 10 GB written; scanning its holes faults in the rest as zero
+        // pages for nothing, which is where large disks spent their time.
         let windowSize = 64 * 1024 * 1024
         var blocks: [(blockOffset: Int, offsetsInBlock: [Int])] = []
         var snapshotName: String?
-        for offset in stride(from: 0, to: length, by: windowSize) {
+        var offset = 0
+        while offset < length {
+            let data = lseek(fd, off_t(offset), SEEK_DATA)
+            // ENXIO: nothing but hole from here to the end. Any other failure
+            // means the volume cannot report holes (ExFAT, SMB), so the
+            // window is scanned as before.
+            if data < 0, errno == ENXIO {
+                break
+            }
+            if data >= 0, Int(data) >= offset + windowSize {
+                offset = Int(data) / windowSize * windowSize
+                continue
+            }
             let count = min(windowSize, length - offset)
             guard let base = mmap(nil, count, PROT_READ, MAP_PRIVATE, fd, off_t(offset)),
                   base != MAP_FAILED
@@ -247,6 +263,7 @@ public enum VPhoneAPFSSnapshot {
                 (blockOffset: offset + $0.blockOffset, offsetsInBlock: $0.offsetsInBlock)
             })
             _ = munmap(base, count)
+            offset += windowSize
         }
         let report = Report(snapshotName: snapshotName, blocks: blocks)
 
