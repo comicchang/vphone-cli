@@ -225,13 +225,13 @@
         static let machines: [VPhoneLaunchpadMachine] = {
             let json = """
             [
-              {"name":"research-01","cpuCount":8,"memoryMB":8192,"diskSizeBytes":68719476736,
+              {"name":"research-01","cpuCount":8,"memoryMB":8192,"diskSizeBytes":64000000000,
                "network":{"mode":"nat","macAddress":"5a:94:ef:12:30:01"},
                "restoreInfo":{"ios":{"version":"26.4.2","build":"23E261"},"cloudOS":{"version":"26.4","build":"23E224"},"variant":"jb","device":"iPhone99,11"},
                "udid":"00008140-001A2B3C4D5E6F70"},
-              {"name":"ios27-rc","cpuCount":8,"memoryMB":12288,"diskSizeBytes":137438953472,
+              {"name":"ios27-rc","cpuCount":8,"memoryMB":12288,"diskSizeBytes":128000000000,
                "network":{"mode":"nat","macAddress":"5a:94:ef:12:30:02"}},
-              {"name":"frida-lab","cpuCount":6,"memoryMB":8192,"diskSizeBytes":68719476736,
+              {"name":"frida-lab","cpuCount":6,"memoryMB":8192,"diskSizeBytes":64000000000,
                "network":{"mode":"bridged","macAddress":"5a:94:ef:12:30:03","bridgeInterface":"en0"},
                "restoreInfo":{"ios":{"version":"26.6.2","build":"23G90"},"cloudOS":{"version":"26.4","build":"23E224"},"variant":"jb","device":"iPhone99,11"},
                "udid":"00008140-0011223344556677"}
