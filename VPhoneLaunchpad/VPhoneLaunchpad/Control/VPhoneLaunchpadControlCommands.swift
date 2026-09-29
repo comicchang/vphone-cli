@@ -67,7 +67,7 @@ struct VPhoneLaunchpadControlCommands {
     // MARK: - Status
 
     private func status() -> [String: Any] {
-        let helper: String = switch model.helper.state {
+        let helper = switch model.helper.state {
         case .unknown: "unknown"
         case .notInstalled: "not installed"
         case let .outdated(installed, bundled): "outdated (\(installed), app has \(bundled))"
@@ -176,7 +176,7 @@ struct VPhoneLaunchpadControlCommands {
         guard let version = progress.version else {
             throw VPhoneLaunchpadError("The install did not report a version.")
         }
-        return report(try installed(version))
+        return try report(installed(version))
     }
 
     private func reportSteps(
@@ -257,7 +257,7 @@ struct VPhoneLaunchpadControlCommands {
 
     private func report(_ machine: VPhoneLaunchpadMachine) -> [String: Any] {
         let path = machine.path
-        let state: String = switch library.state(of: path) {
+        let state = switch library.state(of: path) {
         case .stopped: "stopped"
         case .running: "running"
         case let .busy(activity): "busy: \(activity)"
@@ -446,7 +446,7 @@ struct VPhoneLaunchpadControlCommands {
 
         let pipeline: VPhoneLaunchpadCreationPipeline
         if let from = request.option("from") {
-            guard let step = VPhoneLaunchpadCreationPipeline.Step.allCases.first(where: { "\($0)" == from }) else {
+            guard let step = VPhoneLaunchpadCreationPipeline.Step.allCases.first(where: { from == "\($0)" }) else {
                 let steps = VPhoneLaunchpadCreationPipeline.Step.allCases.map { "\($0)" }.joined(separator: ", ")
                 throw VPhoneLaunchpadError("--from takes one of: \(steps).")
             }

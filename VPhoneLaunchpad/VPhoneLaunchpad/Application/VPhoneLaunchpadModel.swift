@@ -53,7 +53,7 @@ final class VPhoneLaunchpadModel {
             return
         }
         queuedPanel = next
-        self.panel = nil
+        panel = nil
     }
 
     /// Called when a panel's sheet has closed.

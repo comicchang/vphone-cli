@@ -164,12 +164,14 @@ if words.isEmpty || ["help", "-h", "--help"].contains(words[0]) {
     print(usage(), terminator: "")
     exit(words.isEmpty ? 1 : 0)
 }
+
 let request = parse(words)
 let fd = connectControl() ?? launchAndConnect()
 
 guard var line = try? JSONEncoder().encode(request) else {
     fail("unable to encode the request.")
 }
+
 line.append(0x0A)
 guard VPhoneLaunchpadControl.write(line, to: fd) else {
     fail("vphone-launchpad closed the connection.")
@@ -207,4 +209,5 @@ while true {
         exit(0)
     }
 }
+
 fail("vphone-launchpad closed the connection before the command finished.")
