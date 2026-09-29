@@ -409,6 +409,7 @@ struct VPhoneLaunchpadMachinesView: View {
     }
 
     static func disk(_ bytes: Int64) -> String {
-        "\(bytes / 1_073_741_824) GB"
+        // Decimal, as iOS and the creation stepper count it.
+        "\(bytes / 1_000_000_000) GB"
     }
 }

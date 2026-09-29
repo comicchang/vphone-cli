@@ -59,11 +59,13 @@ public enum VPhoneBundleOperations {
         // alreadyExists check.
         do {
             // Sparse disk image: create then truncate to size (no bytes written).
+            // Decimal GB, the unit iOS reports, so "128 GB" shows as 128 GB
+            // in the guest rather than 137.
             let disk = dir.appendingPathComponent("Disk.img")
             fm.createFile(atPath: disk.path, contents: nil)
             let handle = try FileHandle(forWritingTo: disk)
             do {
-                try handle.truncate(atOffset: spec.diskSizeGB * 1024 * 1024 * 1024)
+                try handle.truncate(atOffset: spec.diskSizeGB * 1_000_000_000)
                 try handle.close()
             } catch {
                 try? handle.close()

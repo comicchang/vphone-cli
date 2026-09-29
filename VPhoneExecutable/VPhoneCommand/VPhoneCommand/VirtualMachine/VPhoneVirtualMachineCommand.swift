@@ -122,7 +122,7 @@ struct VPhoneVirtualMachineListCommand: ParsableCommand {
             print("No VMs in \(library.root.path). Create one with vm create.")
         } else {
             for r in reports {
-                let diskGB = r.diskSizeBytes / (1024 * 1024 * 1024)
+                let diskGB = r.diskSizeBytes / 1_000_000_000
                 if let info = r.restoreInfo {
                     print(
                         "\(r.name)  \(r.cpuCount) CPU  \(r.memoryMB) MB  \(diskGB) GB disk  iOS \(info.ios.version) / cloudOS \(info.cloudOS.version)",

@@ -38,7 +38,7 @@ struct BundleOperationsTests {
         #expect(bundle.manifest.memorySize == 8192 * 1024 * 1024)
         let disk = bundle.url.appendingPathComponent("Disk.img")
         let size = try (FileManager.default.attributesOfItem(atPath: disk.path)[.size] as? NSNumber)?.int64Value
-        #expect(size == Int64(64 * 1024 * 1024 * 1024))
+        #expect(size == Int64(64 * 1_000_000_000))
         #expect(FileManager.default.fileExists(atPath: bundle.url.appendingPathComponent("SEPStorage").path))
         #expect(
             FileManager.default.fileExists(atPath: bundle.url.appendingPathComponent("AVPBooter.vresearch1.bin").path),
