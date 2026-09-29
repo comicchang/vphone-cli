@@ -39,7 +39,7 @@ vphone-launchpad-cli vm log research-01 --lines 100
 vphone-launchpad-cli vm stop research-01
 
 # The same checks against the release it replaces.
-vphone-launchpad-cli bundle use 2.1.0
+vphone-launchpad-cli bundle use 2.1.1
 ```
 
 The first step that needs the helper after its five-minute authorization
