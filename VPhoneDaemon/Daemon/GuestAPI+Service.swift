@@ -54,7 +54,9 @@ extension GuestAPI {
                 throw GuestAPIError.invalidRequest("paths must list plist files or directories")
             }
             let load = method == "services.load"
-            if !load {
+            if load {
+                try GuestIrisinInstaller.prepareBootstrapDaemons(paths)
+            } else {
                 try requireForce(params, "unload services")
             }
             return try loadServices(paths, load: load, override: bool(params, "override"))

@@ -5,6 +5,10 @@ import Foundation
 
 extension GuestIrisinInstaller {
     static let roothideParent = "/private/var/containers/Bundle/Application"
+    /// The one RootHide root vphone installs and loads: a user-selected stem,
+    /// zero-padded to 16 hex digits with RootHide's XOR checksum in the final
+    /// byte (0C instead of the proposed 10). The launchd hook names it too.
+    static let roothideRoot = roothideParent + "/.jbroot-000114514191980C"
 
     static func roothideName(_ name: String) -> Bool {
         guard name.range(of: "^\\.jbroot-[0-9a-fA-F]{16}$", options: .regularExpression) != nil,
@@ -16,11 +20,8 @@ extension GuestIrisinInstaller {
         return check == UInt8(truncatingIfNeeded: value)
     }
 
-    static func isRootHideRoot(_ root: String) -> Bool {
-        root.hasPrefix(roothideParent + "/") && roothideName(String(root.dropFirst(roothideParent.count + 1)))
-    }
-
-    /// Every valid `.jbroot-<16 hex>` directory entry, sorted.
+    /// Every valid `.jbroot-<16 hex>` directory entry, sorted. Only
+    /// `roothideRoot` is used; the others are listed so they can be removed.
     static func roothideRoots() throws -> [String] {
         try FileManager.default.contentsOfDirectory(atPath: roothideParent)
             .sorted()
@@ -28,36 +29,13 @@ extension GuestIrisinInstaller {
             .map { roothideParent + "/" + $0 }
     }
 
+    /// A RootHide bootstrap under any other name has to be uninstalled first.
     static func roothideBootstrapRoot(detected: String?) throws -> String {
-        if let detected {
-            return detected
+        let others = try roothideRoots().filter { $0 != roothideRoot && isDirectory($0) }
+        guard detected == nil || detected == roothideRoot, others.isEmpty else {
+            throw GuestAPIError.operationFailed("Another RootHide bootstrap exists; uninstall it first")
         }
-        let roots = try roothideRoots().filter(isDirectory)
-        guard roots.count <= 1 else {
-            throw GuestAPIError.operationFailed("Multiple RootHide bootstrap roots exist")
-        }
-        if let root = roots.first {
-            return root
-        }
-
-        // User-selected stem, zero-padded to 16 hex digits with RootHide's
-        // XOR checksum in the final byte (0C instead of the proposed 10).
-        let name = ".jbroot-000114514191980C"
-        guard roothideName(name) else {
-            throw GuestAPIError.operationFailed("Configured RootHide bootstrap name is invalid")
-        }
-        return roothideParent + "/" + name
-    }
-
-    static func prepareRootHidePlist(_ url: URL, executable: String) throws {
-        let data = try Data(contentsOf: url)
-        guard var plist = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
-            throw GuestAPIError.operationFailed("Irisin launchd plist is invalid")
-        }
-        plist["ProgramArguments"] = [executable]
-        plist["__Patched"] = true
-        let updated = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
-        try updated.write(to: url, options: .atomic)
+        return roothideRoot
     }
 
     /// Runs at install and on every vphoned start: the loader links, then the
@@ -124,7 +102,7 @@ extension GuestIrisinInstaller {
     /// program's dependencies before it starts; this pass covers the rest.
     static func ensureRootHideMachOLinks(root: String) -> [String] {
         let files = FileManager.default
-        let skipped: Set<String> = ["usr/share", "usr/include"]
+        let skipped: Set = ["usr/share", "usr/include"]
         var linked: Set<String> = []
         var created: [String] = []
         for top in ["bin", "sbin", "usr", "Library"] {
@@ -135,7 +113,9 @@ extension GuestIrisinInstaller {
                 let relative = top + "/" + entry
                 switch walk.fileAttributes?[.type] as? FileAttributeType {
                 case .typeDirectory?:
-                    if skipped.contains(relative) { walk.skipDescendants() }
+                    if skipped.contains(relative) {
+                        walk.skipDescendants()
+                    }
                     continue
                 case .typeRegular?:
                     break

@@ -84,9 +84,10 @@ enum GuestIrisinInstaller {
     }
 
     static func refreshBootstrapOnStartup() {
+        var installation: (layout: String, root: String)?
         do {
-            guard let installation = try completedBootstrap() else { return }
-            if installation.layout == "roothide" {
+            installation = try completedBootstrap()
+            if let installation, installation.layout == "roothide" {
                 let base = try repairRootHide(root: installation.root)
                 if base["created"] as? [String] != [] || base["deferred"] as? [String] != [] {
                     NSLog("vphoned: RootHide bootstrap base: %@", String(describing: base))
@@ -95,6 +96,12 @@ enum GuestIrisinInstaller {
             }
         } catch {
             NSLog("vphoned: could not repair RootHide bootstrap: %@", String(describing: error))
+        }
+        if let installation {
+            // Off the startup path: the server should not wait for launchd.
+            DispatchQueue.global().async {
+                loadBootstrapDaemons(layout: installation.layout, root: installation.root)
+            }
         }
         do {
             _ = try repairFirmwareRecord()
@@ -173,7 +180,7 @@ enum GuestIrisinInstaller {
         guard layout == "rootless", info.st_mode & mode_t(S_IFMT) == mode_t(S_IFLNK) else {
             throw GuestAPIError.operationFailed("Bootstrap root is not a directory: \(root)")
         }
-        return (try rootlessLinkTarget(root), true)
+        return try (rootlessLinkTarget(root), true)
     }
 
     static func completedBootstrap() throws -> (layout: String, root: String)? {
@@ -187,8 +194,10 @@ enum GuestIrisinInstaller {
         }
         guard let layout = marker["layout"] as? String,
               let root = marker["jbroot"] as? String,
-              (layout == "rootless" && root == rootlessRoot) || (layout == "roothide" && isRootHideRoot(root))
+              layout == "rootless" || layout == "roothide"
         else { throw GuestAPIError.operationFailed("Completed bootstrap marker has an invalid root") }
+        // A RootHide root under another name is left for uninstall to find.
+        guard root == (layout == "rootless" ? rootlessRoot : roothideRoot) else { return nil }
         return (layout, root)
     }
 
@@ -297,7 +306,7 @@ enum GuestIrisinInstaller {
                             version: version, architecture: architecture, layout: layout)
 
         if layout == "roothide" {
-            try prepareRootHidePlist(plist, executable: root + "/usr/libexec/irisind")
+            _ = try patchRootHideDaemon(at: plist.path, root: root)
         }
         try prepareAppData()
 

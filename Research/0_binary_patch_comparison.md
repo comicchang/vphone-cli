@@ -166,21 +166,20 @@
 > `cfw install` now places `launchdhook-vphone.dylib` and a diagnostic
 > `SystemHook-vphone.dylib` in `/usr/lib`, links `/vh` to the launchd hook,
 > inserts a weak `/vh` load command for the
-> launchd hook after `patch-launchd-jetsam`, and re-signs launchd. The hook
-> extends launchd's `Paths` and `LaunchDaemons` values with the selected
-> bootstrap's `Library/LaunchDaemons` (plus `basebin/LaunchDaemons` when present).
-> It reads each real plist from the bootstrap root but inserts it under a
-> distinct `/System/Library/LaunchDaemons/vphone.*.plist` cache key. On the
-> tested iOS 26.6.2 cache loader, otherwise identical entries keyed by
-> `/var/jb/Library/LaunchDaemons/...` or `/Library/LaunchDaemons/...` were
-> ignored; a System key was imported and its executable ran. The old binary
-> in `zqxwce/vphone-cli-storage` at `2ef6b06` uses the real `/var/jb` key
-> and `MSHookFunction` to intercept `xpc_dictionary_get_value`; it also
-> requires `/cores/systemhook.dylib` and `/cores/libellekit.dylib` at startup.
-> A single `.jbroot-<16 hex>` under the RootHide application container is
-> accepted; ambiguous roots are ignored. RootHide bootstrap-relative `Program`
-> and `ProgramArguments[0]` paths are translated to physical kernel paths in
-> the in-memory XPC plist. The hook also tries to remove PID 1's existing
+> launchd hook after `patch-launchd-jetsam`, and re-signs launchd. Until
+> 2026-09-29 the hook also extended launchd's `Paths` and `LaunchDaemons`
+> cache values with the bootstrap's `Library/LaunchDaemons`, under distinct
+> `/System/Library/LaunchDaemons/vphone.*.plist` keys (the tested iOS 26.6.2
+> cache loader ignored `/var/jb/...` and `/Library/...` keys). Those jobs did
+> not match the plist path a package script boots out, so the hook no longer
+> touches `xpc_dictionary_get_value`: vphoned loads the bootstrap's daemons
+> after boot, as RootHide's `jbctl startup` does (`Research/roothide_loader_links.md`).
+> The old binary in `zqxwce/vphone-cli-storage` at `2ef6b06` uses the real
+> `/var/jb` key and `MSHookFunction` to intercept `xpc_dictionary_get_value`;
+> it also requires `/cores/systemhook.dylib` and `/cores/libellekit.dylib` at
+> startup. The bootstrap root is `/var/jb` or the one RootHide root vphoned
+> installs, `.jbroot-000114514191980C`; spawns look for it until it appears.
+> The hook also tries to remove PID 1's existing
 > jetsam limit and suppresses future fatal task-limit assignments for PID 1.
 > The launchd hook interposes PID 1's `posix_spawn` without loading ElleKit,
 > so process injection remains available before a package manager installs it. It adds
