@@ -18,6 +18,9 @@ struct VPhoneLaunchpadCommandHistoryView: View {
             } else {
                 table
             }
+        } accessory: {
+            Button("Copy") { copy(selection) }
+                .disabled(selection.isEmpty)
         } actions: {
             Button("Done") { dismiss() }
                 .keyboardShortcut(.defaultAction)
@@ -25,18 +28,19 @@ struct VPhoneLaunchpadCommandHistoryView: View {
         .frame(width: 760, height: 460)
     }
 
+    /// The icon and time keep fixed widths, so the command gets the rest.
     private var table: some View {
         Table(entries, selection: $selection) {
             TableColumn("") { entry in
                 VPhoneLaunchpadStatusIcon(status: entry.status.map { $0 == 0 ? .passed : .failed } ?? .running)
                     .help(entry.status.map { String(localized: "Exit status \($0)") } ?? "")
             }
-            .width(20)
+            .width(16)
             TableColumn("Started") { entry in
                 Text(entry.date.formatted(date: .omitted, time: .standard))
                     .monospacedDigit()
             }
-            .width(min: 70, ideal: 80)
+            .width(64)
             TableColumn("Command") { entry in
                 Text(verbatim: entry.text)
                     .font(.system(.body, design: .monospaced))

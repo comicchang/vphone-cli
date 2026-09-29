@@ -50,7 +50,7 @@ struct VPhoneLaunchpadNewMachineAdvancedView: View {
         .frame(width: 520)
         .fixedSize(horizontal: false, vertical: true)
         .sheet(isPresented: $showsPatchSettings) {
-            VPhoneLaunchpadPatchSettingsView(machine: nil, initial: patches) { selection in
+            VPhoneLaunchpadPatchSettingsView(initial: patches) { selection in
                 patches = selection
                 reloadPatches()
             }

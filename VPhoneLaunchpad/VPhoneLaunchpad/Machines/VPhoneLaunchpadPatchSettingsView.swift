@@ -1,7 +1,10 @@
 import SwiftUI
 
-/// The patch editor: a preset, and a checkmark for every patch the bundle
-/// declares.
+/// The patch editor New Machine opens: a preset, and a checkmark for every
+/// patch the bundle declares.
+///
+/// Only a machine that does not exist yet has one. Once installed, its
+/// firmware is patched and the choice is fixed.
 ///
 /// The list is never a copy of the catalogue — it is whatever
 /// `vphone-cli fw patches --json` reports, so a patch set added to the bundle
@@ -11,14 +14,9 @@ import SwiftUI
 struct VPhoneLaunchpadPatchSettingsView: View {
     typealias Catalog = VPhoneLaunchpadPatchCatalog
 
-    /// The machine whose record this edits, or nil while New Machine is still
-    /// composing one that no directory exists for yet.
-    let machine: VPhoneLaunchpadMachinePath?
-    /// What the boxes start from. An existing machine has its own record, read
-    /// back through `fw patches`, so only New Machine passes one.
+    /// What the boxes start from.
     let initial: VPhoneLaunchpadPatchSelection
-    /// Hands the edited choice back. An existing machine's caller writes it with
-    /// `fw set-patches`; New Machine holds it until the VM exists.
+    /// Hands the edited choice back; New Machine holds it until the VM exists.
     let onSave: (VPhoneLaunchpadPatchSelection) -> Void
 
     @Environment(VPhoneLaunchpadModel.self) private var model
@@ -37,11 +35,9 @@ struct VPhoneLaunchpadPatchSettingsView: View {
     @State private var confirmsBootEssential = false
 
     init(
-        machine: VPhoneLaunchpadMachinePath?,
-        initial: VPhoneLaunchpadPatchSelection = VPhoneLaunchpadPatchSelection(),
+        initial: VPhoneLaunchpadPatchSelection,
         onSave: @escaping (VPhoneLaunchpadPatchSelection) -> Void,
     ) {
-        self.machine = machine
         self.initial = initial
         self.onSave = onSave
         _selection = State(initialValue: initial)
@@ -52,7 +48,7 @@ struct VPhoneLaunchpadPatchSettingsView: View {
     }
 
     var body: some View {
-        VPhoneLaunchpadSheet(machine.map { Text("\($0.name) Patches") } ?? Text("Patches")) {
+        VPhoneLaunchpadSheet(Text("Patches")) {
             VStack(spacing: 0) {
                 header
                 Divider()
@@ -68,7 +64,7 @@ struct VPhoneLaunchpadPatchSettingsView: View {
         } actions: {
             Button("Cancel") { dismiss() }
                 .keyboardShortcut(.cancelAction)
-            Button(machine == nil ? "Done" : "Save") { commit() }
+            Button("Done") { commit() }
                 .keyboardShortcut(.defaultAction)
                 .disabled(catalog == nil)
         }
@@ -81,28 +77,29 @@ struct VPhoneLaunchpadPatchSettingsView: View {
         } message: {
             Text("The machine may not boot without \(essentialOff.map(\.identifier).joined(separator: ", ")).")
         }
-        .task { await load(preset: machine == nil ? initial.preset : nil) }
+        .task { await load(preset: initial.preset) }
     }
 
     // MARK: - Preset
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                // Sized to its content, so the label sits against the menu
+                // and lines up with the summary under it.
                 Picker("Preset", selection: presetBinding) {
                     ForEach(catalog?.presets ?? []) { preset in
                         Text(verbatim: preset.displayTitle).tag(preset.identifier)
                     }
                 }
+                .fixedSize()
                 .disabled(catalog == nil || isLoading)
-                .frame(width: 280)
                 if isLoading {
                     ProgressView().controlSize(.small)
                 }
                 Spacer()
-                TextField("Filter", text: $filter, prompt: Text("Filter patches"))
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 200)
+                VPhoneLaunchpadSearchField(text: $filter, prompt: String(localized: "Filter patches"))
+                    .frame(width: 220)
             }
             if let summary = catalog?.preset(selection.preset)?.displaySummary, !summary.isEmpty {
                 Text(verbatim: summary)
@@ -111,7 +108,8 @@ struct VPhoneLaunchpadPatchSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     /// Switching preset clears both override lists: the checkmarks are read as a
@@ -168,23 +166,33 @@ struct VPhoneLaunchpadPatchSettingsView: View {
                 ))
                 .labelsHidden()
             }
-            .width(28)
+            .width(36)
 
+            // Most patches are boot-essential, so a mark on each would say
+            // nothing. It shows only on one that is off.
             TableColumn("Patch", value: \.title) { patch in
-                Text(verbatim: patch.title)
-                    .lineLimit(1)
-                    .help(patch.summary)
+                HStack(spacing: 4) {
+                    Text(verbatim: patch.title)
+                        .lineLimit(1)
+                    if patch.bootEssential, !selection.isOn(patch) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                            .help(String(localized: "The machine may not boot without this patch."))
+                    }
+                }
+                .help(patch.summary)
             }
-            .width(min: 130, ideal: 180)
+            .width(min: 160, ideal: 220)
 
             TableColumn("Identifier", value: \.identifier) { patch in
                 Text(verbatim: patch.identifier)
                     .font(.system(.callout, design: .monospaced))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(patch.identifier)
             }
-            .width(min: 200, ideal: 350)
+            .width(min: 180, ideal: 300)
 
             TableColumn("Patch Set", value: \.patchSetName) { patch in
                 Text(verbatim: patch.patchSetName).lineLimit(1)
@@ -195,21 +203,10 @@ struct VPhoneLaunchpadPatchSettingsView: View {
                 if patch.isVersionGated {
                     Text(verbatim: patch.applicability).lineLimit(1)
                 } else {
-                    Text("Any version").foregroundStyle(.tertiary).lineLimit(1)
+                    Text("All").foregroundStyle(.tertiary).lineLimit(1)
                 }
             }
             .width(min: 80, ideal: 110)
-
-            TableColumn("Boot") { patch in
-                if patch.bootEssential {
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(selection.isOn(patch) ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
-                        .help(selection.isOn(patch)
-                            ? String(localized: "Boot-essential")
-                            : String(localized: "Boot-essential, and off"))
-                }
-            }
-            .width(32)
         }
     }
 
@@ -230,7 +227,8 @@ struct VPhoneLaunchpadPatchSettingsView: View {
             detail
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     @ViewBuilder
@@ -241,18 +239,29 @@ struct VPhoneLaunchpadPatchSettingsView: View {
                 Text(verbatim: patch.summary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(verbatim: patch.isVersionGated
-                    ? "\(patch.patchSetName) · \(patch.target) · \(patch.applicability)"
-                    : "\(patch.patchSetName) · \(patch.target)")
+                Text(verbatim: facts(patch).joined(separator: " · "))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             .frame(height: 62, alignment: .topLeading)
         } else {
-            Text("Select a patch to read what it changes.")
+            Text("Select a patch to see what it changes.")
                 .foregroundStyle(.secondary)
                 .frame(height: 62, alignment: .topLeading)
         }
+    }
+
+    /// The line under a patch's summary: where it comes from, what it
+    /// applies to, and whether the machine boots without it.
+    private func facts(_ patch: Catalog.Patch) -> [String] {
+        var facts = [patch.patchSetName, patch.target]
+        if patch.isVersionGated {
+            facts.append(patch.applicability)
+        }
+        if patch.bootEssential {
+            facts.append(String(localized: "Required to boot"))
+        }
+        return facts
     }
 
     /// What is on, what differs from the preset, and when the choice takes effect.
@@ -261,37 +270,30 @@ struct VPhoneLaunchpadPatchSettingsView: View {
             return ""
         }
         let on = catalog.patches.count(where: { selection.isOn($0) })
-        var text = String(localized: "\(on) of \(catalog.patches.count) patches on.")
+        var parts = [String(localized: "\(on) of \(catalog.patches.count) on")]
         if selection.hasOverrides {
-            text += String(localized: " Differs from the preset: \(selection.blocked.count) off, \(selection.allowed.count) on.")
+            parts.append(String(localized: "\(selection.blocked.count) turned off, \(selection.allowed.count) turned on from the preset"))
         }
-        return machine == nil
-            ? text + String(localized: " Recorded when the machine is created.")
-            : text + String(localized: " Applies the next time the boot chain is patched.")
+        parts.append(String(localized: "Fixed once the machine is installed"))
+        return parts.joined(separator: " · ")
     }
 
     // MARK: - Actions
 
-    private func load(preset: String?) async {
+    private func load(preset: String) async {
         isLoading = true
         defer { isLoading = false }
         do {
             let catalog = try await Catalog.read(
                 using: model.bundles.commandLine(),
-                machine: machine,
+                machine: nil,
                 preset: preset,
             )
             // A second switch of the picker may have overtaken this read.
-            guard preset == nil || preset == selection.preset else {
+            guard preset == selection.preset else {
                 return
             }
-            // A nil preset means "report what the VM has recorded", so its own
-            // choice is what the boxes start from.
             selection.preset = catalog.activePreset
-            if preset == nil {
-                selection.blocked = Set(catalog.blockedPatches)
-                selection.allowed = Set(catalog.allowedPatches)
-            }
             selection.normalize(against: catalog)
             self.catalog = catalog
             // The detail pane reserves its space either way, so it starts with

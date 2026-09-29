@@ -1,108 +1,135 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "NSLocationUsageDescription": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shares your location with the virtual iPhone so apps running inside it see the same location."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "将您的位置共享给虚拟 iPhone，使其中运行的应用能获取相同的位置。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "位置情報を仮想 iPhone と共有し、その中のアプリにも同じ位置情報を提供します。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "가상 iPhone과 위치를 공유하여 그 안에서 실행되는 앱이 동일한 위치를 사용하도록 합니다."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chia sẻ vị trí của bạn với iPhone ảo để các ứng dụng bên trong sử dụng cùng vị trí."
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "vphone-launchpad"
           }
         }
       }
     },
-    "NSLocationWhenInUseUsageDescription": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shares your location with the virtual iPhone so apps running inside it see the same location."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "将您的位置共享给虚拟 iPhone，使其中运行的应用能获取相同的位置。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "位置情報を仮想 iPhone と共有し、その中のアプリにも同じ位置情報を提供します。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "가상 iPhone과 위치를 공유하여 그 안에서 실행되는 앱이 동일한 위치를 사용하도록 합니다."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chia sẻ vị trí của bạn với iPhone ảo để các ứng dụng bên trong sử dụng cùng vị trí."
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "vphone-launchpad"
           }
         }
       }
     },
-    "NSLocationAlwaysAndWhenInUseUsageDescription": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shares your location with the virtual iPhone so apps running inside it see the same location."
+    "NSLocationAlwaysAndWhenInUseUsageDescription" : {
+      "comment" : "Privacy - Location Always and When In Use Usage Description",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shares your location with the virtual iPhone so apps running inside it see the same location."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "将您的位置共享给虚拟 iPhone，使其中运行的应用能获取相同的位置。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "位置情報を仮想 iPhone と共有し、その中のアプリにも同じ位置情報を提供します。"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "位置情報を仮想 iPhone と共有し、その中のアプリにも同じ位置情報を提供します。"
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "가상 iPhone과 위치를 공유하여 그 안에서 실행되는 앱이 동일한 위치를 사용하도록 합니다."
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "가상 iPhone과 위치를 공유하여 그 안에서 실행되는 앱이 동일한 위치를 사용하도록 합니다."
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chia sẻ vị trí của bạn với iPhone ảo để các ứng dụng bên trong sử dụng cùng vị trí."
           }
         },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chia sẻ vị trí của bạn với iPhone ảo để các ứng dụng bên trong sử dụng cùng vị trí."
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将您的位置共享给虚拟 iPhone，使其中运行的应用能获取相同的位置。"
+          }
+        }
+      }
+    },
+    "NSLocationUsageDescription" : {
+      "comment" : "Privacy - Location Usage Description",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shares your location with the virtual iPhone so apps running inside it see the same location."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "位置情報を仮想 iPhone と共有し、その中のアプリにも同じ位置情報を提供します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "가상 iPhone과 위치를 공유하여 그 안에서 실행되는 앱이 동일한 위치를 사용하도록 합니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chia sẻ vị trí của bạn với iPhone ảo để các ứng dụng bên trong sử dụng cùng vị trí."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将您的位置共享给虚拟 iPhone，使其中运行的应用能获取相同的位置。"
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription" : {
+      "comment" : "Privacy - Location When In Use Usage Description",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shares your location with the virtual iPhone so apps running inside it see the same location."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "位置情報を仮想 iPhone と共有し、その中のアプリにも同じ位置情報を提供します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "가상 iPhone과 위치를 공유하여 그 안에서 실행되는 앱이 동일한 위치를 사용하도록 합니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chia sẻ vị trí của bạn với iPhone ảo để các ứng dụng bên trong sử dụng cùng vị trí."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将您的位置共享给虚拟 iPhone，使其中运行的应用能获取相同的位置。"
           }
         }
       }
     }
   },
-  "version": "1.3"
+  "version" : "1.3"
 }

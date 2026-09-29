@@ -8,7 +8,6 @@ struct VPhoneLaunchpadMachinesView: View {
         case newMachine
         case creation(MachinePath)
         case settings([VPhoneLaunchpadMachine])
-        case patches(MachinePath)
         case rename(MachinePath)
         case clone(MachinePath)
         case export([MachinePath])
@@ -19,7 +18,6 @@ struct VPhoneLaunchpadMachinesView: View {
             case .newMachine: "new"
             case let .creation(machine): "creation-\(machine.url.path)"
             case let .settings(machines): "settings-\(machines.map(\.path.url.path).joined(separator: "|"))"
-            case let .patches(machine): "patches-\(machine.url.path)"
             case let .rename(machine): "rename-\(machine.url.path)"
             case let .clone(machine): "clone-\(machine.url.path)"
             case let .export(machines): "export-\(machines.map(\.url.path).joined(separator: "|"))"
@@ -60,7 +58,6 @@ struct VPhoneLaunchpadMachinesView: View {
                 table(selection: $library.selection)
             }
         }
-        .searchable(text: $filter, placement: .toolbar, prompt: Text("Search machines"))
         // A hidden machine stays out of the selection, so Start, Delete and
         // the inspector act only on rows the table shows.
         .onChange(of: filter) {
@@ -162,10 +159,14 @@ struct VPhoneLaunchpadMachinesView: View {
             .help("Create a machine")
             .disabled(model.bundles.activeVersion == nil)
         }
-        // Without it, macOS 15 puts the field at the window's trailing edge,
-        // past the inspector.
+        // Without it, macOS 26 draws New Machine and the search field in
+        // one glass capsule.
         if #available(macOS 26, *) {
-            DefaultToolbarItem(kind: .search)
+            ToolbarSpacer(.fixed)
+        }
+        ToolbarItem(placement: .automatic) {
+            VPhoneLaunchpadSearchField(text: $filter, prompt: String(localized: "Search machines"))
+                .frame(width: 200)
         }
     }
 
@@ -282,8 +283,6 @@ struct VPhoneLaunchpadMachinesView: View {
             Divider()
             Button("Settings…") { sheet = .settings([machine]) }
                 .disabled(!isStopped)
-            Button("Patch Settings…") { sheet = .patches(machine.path) }
-                .disabled(!isStopped)
             Button("Rename…") { sheet = .rename(machine.path) }
                 .disabled(!isStopped)
             Button("Clone…") { sheet = .clone(machine.path) }
@@ -396,12 +395,6 @@ struct VPhoneLaunchpadMachinesView: View {
             }
         case let .settings(machines):
             VPhoneLaunchpadMachineSettingsView(machines: machines)
-        case let .patches(path):
-            // The machine's own record is what the editor starts from, so it reads
-            // it back through `fw patches` rather than being handed a copy.
-            VPhoneLaunchpadPatchSettingsView(machine: path) { selection in
-                Task { await library.setPatches(path, selection) }
-            }
         case let .rename(path):
             VPhoneLaunchpadNameSheet(title: "Rename \(path.name)", action: "Rename", initial: path.name, machine: path) { newName in
                 Task { await library.rename(path, to: newName) }
