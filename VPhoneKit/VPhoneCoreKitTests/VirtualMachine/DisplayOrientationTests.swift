@@ -45,6 +45,43 @@ struct DisplayOrientationTests {
         #expect(VPhoneDisplayOrientation.landscapeRight.displayedSize(panel: Self.panel) == sideways)
     }
 
+    // MARK: - Turning
+
+    @Test func `the panel fills the window at rest`() {
+        let upright = VPhoneDisplayOrientation.fittedSize(panel: Self.panel, angle: 0, in: Self.panel)
+        #expect(abs(upright.width - 393) < 1e-6 && abs(upright.height - 852) < 1e-6)
+        let sideways = VPhoneDisplayOrientation.fittedSize(
+            panel: Self.panel, angle: 90, in: CGSize(width: 852, height: 393),
+        )
+        #expect(abs(sideways.width - 393) < 1e-6 && abs(sideways.height - 852) < 1e-6)
+    }
+
+    @Test func `mid-turn the panel shrinks to stay inside and keeps its shape`() {
+        let bounds = CGSize(width: 622, height: 622)
+        let size = VPhoneDisplayOrientation.fittedSize(panel: Self.panel, angle: 45, in: bounds)
+        let root = 0.5.squareRoot()
+        #expect((size.width + size.height) * root <= 622 + 1e-6)
+        #expect(abs(size.width / size.height - 393.0 / 852.0) < 1e-9)
+    }
+
+    @Test func `turns take the short way round`() {
+        #expect(VPhoneDisplayOrientation.turnTarget(from: 0, to: 270) == -90)
+        #expect(VPhoneDisplayOrientation.turnTarget(from: 0, to: 90) == 90)
+        #expect(VPhoneDisplayOrientation.turnTarget(from: 270, to: 0) == 360)
+        #expect(VPhoneDisplayOrientation.turnTarget(from: 0, to: 180) == 180)
+        // A turn redirected halfway continues from where it is drawn.
+        #expect(VPhoneDisplayOrientation.turnTarget(from: -45, to: 90) == 90)
+    }
+
+    @Test func `easing starts and ends at rest`() {
+        #expect(VPhoneDisplayOrientation.easedProgress(0) == 0)
+        #expect(VPhoneDisplayOrientation.easedProgress(1) == 1)
+        #expect(VPhoneDisplayOrientation.easedProgress(0.5) == 0.5)
+        #expect(VPhoneDisplayOrientation.easedProgress(-1) == 0)
+        #expect(VPhoneDisplayOrientation.easedProgress(2) == 1)
+        #expect(VPhoneDisplayOrientation.easedProgress(0.1) < 0.1)
+    }
+
     // MARK: - Window
 
     @Test func `turning keeps the long side and the center`() {

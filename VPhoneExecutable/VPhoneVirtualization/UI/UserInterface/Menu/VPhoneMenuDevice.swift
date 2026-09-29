@@ -45,7 +45,7 @@ extension VPhoneMenuController {
             menu.addItem(rotate)
         }
         rotateMenuItems = [rotateLeft, rotateRight, orientationItem]
-        control.onInterfaceOrientationChange = { [weak self] orientation in
+        control.observeInterfaceOrientation { [weak self] orientation in
             self?.updateOrientationChecks(orientation)
         }
         menu.addItem(NSMenuItem.separator())
@@ -117,12 +117,13 @@ extension VPhoneMenuController {
     }
 
     @objc func chooseOrientation(_ sender: NSMenuItem) {
-        guard let degrees = sender.representedObject as? Int else { return }
+        guard let degrees = sender.representedObject as? Int,
+              let orientation = VPhoneDisplayOrientation(degrees: degrees)
+        else { return }
         Task {
             do {
-                _ = try await control.call("display.rotation", params: ["orientation": String(degrees)])
+                try await control.rotate(toFirstOf: [orientation])
             } catch {
-                print("[rotate] \(degrees) refused: \(error)")
                 VPhoneAlert.present(
                     title: "Unable to Rotate",
                     message: "The app in front does not support this orientation.",
@@ -140,28 +141,22 @@ extension VPhoneMenuController {
         rotate(clockwise: true)
     }
 
-    /// Turns the guest a quarter turn from its current interface orientation.
-    /// An orientation the foreground app refuses, such as upside down on the
-    /// Home Screen, is skipped for the one after it. The window follows on
-    /// its next orientation poll.
+    /// Turns the guest a quarter turn from its interface orientation, the
+    /// one already turning to when pressed again. An orientation the app in
+    /// front refuses, such as upside down on the Home Screen, is skipped for
+    /// the one after it. The window turns with the guest.
     private func rotate(clockwise: Bool) {
         Task {
-            let method = control.guestCapabilities.contains("display_orientation")
-                ? "display.orientation" : "display.rotation"
-            guard let result = try? await control.call(method),
-                  let degrees = (result["degrees"] as? NSNumber)?.intValue,
-                  let current = VPhoneDisplayOrientation(degrees: degrees)
-            else { return }
-            var target = current.turned(clockwise: clockwise)
-            for _ in 0 ..< 2 {
-                do {
-                    _ = try await control.call("display.rotation", params: ["orientation": String(target.rawValue)])
-                    return
-                } catch {
-                    print("[rotate] \(target) refused: \(error)")
-                    target = target.turned(clockwise: clockwise)
-                }
+            var current = control.interfaceOrientation
+            if current == nil {
+                let method = control.guestCapabilities.contains("display_orientation")
+                    ? "display.orientation" : "display.rotation"
+                let degrees = try? await (control.call(method)["degrees"] as? NSNumber)?.intValue
+                current = degrees.flatMap(VPhoneDisplayOrientation.init(degrees:))
             }
+            guard let current else { return }
+            let next = current.turned(clockwise: clockwise)
+            try? await control.rotate(toFirstOf: [next, next.turned(clockwise: clockwise)])
         }
     }
 

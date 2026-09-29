@@ -44,6 +44,7 @@ class VPhoneVirtualMachineWindowController: NSObject {
             height: CGFloat(screenHeight) / scale,
         )
         panelSize = windowSize
+        container.panelSize = windowSize
 
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: windowSize),
@@ -108,6 +109,12 @@ class VPhoneVirtualMachineWindowController: NSObject {
             }
         }
 
+        // The menu sets the orientation before the guest turns, and the poll
+        // after; either way the window follows it.
+        control.observeInterfaceOrientation { [weak self, weak window] orientation in
+            guard let self, let window else { return }
+            applyOrientation(orientation ?? .portrait, to: window)
+        }
         _ = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.pollOrientation() }
         }
@@ -119,40 +126,42 @@ class VPhoneVirtualMachineWindowController: NSObject {
     private var panelSize: NSSize = .zero
     private var orientationPollInFlight = false
 
-    /// Asks vphoned for the interface orientation once a second and turns the
-    /// window to it. Guests without `display.orientation` stay portrait.
+    /// Asks vphoned for the interface orientation once a second. Guests
+    /// without `display.orientation` stay portrait. A read that overlaps a
+    /// rotation the menu started is dropped: it may predate the turn.
     private func pollOrientation() {
         guard !orientationPollInFlight,
-              let control, control.isConnected,
+              let control, control.isConnected, !control.isChangingOrientation,
               control.guestCapabilities.contains("display_orientation")
         else { return }
         orientationPollInFlight = true
         Task {
             defer { orientationPollInFlight = false }
             guard let result = try? await control.call("display.orientation"),
+                  !control.isChangingOrientation,
                   let degrees = (result["degrees"] as? NSNumber)?.intValue,
-                  let orientation = VPhoneDisplayOrientation(degrees: degrees),
-                  let window = windowController?.window
+                  let orientation = VPhoneDisplayOrientation(degrees: degrees)
             else { return }
             control.interfaceOrientation = orientation
-            applyOrientation(orientation, to: window)
         }
     }
 
     /// Turns the VM view and gives the window the turned panel's aspect
-    /// ratio. A windowed VM is resized around its center; a full-screen one
-    /// keeps the screen and letterboxes the turned panel.
+    /// ratio, in one animation. A windowed VM reshapes around its center; a
+    /// full-screen one keeps the screen and letterboxes the turned panel.
     private func applyOrientation(_ orientation: VPhoneDisplayOrientation, to window: NSWindow, force: Bool = false) {
         guard let container = displayContainer, force || container.orientation != orientation else { return }
-        container.orientation = orientation
-        let displayed = orientation.displayedSize(panel: panelSize)
-        window.contentAspectRatio = displayed
-        guard !window.styleMask.contains(.fullScreen) else { return }
-        let current = window.contentRect(forFrameRect: window.frame)
-        let visible = window.screen.map { window.contentRect(forFrameRect: $0.visibleFrame) } ?? .zero
-        let target = orientation.contentRect(from: current, panel: panelSize, within: visible)
-        guard target != current else { return }
-        window.setFrame(window.frameRect(forContentRect: target), display: true, animate: !force)
+        window.contentAspectRatio = orientation.displayedSize(panel: panelSize)
+        var frame: NSRect?
+        if !window.styleMask.contains(.fullScreen) {
+            let current = window.contentRect(forFrameRect: window.frame)
+            let visible = window.screen.map { window.contentRect(forFrameRect: $0.visibleFrame) } ?? .zero
+            let target = orientation.contentRect(from: current, panel: panelSize, within: visible)
+            if target != current {
+                frame = window.frameRect(forContentRect: target)
+            }
+        }
+        container.turn(to: orientation, windowFrame: frame, animated: !force)
     }
 
     // MARK: - Title

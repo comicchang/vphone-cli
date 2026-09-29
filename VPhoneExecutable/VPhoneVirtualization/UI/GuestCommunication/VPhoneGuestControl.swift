@@ -48,16 +48,54 @@ final class VPhoneGuestControl {
     @ObservationIgnored var onConnect: (([String]) -> Void)?
     @ObservationIgnored var onDisconnect: (() -> Void)?
 
-    /// The guest interface orientation the window last read; nil until it
-    /// has read one, and again after a disconnect.
+    /// The guest interface orientation: the one the window last read, or the
+    /// one a menu rotation is turning to. Nil until one is known, and again
+    /// after a disconnect.
     var interfaceOrientation: VPhoneDisplayOrientation? {
         didSet {
             guard interfaceOrientation != oldValue else { return }
-            onInterfaceOrientationChange?(interfaceOrientation)
+            for observer in orientationObservers {
+                observer(interfaceOrientation)
+            }
         }
     }
 
-    @ObservationIgnored var onInterfaceOrientationChange: ((VPhoneDisplayOrientation?) -> Void)?
+    /// True while a menu rotation waits for the guest, so the poll does not
+    /// turn the window back to an orientation read before the guest turned.
+    var isChangingOrientation: Bool {
+        pendingRotations > 0
+    }
+
+    @ObservationIgnored private var pendingRotations = 0
+    @ObservationIgnored private var orientationObservers: [(VPhoneDisplayOrientation?) -> Void] = []
+
+    func observeInterfaceOrientation(_ observer: @escaping (VPhoneDisplayOrientation?) -> Void) {
+        orientationObservers.append(observer)
+    }
+
+    /// Turns the guest to the first of `candidates` it accepts. Each is set
+    /// before the guest is asked, so the window turns with the guest instead
+    /// of after it, and a refused one moves straight on to the next. When
+    /// every one is refused, the orientation from before is restored and the
+    /// last refusal is thrown.
+    func rotate(toFirstOf candidates: [VPhoneDisplayOrientation]) async throws {
+        let previous = interfaceOrientation
+        pendingRotations += 1
+        defer { pendingRotations -= 1 }
+        var refusal: Error = ControlError.protocolError("no orientation to rotate to")
+        for orientation in candidates {
+            interfaceOrientation = orientation
+            do {
+                _ = try await call("display.rotation", params: ["orientation": String(orientation.rawValue)])
+                return
+            } catch {
+                print("[rotate] \(orientation) refused: \(error)")
+                refusal = error
+            }
+        }
+        interfaceOrientation = previous
+        throw refusal
+    }
 
     var useGuestTouchInjection: Bool {
         guard isConnected, guestCapabilities.contains("touch"),
