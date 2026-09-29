@@ -2,6 +2,7 @@ import CryptoKit
 import Darwin
 import Foundation
 import Virtualization
+import VPhoneCoreKit
 
 /// The VM UI's direct HTTP client over VSOCK. It does not open a host TCP
 /// listener; only --api-listen creates one through VPhoneAPIProxy.
@@ -46,6 +47,17 @@ final class VPhoneGuestControl {
     @ObservationIgnored var guestBinaryURL: URL?
     @ObservationIgnored var onConnect: (([String]) -> Void)?
     @ObservationIgnored var onDisconnect: (() -> Void)?
+
+    /// The guest interface orientation the window last read; nil until it
+    /// has read one, and again after a disconnect.
+    var interfaceOrientation: VPhoneDisplayOrientation? {
+        didSet {
+            guard interfaceOrientation != oldValue else { return }
+            onInterfaceOrientationChange?(interfaceOrientation)
+        }
+    }
+
+    @ObservationIgnored var onInterfaceOrientationChange: ((VPhoneDisplayOrientation?) -> Void)?
 
     var useGuestTouchInjection: Bool {
         guard isConnected, guestCapabilities.contains("touch"),
@@ -136,6 +148,7 @@ final class VPhoneGuestControl {
         guestCapabilities = []
         guestIPAddress = nil
         guestIOSVersion = nil
+        interfaceOrientation = nil
         if wasConnected {
             onDisconnect?()
         }

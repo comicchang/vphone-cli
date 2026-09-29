@@ -75,6 +75,9 @@ extension VPhoneMenuController {
         for (panel, item) in panelMenuItems {
             item.isEnabled = capabilities.contains(panel.capability)
         }
+        for item in rotateMenuItems {
+            item.isEnabled = capabilities.contains("display")
+        }
     }
 
     @objc func openPanel(_ sender: NSMenuItem) {

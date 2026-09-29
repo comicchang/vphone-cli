@@ -1,5 +1,6 @@
 import AppKit
 import LocalAuthentication
+import VPhoneCoreKit
 
 // MARK: - Device Menu
 
@@ -22,6 +23,31 @@ extension VPhoneMenuController {
         menu.addItem(makeItem("Power", action: #selector(sendPower), symbol: "power"))
         menu.addItem(makeItem("Volume Up", action: #selector(sendVolumeUp), symbol: "speaker.plus"))
         menu.addItem(makeItem("Volume Down", action: #selector(sendVolumeDown), symbol: "speaker.minus"))
+        menu.addItem(NSMenuItem.separator())
+        let rotateLeft = makeItem(
+            "Rotate Left",
+            action: #selector(rotateLeft),
+            keyEquivalent: String(UnicodeScalar(NSLeftArrowFunctionKey)!),
+            symbol: "rotate.left",
+        )
+        let rotateRight = makeItem(
+            "Rotate Right",
+            action: #selector(rotateRight),
+            keyEquivalent: String(UnicodeScalar(NSRightArrowFunctionKey)!),
+            symbol: "rotate.right",
+        )
+        let orientationItem = NSMenuItem(title: "Orientation", action: nil, keyEquivalent: "")
+        orientationItem.image = menuSymbol("rectangle.portrait.rotate")
+        orientationItem.submenu = buildOrientationMenu()
+        // Disabled until the agent connects, so ⌘← and ⌘→ reach the guest.
+        for rotate in [rotateLeft, rotateRight, orientationItem] {
+            rotate.isEnabled = false
+            menu.addItem(rotate)
+        }
+        rotateMenuItems = [rotateLeft, rotateRight, orientationItem]
+        control.onInterfaceOrientationChange = { [weak self] orientation in
+            self?.updateOrientationChecks(orientation)
+        }
         menu.addItem(NSMenuItem.separator())
         menu.addItem(makeItem("Open Guest Spotlight", action: #selector(sendSpotlight), symbol: "magnifyingglass"))
         let tidItem = makeItem("Touch ID Home Forwarding", action: #selector(toggleTouchIDForwarding))
@@ -61,6 +87,82 @@ extension VPhoneMenuController {
 
     @objc func sendSpotlight() {
         keySender.sendSpotlight()
+    }
+
+    // MARK: - Rotate
+
+    /// The four interface orientations, checked by the one the window last
+    /// read from the guest.
+    private func buildOrientationMenu() -> NSMenu {
+        let menu = NSMenu(title: "Orientation")
+        let orientations: [(VPhoneDisplayOrientation, String)] = [
+            (.portrait, "Portrait"),
+            (.landscapeLeft, "Landscape Left"),
+            (.landscapeRight, "Landscape Right"),
+            (.upsideDown, "Upside Down"),
+        ]
+        for (orientation, title) in orientations {
+            let item = makeItem(title, action: #selector(chooseOrientation(_:)))
+            item.representedObject = orientation.rawValue
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    private func updateOrientationChecks(_ orientation: VPhoneDisplayOrientation?) {
+        guard let menu = rotateMenuItems.last?.submenu else { return }
+        for item in menu.items {
+            item.state = (item.representedObject as? Int) == orientation?.rawValue ? .on : .off
+        }
+    }
+
+    @objc func chooseOrientation(_ sender: NSMenuItem) {
+        guard let degrees = sender.representedObject as? Int else { return }
+        Task {
+            do {
+                _ = try await control.call("display.rotation", params: ["orientation": String(degrees)])
+            } catch {
+                print("[rotate] \(degrees) refused: \(error)")
+                VPhoneAlert.present(
+                    title: "Unable to Rotate",
+                    message: "The app in front does not support this orientation.",
+                    style: .warning,
+                )
+            }
+        }
+    }
+
+    @objc func rotateLeft() {
+        rotate(clockwise: false)
+    }
+
+    @objc func rotateRight() {
+        rotate(clockwise: true)
+    }
+
+    /// Turns the guest a quarter turn from its current interface orientation.
+    /// An orientation the foreground app refuses, such as upside down on the
+    /// Home Screen, is skipped for the one after it. The window follows on
+    /// its next orientation poll.
+    private func rotate(clockwise: Bool) {
+        Task {
+            let method = control.guestCapabilities.contains("display_orientation")
+                ? "display.orientation" : "display.rotation"
+            guard let result = try? await control.call(method),
+                  let degrees = (result["degrees"] as? NSNumber)?.intValue,
+                  let current = VPhoneDisplayOrientation(degrees: degrees)
+            else { return }
+            var target = current.turned(clockwise: clockwise)
+            for _ in 0 ..< 2 {
+                do {
+                    _ = try await control.call("display.rotation", params: ["orientation": String(target.rawValue)])
+                    return
+                } catch {
+                    print("[rotate] \(target) refused: \(error)")
+                    target = target.turned(clockwise: clockwise)
+                }
+            }
+        }
     }
 
     // MARK: - Restart

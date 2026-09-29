@@ -1949,6 +1949,9 @@
         }
       }
     },
+    "Allow Network" : {
+
+    },
     "Allow Wi-Fi and cellular data for this app" : {
       "localizations" : {
         "ja" : {
@@ -1976,6 +1979,9 @@
           }
         }
       }
+    },
+    "Allowing network access…" : {
+
     },
     "Always" : {
       "localizations" : {
@@ -13407,6 +13413,9 @@
         }
       }
     },
+    "Network Access" : {
+
+    },
     "Network Policy" : {
       "localizations" : {
         "ja" : {
@@ -13434,6 +13443,12 @@
           }
         }
       }
+    },
+    "Network access for %@ did not change. Relaunch the app and try again." : {
+
+    },
+    "Network access is restricted" : {
+
     },
     "Network access may be restricted" : {
       "localizations" : {
@@ -18779,6 +18794,74 @@
         }
       }
     },
+    "Rotate Left" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rotate Left"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左に回転"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "왼쪽으로 회전"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xoay trái"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "向左旋转"
+          }
+        }
+      }
+    },
+    "Rotate Right" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rotate Right"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右に回転"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오른쪽으로 회전"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xoay phải"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "向右旋转"
+          }
+        }
+      }
+    },
     "Rotate the guest interface" : {
       "localizations" : {
         "ja" : {
@@ -22873,6 +22956,34 @@
         }
       }
     },
+    "The app in front does not support this orientation." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前面のアプリはこの向きに対応していません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앞에 있는 앱이 이 방향을 지원하지 않습니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ứng dụng đang mở không hỗ trợ hướng này."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前台应用不支持这个方向。"
+          }
+        }
+      }
+    },
     "The app, its data container and its plug-ins' data are removed from the guest. This cannot be undone." : {
       "localizations" : {
         "ja" : {
@@ -24333,6 +24444,34 @@
         }
       }
     },
+    "Unable to Rotate" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回転できません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "회전할 수 없음"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thể xoay"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法旋转"
+          }
+        }
+      }
+    },
     "Unable to add the keychain item. Try again." : {
       "localizations" : {
         "en" : {
@@ -24366,6 +24505,9 @@
           }
         }
       }
+    },
+    "Unable to allow network access for %@." : {
+
     },
     "Unable to capture the guest log. Check the connection. Retrying in 3 seconds." : {
       "localizations" : {

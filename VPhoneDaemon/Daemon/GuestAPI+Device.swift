@@ -37,6 +37,8 @@ extension GuestAPI {
                 return try setRotation(orientation)
             }
             return rotationInfo()
+        case "display.orientation":
+            return interfaceOrientation()
         case "display.rotation_lock":
             guard let locked = params["locked"] as? Bool else {
                 throw GuestAPIError.invalidRequest("locked must be true or false")
@@ -68,6 +70,43 @@ extension GuestAPI {
             return try darwinNotificationState(string(params, "name"))
         default:
             return nil
+        }
+    }
+
+    /// The interface orientation in `display.rotation`'s degrees, cheap
+    /// enough for the host to ask every second. SpringBoard is asked
+    /// directly; `rotationInfo()` captures the screen, and is only the
+    /// fallback when SpringBoard does not answer.
+    private static func interfaceOrientation() -> [String: Any] {
+        if let degrees = springBoardInterfaceDegrees() {
+            return ["degrees": degrees, "source": "springboard"]
+        }
+        let degrees = (rotationInfo()["degrees"] as? NSNumber)?.intValue ?? 0
+        return ["degrees": degrees, "source": "screen"]
+    }
+
+    /// AXSpringBoardServer's activeInterfaceOrientation, a
+    /// UIInterfaceOrientation, in degrees clockwise from portrait.
+    private static func springBoardInterfaceDegrees() -> Int? {
+        _ = dlopen(
+            "/System/Library/PrivateFrameworks/AccessibilityUtilities.framework/AccessibilityUtilities",
+            RTLD_NOW,
+        )
+        let serverSelector = NSSelectorFromString("server")
+        let orientationSelector = NSSelectorFromString("activeInterfaceOrientation")
+        guard let serverClass = NSClassFromString("AXSpringBoardServer") as? NSObject.Type,
+              serverClass.responds(to: serverSelector),
+              let server = serverClass.perform(serverSelector)?.takeUnretainedValue() as? NSObject,
+              server.responds(to: orientationSelector)
+        else { return nil }
+        typealias Getter = @convention(c) (NSObject, Selector) -> Int
+        let getter = unsafeBitCast(server.method(for: orientationSelector), to: Getter.self)
+        switch getter(server, orientationSelector) {
+        case 1: return 0
+        case 2: return 180
+        case 3: return 270
+        case 4: return 90
+        default: return nil
         }
     }
 
