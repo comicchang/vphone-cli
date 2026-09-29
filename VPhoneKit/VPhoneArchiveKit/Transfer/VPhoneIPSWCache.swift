@@ -72,10 +72,6 @@ public enum VPhoneIPSWCache {
 
         var request = URLRequest(url: url)
         request.timeoutInterval = 3 * 60 * 60
-        let (bytes, response) = try await session.bytes(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw Error.unexpectedHTTP(url, (response as? HTTPURLResponse)?.statusCode ?? 0)
-        }
         let pending = cacheDirectory.appendingPathComponent(".\(cache.lastPathComponent).\(UUID().uuidString).partial")
         defer { try? fm.removeItem(at: pending) }
         guard fm.createFile(atPath: pending.path, contents: nil) else {
@@ -83,21 +79,11 @@ public enum VPhoneIPSWCache {
         }
         let output = try FileHandle(forWritingTo: pending)
         defer { try? output.close() }
-        var buffer = Data()
-        var size: Int64 = 0
-        for try await byte in bytes {
-            buffer.append(byte)
-            if buffer.count >= 1024 * 1024 {
-                try output.write(contentsOf: buffer)
-                size += Int64(buffer.count)
-                buffer.removeAll(keepingCapacity: true)
-            }
-        }
-        if !buffer.isEmpty {
-            try output.write(contentsOf: buffer)
-            size += Int64(buffer.count)
-        }
+        let (response, size) = try await download(request, into: output, session: session)
         try output.close()
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw Error.unexpectedHTTP(url, (response as? HTTPURLResponse)?.statusCode ?? 0)
+        }
         if response.expectedContentLength > 0, size != response.expectedContentLength {
             throw Error.incompleteDownload(
                 url,
@@ -176,6 +162,83 @@ public enum VPhoneIPSWCache {
             productTypes: plist["SupportedProductTypes"] as? [String] ?? [],
             deviceClasses: Set(deviceClasses),
         )
+    }
+
+    // MARK: - Download
+
+    /// Writes the body into `output` chunk by chunk as URLSession delivers it,
+    /// so the IPSW lands in the cache's own volume with no temporary copy.
+    /// Iterating `bytes(for:)` one byte at a time was CPU-bound (issue #524),
+    /// and `download(for:)` stages the file in the system temporary directory,
+    /// which may be another volume. A non-200 response returns before any body.
+    private static func download(
+        _ request: URLRequest,
+        into output: FileHandle,
+        session: URLSession,
+    ) async throws -> (URLResponse, Int64) {
+        let task = session.dataTask(with: request)
+        let writer = DownloadWriter(output: output)
+        task.delegate = writer
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                writer.continuation = continuation
+                task.resume()
+            }
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    /// URLSession calls one task's delegate serially, and `continuation` is set
+    /// before the task resumes, so the mutable state is never shared.
+    private final class DownloadWriter: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+        let output: FileHandle
+        var continuation: CheckedContinuation<(URLResponse, Int64), Swift.Error>?
+        private var response: URLResponse?
+        private var written: Int64 = 0
+        private var writeError: Swift.Error?
+
+        init(output: FileHandle) {
+            self.output = output
+        }
+
+        func urlSession(
+            _: URLSession,
+            dataTask _: URLSessionDataTask,
+            didReceive response: URLResponse,
+            completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void,
+        ) {
+            self.response = response
+            let ok = (response as? HTTPURLResponse)?.statusCode == 200
+            completionHandler(ok ? .allow : .cancel)
+        }
+
+        func urlSession(_: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+            guard writeError == nil else { return }
+            do {
+                try output.write(contentsOf: data)
+                written += Int64(data.count)
+            } catch {
+                writeError = error
+                dataTask.cancel()
+            }
+        }
+
+        func urlSession(_: URLSession, task _: URLSessionTask, didCompleteWithError error: Swift.Error?) {
+            defer { continuation = nil }
+            if let writeError {
+                continuation?.resume(throwing: writeError)
+            } else if let response, (response as? HTTPURLResponse)?.statusCode != 200 {
+                // Cancelled on purpose in didReceive; the caller reports the status.
+                continuation?.resume(returning: (response, 0))
+            } else if let error {
+                continuation?.resume(throwing: error)
+            } else if let response {
+                continuation?.resume(returning: (response, written))
+            } else {
+                continuation?.resume(throwing: URLError(.badServerResponse))
+            }
+        }
     }
 
     // MARK: - Pairing
