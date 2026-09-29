@@ -76,6 +76,7 @@ class VPhoneVirtualMachineWindowController: NSObject {
         let homeAccessory = makeHomeAccessory()
         window.addTitlebarAccessoryViewController(homeAccessory)
         updateHomeButton(connected: false)
+        pinWindowButtons(in: window)
         installTitle(name, in: window, trailingInset: homeAccessory.view.frame.width)
 
         let controller = NSWindowController(window: window)
@@ -96,6 +97,7 @@ class VPhoneVirtualMachineWindowController: NSObject {
         keySender.window = window
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+        placeWindowButtons()
         window.makeFirstResponder(view)
 
         let monitor = VPhoneTouchIDMonitor()
@@ -114,13 +116,61 @@ class VPhoneVirtualMachineWindowController: NSObject {
 
     // MARK: - Title
 
-    /// AppKit leaves a wider gap after the window buttons than before them, so
-    /// the title is drawn here instead: the gap after the zoom button equals
-    /// the close button's inset from the window edge. `window.title` and
+    /// The title bar uses one gap everywhere: before the close button, between
+    /// the window buttons (AppKit's is 9 pt), after the zoom button and after
+    /// the Home button.
+    private static let titlebarSpacing: CGFloat = 12
+
+    private weak var buttonWindow: NSWindow?
+    private var observedButtons = Set<ObjectIdentifier>()
+
+    /// AppKit insets the close button 19 pt, puts the buttons back there
+    /// whenever it lays out the title bar, and may replace them when the
+    /// window is shown. They are placed again after each of those.
+    private func pinWindowButtons(in window: NSWindow) {
+        buttonWindow = window
+        let names: [Notification.Name] = [
+            NSWindow.didResizeNotification, NSWindow.didEndLiveResizeNotification,
+            NSWindow.didExitFullScreenNotification, NSWindow.didBecomeKeyNotification,
+            NSWindow.didResignKeyNotification, NSWindow.didBecomeMainNotification,
+            NSWindow.didChangeScreenNotification, NSWindow.didUpdateNotification,
+        ]
+        for name in names {
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(windowButtonMoved), name: name, object: window,
+            )
+        }
+        placeWindowButtons()
+    }
+
+    @objc private func windowButtonMoved() {
+        placeWindowButtons()
+    }
+
+    private func placeWindowButtons() {
+        guard let window = buttonWindow else { return }
+        var x = Self.titlebarSpacing
+        for kind in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            guard let button = window.standardWindowButton(kind) else { continue }
+            if observedButtons.insert(ObjectIdentifier(button)).inserted {
+                button.postsFrameChangedNotifications = true
+                NotificationCenter.default.addObserver(
+                    self, selector: #selector(windowButtonMoved), name: NSView.frameDidChangeNotification,
+                    object: button,
+                )
+            }
+            if button.frame.minX != x {
+                button.setFrameOrigin(NSPoint(x: x, y: button.frame.minY))
+            }
+            x = button.frame.maxX + Self.titlebarSpacing
+        }
+    }
+
+    /// The window's own title would sit AppKit's wider gap after the buttons,
+    /// so the name and subtitle are drawn here. `window.title` and
     /// `window.subtitle` are still set for the Window menu and accessibility.
     private func installTitle(_ name: String, in window: NSWindow, trailingInset: CGFloat) {
-        guard let close = window.standardWindowButton(.closeButton),
-              let zoom = window.standardWindowButton(.zoomButton),
+        guard let zoom = window.standardWindowButton(.zoomButton),
               let titlebar = zoom.superview,
               let frame = window.contentView?.superview
         else { return }
@@ -144,16 +194,11 @@ class VPhoneVirtualMachineWindowController: NSObject {
         stack.spacing = 0
         stack.translatesAutoresizingMaskIntoConstraints = false
         titlebar.addSubview(stack)
-        let inset = NSLayoutGuide(), gap = NSLayoutGuide()
-        frame.addLayoutGuide(inset)
-        frame.addLayoutGuide(gap)
         NSLayoutConstraint.activate([
-            inset.leadingAnchor.constraint(equalTo: frame.leadingAnchor),
-            inset.trailingAnchor.constraint(equalTo: close.leadingAnchor),
-            gap.leadingAnchor.constraint(equalTo: zoom.trailingAnchor),
-            gap.trailingAnchor.constraint(equalTo: stack.leadingAnchor),
-            gap.widthAnchor.constraint(equalTo: inset.widthAnchor),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: frame.trailingAnchor, constant: -trailingInset - 8),
+            stack.leadingAnchor.constraint(equalTo: zoom.trailingAnchor, constant: Self.titlebarSpacing),
+            stack.trailingAnchor.constraint(
+                lessThanOrEqualTo: frame.trailingAnchor, constant: -trailingInset - Self.titlebarSpacing,
+            ),
             stack.centerYAnchor.constraint(equalTo: zoom.centerYAnchor),
         ])
     }
@@ -222,7 +267,7 @@ class VPhoneVirtualMachineWindowController: NSObject {
 
         // A titlebar accessory takes its width from the view's frame, so the
         // container is sized explicitly; otherwise the button collapses to 0.
-        let trailingInset: CGFloat = 12
+        let trailingInset = Self.titlebarSpacing
         let container = NSView()
         container.addSubview(button)
         NSLayoutConstraint.activate([
