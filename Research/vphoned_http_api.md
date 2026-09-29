@@ -95,7 +95,7 @@ An optional `package_path` selects a guest-uploaded Irisin `.deb` instead.
 The path must be `/var/root/Library/Caches/vphoned-irisin-<UUID>.deb`; vphoned
 opens it without following symlinks, requires a regular file of at most 64 MiB,
 and validates the Debian package name, architecture, app version, executables,
-and launchd plist before installing. The Guest menu's Option alternate opens
+and launchd plist before installing. The Apps menu's Option alternate opens
 a file picker, uploads the selected package, and chooses the layout. The default
 menu item retains the verified latest-release download.
 Rootless uses `/var/jb`. RootHide reuses the sole valid `.jbroot-<16 hex>` under
@@ -165,9 +165,9 @@ are both removed. The daemon rejects a changed path and symlinked child
 directories. It unloads each bootstrap's launch daemons, unregisters its apps,
 deletes both rootless and RootHide roots, marks the completion record uninstalled,
 then schedules a full guest reboot. `"reboot":false` skips the reboot; holding
-Option on the Guest menu's uninstall item selects this mode. If cleanup fails, the
+Option on the Apps menu's uninstall item selects this mode. If cleanup fails, the
 installed record remains so the operation can be retried. Irisin's mobile
-Documents data outside the bootstrap is retained. Guest > Uninstall Bootstrap…
+Documents data outside the bootstrap is retained. Apps > Uninstall Bootstrap…
 shows every path in a destructive confirmation alert before sending the request.
 
 ## HTTP and WebSocket contract

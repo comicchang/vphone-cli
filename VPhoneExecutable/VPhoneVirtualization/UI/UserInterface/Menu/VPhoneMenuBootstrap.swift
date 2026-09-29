@@ -3,9 +3,50 @@ import UniformTypeIdentifiers
 
 // MARK: - Bootstrap Installation and Removal
 
-/// Installs the Irisin bootstrap in the guest from the Guest menu and shows
+/// Installs the Irisin bootstrap in the guest from the Apps menu and shows
 /// vphoned's progress while it downloads, extracts and registers it.
 extension VPhoneMenuController {
+    /// Install and Uninstall, each with an Option alternate.
+    func addBootstrapItems(to menu: NSMenu) {
+        let install = makeItem(
+            "Install Bootstrap…",
+            action: #selector(installBootstrap),
+            symbol: "arrow.down.circle",
+        )
+        install.isEnabled = false
+        installBootstrapItem = install
+        menu.addItem(install)
+        let installFromFile = makeItem(
+            "Install Bootstrap from File…",
+            action: #selector(installBootstrapFromFile),
+            modifiers: [.option],
+            symbol: "doc",
+        )
+        installFromFile.isAlternate = true
+        installFromFile.isEnabled = false
+        installBootstrapFromFileItem = installFromFile
+        menu.addItem(installFromFile)
+
+        let uninstall = makeItem(
+            "Uninstall Bootstrap…",
+            action: #selector(uninstallBootstrap),
+            symbol: "trash",
+        )
+        uninstall.isEnabled = false
+        uninstallBootstrapItem = uninstall
+        menu.addItem(uninstall)
+        let uninstallNoRestart = makeItem(
+            "Uninstall Bootstrap Without Restarting…",
+            action: #selector(uninstallBootstrapWithoutRestart),
+            modifiers: [.option],
+            symbol: "trash",
+        )
+        uninstallNoRestart.isAlternate = true
+        uninstallNoRestart.isEnabled = false
+        uninstallBootstrapNoRestartItem = uninstallNoRestart
+        menu.addItem(uninstallNoRestart)
+    }
+
     func updateBootstrapAvailability(available: Bool) {
         let enabled = available && !isInstallingBootstrap && !isUninstallingBootstrap
         installBootstrapItem?.isEnabled = enabled

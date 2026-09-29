@@ -3,7 +3,7 @@ import SwiftUI
 
 // MARK: - Entry Points
 
-/// The Guest menu items that open a guest tool window.
+/// The Data menu items that open a guest tool window.
 enum VPhoneGuestToolAction {
     case getClipboard
     case setClipboard
@@ -14,7 +14,7 @@ enum VPhoneGuestToolAction {
 // MARK: - Window Controller
 
 /// Owns the Clipboard and Preferences windows. They are separate windows
-/// with their own models; this type only routes the Guest menu to them.
+/// with their own models; this type only routes the Data menu to them.
 @MainActor
 final class VPhoneGuestToolsWindowController {
     let clipboardModel: VPhoneGuestClipboardModel

@@ -3,7 +3,7 @@ import SwiftUI
 
 // MARK: - Panels
 
-/// The guest inspection windows, in the order the Diagnostics and Guest menus
+/// The guest inspection windows, in the order the Diagnostics and Device menus
 /// list them.
 enum VPhoneGuestPanel: CaseIterable {
     case deviceInfo

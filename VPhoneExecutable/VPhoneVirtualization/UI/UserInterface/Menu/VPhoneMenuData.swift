@@ -1,13 +1,13 @@
 import AppKit
 
-// MARK: - Guest Menu
+// MARK: - Data Menu
 
-/// Guest data the Mac reads and writes: files, Keychain, clipboard and
-/// preference domains.
+/// Guest data the Mac reads and writes: files, Keychain, preference domains
+/// and the clipboard.
 extension VPhoneMenuController {
-    func buildGuestMenu() -> NSMenuItem {
-        let item = NSMenuItem(title: "Guest", action: nil, keyEquivalent: "")
-        let menu = NSMenu(title: "Guest")
+    func buildDataMenu() -> NSMenuItem {
+        let item = NSMenuItem(title: "Data", action: nil, keyEquivalent: "")
+        let menu = NSMenu(title: "Data")
         menu.autoenablesItems = false
 
         let fileBrowser = makeItem(
@@ -34,48 +34,26 @@ extension VPhoneMenuController {
 
         menu.addItem(NSMenuItem.separator())
 
-        let installBootstrap = makeItem(
-            "Install Bootstrap…",
-            action: #selector(installBootstrap),
-            symbol: "arrow.down.circle",
+        let settingsGet = makeItem(
+            "Preferences",
+            action: #selector(readSetting),
+            keyEquivalent: "p",
+            modifiers: [.command, .shift],
+            symbol: "gearshape",
         )
-        installBootstrap.isEnabled = false
-        installBootstrapItem = installBootstrap
-        menu.addItem(installBootstrap)
-        let installFromFile = makeItem(
-            "Install Bootstrap from File…",
-            action: #selector(installBootstrapFromFile),
-            modifiers: [.option],
-            symbol: "doc",
-        )
-        installFromFile.isAlternate = true
-        installFromFile.isEnabled = false
-        installBootstrapFromFileItem = installFromFile
-        menu.addItem(installFromFile)
+        settingsGet.isEnabled = false
+        settingsGetItem = settingsGet
+        menu.addItem(settingsGet)
 
-        let uninstallBootstrap = makeItem(
-            "Uninstall Bootstrap…",
-            action: #selector(uninstallBootstrap),
-            symbol: "trash",
-        )
-        uninstallBootstrap.isEnabled = false
-        uninstallBootstrapItem = uninstallBootstrap
-        menu.addItem(uninstallBootstrap)
-        let uninstallNoRestart = makeItem(
-            "Uninstall Bootstrap Without Restarting…",
-            action: #selector(uninstallBootstrapWithoutRestart),
-            modifiers: [.option],
-            symbol: "trash",
-        )
-        uninstallNoRestart.isAlternate = true
-        uninstallNoRestart.isEnabled = false
-        uninstallBootstrapNoRestartItem = uninstallNoRestart
-        menu.addItem(uninstallNoRestart)
+        let settingsSet = makeItem("Write Preference…", action: #selector(writeSetting), symbol: "pencil")
+        settingsSet.isEnabled = false
+        settingsSetItem = settingsSet
+        menu.addItem(settingsSet)
 
         menu.addItem(NSMenuItem.separator())
 
         let clipGet = makeItem(
-            "Clipboard",
+            "Guest Clipboard",
             action: #selector(getClipboard),
             keyEquivalent: "c",
             modifiers: [.command, .shift],
@@ -94,23 +72,11 @@ extension VPhoneMenuController {
         clipboardSetItem = clipSet
         menu.addItem(clipSet)
 
-        menu.addItem(NSMenuItem.separator())
-
-        let settingsGet = makeItem(
-            "Preferences",
-            action: #selector(readSetting),
-            keyEquivalent: "p",
-            modifiers: [.command, .shift],
-            symbol: "gearshape",
-        )
-        settingsGet.isEnabled = false
-        settingsGetItem = settingsGet
-        menu.addItem(settingsGet)
-
-        let settingsSet = makeItem("Write Preference…", action: #selector(writeSetting), symbol: "pencil")
-        settingsSet.isEnabled = false
-        settingsSetItem = settingsSet
-        menu.addItem(settingsSet)
+        menu.addItem(makeItem(
+            "Type ASCII from Mac Clipboard",
+            action: #selector(typeFromClipboard),
+            symbol: "keyboard",
+        ))
 
         item.submenu = menu
         return item
@@ -150,6 +116,10 @@ extension VPhoneMenuController {
 
     @objc func setClipboardText() {
         guestToolsWindowController.show(.setClipboard)
+    }
+
+    @objc func typeFromClipboard() {
+        keySender.typeFromClipboard()
     }
 
     @objc func readSetting() {

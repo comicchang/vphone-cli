@@ -3,13 +3,15 @@ import LocalAuthentication
 
 // MARK: - Device Menu
 
-/// Hardware the guest thinks it has: buttons, keyboard, sensors and the
-/// host-side overrides that feed them.
+/// The phone's buttons and input, and restarting it. Sensor overrides live
+/// in the Features menu.
 extension VPhoneMenuController {
     func buildDeviceMenu() -> NSMenuItem {
         let item = NSMenuItem(title: "Device", action: nil, keyEquivalent: "")
         let menu = NSMenu(title: "Device")
         menu.autoenablesItems = false
+        menu.addItem(makePanelItem(.controls, "Controls", keyEquivalent: "k", symbol: "slider.horizontal.3"))
+        menu.addItem(NSMenuItem.separator())
         menu.addItem(makeItem(
             "Home Screen",
             action: #selector(sendHome),
@@ -21,24 +23,7 @@ extension VPhoneMenuController {
         menu.addItem(makeItem("Volume Up", action: #selector(sendVolumeUp), symbol: "speaker.plus"))
         menu.addItem(makeItem("Volume Down", action: #selector(sendVolumeDown), symbol: "speaker.minus"))
         menu.addItem(NSMenuItem.separator())
-        let restart = makeItem("Restart Guest…", action: #selector(restartGuest), symbol: "arrow.clockwise")
-        restart.isEnabled = false
-        restartGuestItem = restart
-        menu.addItem(restart)
-        menu.addItem(NSMenuItem.separator())
         menu.addItem(makeItem("Open Guest Spotlight", action: #selector(sendSpotlight), symbol: "magnifyingglass"))
-        menu.addItem(makeItem(
-            "Type ASCII from Mac Clipboard",
-            action: #selector(typeFromClipboard),
-            symbol: "keyboard",
-        ))
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(makePanelItem(.controls, "Controls", keyEquivalent: "k", symbol: "slider.horizontal.3"))
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(buildLocationSubmenu())
-        menu.addItem(buildBatterySubmenu())
-        menu.addItem(buildCameraSubmenu())
-        menu.addItem(NSMenuItem.separator())
         let tidItem = makeItem("Touch ID Home Forwarding", action: #selector(toggleTouchIDForwarding))
         if hasTouchID {
             let tidEnabled = !UserDefaults.standard.bool(forKey: "touchIDForwardingDisabled")
@@ -49,6 +34,11 @@ extension VPhoneMenuController {
         }
         touchIDMenuItem = tidItem
         menu.addItem(tidItem)
+        menu.addItem(NSMenuItem.separator())
+        let restart = makeItem("Restart Guest…", action: #selector(restartGuest), symbol: "arrow.clockwise")
+        restart.isEnabled = false
+        restartGuestItem = restart
+        menu.addItem(restart)
         item.submenu = menu
         return item
     }
@@ -71,10 +61,6 @@ extension VPhoneMenuController {
 
     @objc func sendSpotlight() {
         keySender.sendSpotlight()
-    }
-
-    @objc func typeFromClipboard() {
-        keySender.typeFromClipboard()
     }
 
     // MARK: - Restart

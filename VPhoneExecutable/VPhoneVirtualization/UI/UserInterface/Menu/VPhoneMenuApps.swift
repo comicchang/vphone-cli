@@ -39,6 +39,9 @@ extension VPhoneMenuController {
         installPackageItem = install
         menu.addItem(install)
 
+        menu.addItem(NSMenuItem.separator())
+        addBootstrapItems(to: menu)
+
         item.submenu = menu
         return item
     }

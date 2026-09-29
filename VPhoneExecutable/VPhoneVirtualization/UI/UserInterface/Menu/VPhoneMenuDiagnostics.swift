@@ -27,15 +27,23 @@ extension VPhoneMenuController {
         connectDevModeStatusItem = devModeStatus
         menu.addItem(devModeStatus)
 
+        let agentItem = NSMenuItem(title: "Guest Agent", action: nil, keyEquivalent: "")
+        agentItem.image = menuSymbol("antenna.radiowaves.left.and.right")
+        let agentMenu = NSMenu(title: "Guest Agent")
+        agentMenu.autoenablesItems = false
+
         let ping = makeItem("Ping", action: #selector(sendPing), symbol: "dot.radiowaves.left.and.right")
         ping.isEnabled = false
         connectPingItem = ping
-        menu.addItem(ping)
+        agentMenu.addItem(ping)
 
         let guestHash = makeItem("Guest Agent Hash", action: #selector(queryGuestHash), symbol: "number")
         guestHash.isEnabled = false
         connectGuestHashItem = guestHash
-        menu.addItem(guestHash)
+        agentMenu.addItem(guestHash)
+
+        agentItem.submenu = agentMenu
+        menu.addItem(agentItem)
 
         item.submenu = menu
         return item
