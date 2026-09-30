@@ -12,11 +12,12 @@
 // re-attests a different page lands on a different digest.
 //
 // The cache is required. `VPHONE_DSC_PRISTINE` points at it, defaulting to
-// `ipsws/ref_extract/dsc_pristine`, and its absence FAILS rather than passing
-// quietly: a `guard let … else { return }` is reported by Swift Testing as a
-// pass, so "the tests are green" would be equally compatible with "the tests did
-// nothing". A machine that genuinely cannot carry the 6.7 GB fixture sets
-// `VPHONE_DSC_FIXTURE_OPTIONAL=1` and gets a visible *skip* instead.
+// `ipsws/ref_extract/dsc_pristine`. Without it the parity suite is *skipped*,
+// with the reason printed: a `guard let … else { return }` is reported by Swift
+// Testing as a pass, and a 6.7 GB gitignored extraction is simply not on a fresh
+// clone — that is not a regression. `VPHONE_DSC_FIXTURE_REQUIRED=1` restores the
+// strict reading, where an absent cache fails, for a runner that forwards its
+// environment (see `SwapEndFixture.required`).
 //
 // Nothing here writes into the pristine directory. Clones are made with
 // `clonefile` (`cp -c`) into `ipsws/scratch_dsciomfbswapend`, which is on the
@@ -120,25 +121,31 @@ private enum SwapEndFixture {
         return FileManager.default.fileExists(atPath: main.path) ? url : nil
     }
 
-    /// Opt-out for a machine that cannot carry the fixture. Set it and the
-    /// parity suite reports as skipped; leave it unset and a missing cache is a
-    /// failure, which is the only reading of "green" this patch can afford.
-    static var isOptional: Bool {
-        ProcessInfo.processInfo.environment["VPHONE_DSC_FIXTURE_OPTIONAL"] == "1"
+    /// An absent cache skips the suite rather than failing it, with the reason
+    /// below, so a fresh clone without a multi-GB gitignored extraction is not
+    /// reported as a regression.
+    ///
+    /// These suites used to fail on absence and skip only under
+    /// `VPHONE_DSC_FIXTURE_OPTIONAL=1`. That escape hatch was unreachable:
+    /// `xcodebuild test` does not forward the environment to this non-hosted
+    /// macOS test bundle, so the variable could never be set and every run
+    /// without the cache was red. The strict reading survives as
+    /// `VPHONE_DSC_FIXTURE_REQUIRED=1`, for a runner that does forward it.
+    static var required: Bool {
+        ProcessInfo.processInfo.environment["VPHONE_DSC_FIXTURE_REQUIRED"] == "1"
     }
 
     static var runs: Bool {
-        pristine != nil || !isOptional
+        pristine != nil || required
     }
 
     static let missing: Comment = """
     the real 24A435 arm64e shared cache is required — put it at \
-    ipsws/ref_extract/dsc_pristine, point VPHONE_DSC_PRISTINE at it, or set \
-    VPHONE_DSC_FIXTURE_OPTIONAL=1 to skip these tests instead of failing
+    ipsws/ref_extract/dsc_pristine, or point VPHONE_DSC_PRISTINE at it
     """
 
     static let skipReason: Comment =
-        "VPHONE_DSC_FIXTURE_OPTIONAL=1 and no dyld_shared_cache_arm64e fixture present"
+        "no dyld_shared_cache_arm64e fixture; put it at ipsws/ref_extract/dsc_pristine or set VPHONE_DSC_PRISTINE"
 
     /// Where clones go. Deliberately *not* under `ipsws/ref_extract`: that tree
     /// is the pristine reference the rest of the suite compares against, and

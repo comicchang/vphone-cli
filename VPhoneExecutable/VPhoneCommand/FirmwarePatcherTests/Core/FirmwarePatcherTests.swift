@@ -503,15 +503,50 @@ struct IBootPatcherIdempotencyTests {
     }
 }
 
+/// `ipsws/patch_refactor_input/` — the extracted firmware the round-trip suites
+/// in this directory read. It is gitignored and has to be produced by
+/// `vphone-cli fw im4p-extract`, so on a fresh clone it is simply absent.
+/// Those suites skip then, with the reason below, rather than failing on a
+/// missing file; when the files are present every assertion below still runs.
+enum PatchRefactorFixture {
+    static let baseDir = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("ipsws/patch_refactor_input")
+
+    static func has(_ relativePath: String) -> Bool {
+        FileManager.default.fileExists(atPath: baseDir.appendingPathComponent(relativePath).path)
+    }
+
+    /// The real iBSS and TXM .im4p files, plus the raw iBSS payload they are
+    /// compared against. All three or nothing: a partial extraction would make
+    /// the round-trip assertions vacuous.
+    static let im4pRuns: Bool = [
+        "raw_payloads/ibss.bin",
+        "Firmware/dfu/iBSS.vresearch101.RELEASE.im4p",
+        "Firmware/txm.iphoneos.research.im4p",
+    ].allSatisfy { has($0) }
+
+    static let im4pSkipReason: Comment = """
+    no extracted firmware at ipsws/patch_refactor_input — build it with \
+    `vphone-cli fw im4p-extract`; these round trips need the real iBSS and TXM \
+    .im4p files
+    """
+
+    /// The kernelcache the diagnostic harness in `VerboseJailbreakDebug` reads.
+    static let kernelcacheRuns: Bool = has("raw_payloads/kernelcache.bin")
+
+    static let kernelcacheSkipReason: Comment =
+        "no kernelcache.bin at ipsws/patch_refactor_input/raw_payloads"
+}
+
+@Suite(.enabled(if: PatchRefactorFixture.im4pRuns, PatchRefactorFixture.im4pSkipReason))
 struct IM4PPayloadParityTests {
     @Test func `ibss IM 4 P payload matches raw and JB patcher finds nonce patch`() throws {
-        let baseDir = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("ipsws/patch_refactor_input")
+        let baseDir = PatchRefactorFixture.baseDir
 
         let rawIBSS = try Data(contentsOf: baseDir.appendingPathComponent("raw_payloads/ibss.bin"))
         let (im4pPayload, _) = try IM4PHandler.load(
@@ -526,13 +561,7 @@ struct IM4PPayloadParityTests {
     }
 
     @Test func `saving IBSSIM 4 P round trips payload`() throws {
-        let baseDir = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("ipsws/patch_refactor_input")
+        let baseDir = PatchRefactorFixture.baseDir
 
         let sourceURL = baseDir.appendingPathComponent("Firmware/dfu/iBSS.vresearch101.RELEASE.im4p")
         let originalFile = try Data(contentsOf: sourceURL)
@@ -551,13 +580,7 @@ struct IM4PPayloadParityTests {
     }
 
     @Test func `saving TXMIM 4 P preserves PAYP trailer`() throws {
-        let baseDir = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("ipsws/patch_refactor_input")
+        let baseDir = PatchRefactorFixture.baseDir
 
         let sourceURL = baseDir.appendingPathComponent("Firmware/txm.iphoneos.research.im4p")
         let originalFile = try Data(contentsOf: sourceURL)

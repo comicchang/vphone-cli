@@ -369,3 +369,9 @@ local-verify/
 
 # VM data directories (vm26/, vm27/ etc.)
 /vm[0-9]*/
+
+# Local agent/tool state
+.agents/
+.codex/
+.dotai/
+opencode.json

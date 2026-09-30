@@ -10,11 +10,11 @@
 // different digest.
 //
 // Fixture: `VPHONE_DSC_PRISTINE`, or `ipsws/ref_extract/dsc_pristine` by
-// default. Without it these FAIL. A bare `guard let … else { return }` is
-// reported by Swift Testing as a pass, so "all green" on a machine that never
-// extracted the 6.7 GB cache would mean nothing. A machine that genuinely
-// cannot carry the fixture sets `VPHONE_DSC_FIXTURE_OPTIONAL=1` and gets a
-// visible *skip* instead.
+// default. Without it these are *skipped*, with the reason printed: a 6.7 GB
+// gitignored extraction is simply not on a fresh clone, and that is not a
+// regression. `VPHONE_DSC_FIXTURE_REQUIRED=1` turns an absent cache back into a
+// failure, for a runner that forwards its environment (see
+// `LWCRFixture.required`).
 //
 // Nothing here writes to the pristine directory. Clones are made with
 // `cp -c` — APFS `clonefile`, so instant and near-free — under the system
@@ -99,24 +99,31 @@ private enum LWCRFixture {
         return FileManager.default.fileExists(atPath: main.path) ? url : nil
     }
 
-    /// Opt-out for a machine that cannot carry the fixture.
-    static var isOptional: Bool {
-        ProcessInfo.processInfo.environment["VPHONE_DSC_FIXTURE_OPTIONAL"] == "1"
+    /// An absent cache skips the suite rather than failing it, with the reason
+    /// below, so a fresh clone without a multi-GB gitignored extraction is not
+    /// reported as a regression.
+    ///
+    /// These suites used to fail on absence and skip only under
+    /// `VPHONE_DSC_FIXTURE_OPTIONAL=1`. That escape hatch was unreachable:
+    /// `xcodebuild test` does not forward the environment to this non-hosted
+    /// macOS test bundle, so the variable could never be set and every run
+    /// without the cache was red. The strict reading survives as
+    /// `VPHONE_DSC_FIXTURE_REQUIRED=1`, for a runner that does forward it.
+    static var required: Bool {
+        ProcessInfo.processInfo.environment["VPHONE_DSC_FIXTURE_REQUIRED"] == "1"
     }
 
-    /// The suites run unless the cache is absent *and* the caller opted out.
     static var runs: Bool {
-        pristine != nil || !isOptional
+        pristine != nil || required
     }
 
     static let missing: Comment = """
     the real 24A435 arm64e shared cache is required — put it at \
-    ipsws/ref_extract/dsc_pristine, point VPHONE_DSC_PRISTINE at it, or set \
-    VPHONE_DSC_FIXTURE_OPTIONAL=1 to skip these tests instead of failing
+    ipsws/ref_extract/dsc_pristine, or point VPHONE_DSC_PRISTINE at it
     """
 
     static let skipReason: Comment =
-        "VPHONE_DSC_FIXTURE_OPTIONAL=1 and no dyld_shared_cache_arm64e fixture present"
+        "no dyld_shared_cache_arm64e fixture; put it at ipsws/ref_extract/dsc_pristine or set VPHONE_DSC_PRISTINE"
 
     /// Where clones go. Must be on the same APFS volume as the pristine copy
     /// or `cp -c` degrades from a clone into 6.7 GB of reads; the system

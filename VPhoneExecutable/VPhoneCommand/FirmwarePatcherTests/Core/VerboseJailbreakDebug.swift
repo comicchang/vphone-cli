@@ -2,16 +2,21 @@
 import Foundation
 import Testing
 
+/// A diagnostic harness, not an assertion suite: it prints what each
+/// kernel-jailbreak hook finds in a real kernelcache. It fails only because
+/// that kernelcache is absent on a fresh clone, so it skips on the same gate
+/// as the round-trip suites next door and prints when there is something to
+/// print about.
+@Suite(.enabled(
+    if: PatchRefactorFixture.kernelcacheRuns,
+    PatchRefactorFixture.kernelcacheSkipReason,
+))
 struct VerboseJailbreakDebug {
     @Test func `debug failing patches`() throws {
-        let baseDir = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("ipsws/patch_refactor_input")
-        let data = try Data(contentsOf: baseDir.appendingPathComponent("raw_payloads/kernelcache.bin"))
+        let data = try Data(
+            contentsOf: PatchRefactorFixture.baseDir
+                .appendingPathComponent("raw_payloads/kernelcache.bin"),
+        )
         let patcher = KernelJailbreakPatcher(data: data, verbose: true)
 
         // Initialize patcher state (same as findAll() but without running patches)

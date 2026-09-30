@@ -10,18 +10,22 @@
 // file it left behind. Every claim here is "the Swift, given the bytes the
 // reference was given, produces the bytes the reference produced".
 //
-// The tests need the real cache. Point `VPHONE_DSC_PRISTINE` at a directory of
-// `dyld_shared_cache_arm64e*` chunks, or leave the default
-// `ipsws/ref_extract/dsc_pristine` in place.
+// The real-cache suites need the real cache. Point `VPHONE_DSC_PRISTINE` at a
+// directory of `dyld_shared_cache_arm64e*` chunks, or leave the default
+// `ipsws/ref_extract/dsc_pristine` in place. Without it they are *skipped*, with
+// the reason printed: a 5.3 GB gitignored extraction is simply not on a fresh
+// clone, and that is not a regression. `VPHONE_DSC_FIXTURE_REQUIRED=1` turns an
+// absent cache back into a failure, for a runner that forwards its environment
+// (see `MaxSlideFixture.required`).
 //
-// Without it they FAIL, following `DyldSharedCacheFoundationTests`: a `guard … else
-// { return }` is reported by Swift Testing as a pass, so a green run on a
-// machine with no fixture would be indistinguishable from a green run that
-// proved something. A machine that genuinely cannot carry the 5.3 GB cache sets
-// `VPHONE_DSC_FIXTURE_OPTIONAL=1`, which turns the failure into a visible skip.
+// The gate suite below needs none of it — it builds 16 KiB synthetic caches and
+// runs anywhere — so its scratch lives under the system temporary directory
+// rather than the repo. `ipsws/` is gitignored and is commonly a symlink to an
+// external disk, so creating a directory under it fails with ENOTDIR exactly
+// when the fixtures are absent, which is the case a skip has to survive.
 //
 // Nothing here writes to the pristine directory, and nothing here writes
-// anywhere under `ipsws/ref_extract/` at all: clones land in
+// anywhere under `ipsws/ref_extract/` at all: the real-cache clones land in
 // `ipsws/scratch_dscmaxslide/`, on the same filesystem, so `cp -c` is a
 // `clonefile` rather than 10 GB of copying.
 
@@ -158,28 +162,36 @@ private enum MaxSlideFixture {
         return FileManager.default.fileExists(atPath: main.path) ? url : nil
     }
 
-    /// Opt-out for a machine that cannot carry the fixture.
-    static var isOptional: Bool {
-        ProcessInfo.processInfo.environment["VPHONE_DSC_FIXTURE_OPTIONAL"] == "1"
+    /// An absent cache skips the suite rather than failing it, with the reason
+    /// below, so a fresh clone without a 5.3 GB extraction is not reported as a
+    /// regression.
+    ///
+    /// These suites used to fail on absence and skip only under
+    /// `VPHONE_DSC_FIXTURE_OPTIONAL=1`. That escape hatch was unreachable:
+    /// `xcodebuild test` does not forward the environment to this non-hosted
+    /// macOS test bundle, so the variable could never be set and every run
+    /// without the cache was red. The strict reading survives as
+    /// `VPHONE_DSC_FIXTURE_REQUIRED=1`, for a runner that does forward it.
+    static var required: Bool {
+        ProcessInfo.processInfo.environment["VPHONE_DSC_FIXTURE_REQUIRED"] == "1"
     }
 
-    /// The suites run unless the cache is absent *and* the caller opted out.
     static var runs: Bool {
-        pristine != nil || !isOptional
+        pristine != nil || required
     }
 
     static let missing: Comment = """
     the real 24A435 arm64e shared cache is required — put it at \
-    ipsws/ref_extract/dsc_pristine, point VPHONE_DSC_PRISTINE at it, or set \
-    VPHONE_DSC_FIXTURE_OPTIONAL=1 to skip these tests instead of failing
+    ipsws/ref_extract/dsc_pristine, or point VPHONE_DSC_PRISTINE at it
     """
 
     static let skipReason: Comment =
-        "VPHONE_DSC_FIXTURE_OPTIONAL=1 and no dyld_shared_cache_arm64e fixture present"
+        "no dyld_shared_cache_arm64e fixture; put it at ipsws/ref_extract/dsc_pristine or set VPHONE_DSC_PRISTINE"
 
-    /// Where clones are made. Same filesystem as the repo, and deliberately
-    /// *not* under `ipsws/ref_extract/`, which is the pristine reference the
-    /// whole suite compares against.
+    /// Where the real-cache clones are made. Same filesystem as the repo, and
+    /// deliberately *not* under `ipsws/ref_extract/`, which is the pristine
+    /// reference the whole suite compares against. Only reachable with the
+    /// fixture in hand, so `ipsws/` is a real directory by then.
     static var scratchRoot: URL {
         repoRoot.appendingPathComponent("ipsws/scratch_dscmaxslide")
     }
@@ -234,15 +246,22 @@ private enum MaxSlideFixture {
     }
 
     /// Discard clones, and the scratch root with them once the last one is
-    /// gone, so a test run leaves the working tree as it found it.
+    /// gone, so a test run leaves nothing behind.
+    ///
+    /// Each clone sits directly in its scratch root, and there is more than one
+    /// — the real-cache clones live under the repo, the synthetic gate caches
+    /// under the temporary directory — so the roots come from the clones rather
+    /// than from a single field.
     static func discard(_ clones: URL...) {
+        let fm = FileManager.default
         for clone in clones {
-            try? FileManager.default.removeItem(at: clone)
+            try? fm.removeItem(at: clone)
         }
-        let remaining = (try? FileManager.default
-            .contentsOfDirectory(atPath: scratchRoot.path)) ?? []
-        if remaining.isEmpty {
-            try? FileManager.default.removeItem(at: scratchRoot)
+        for root in Set(clones.map { $0.deletingLastPathComponent() }) {
+            let remaining = (try? fm.contentsOfDirectory(atPath: root.path)) ?? []
+            if remaining.isEmpty {
+                try? fm.removeItem(at: root)
+            }
         }
     }
 }
@@ -552,8 +571,17 @@ struct DyldSharedCacheMaxSlideRealCacheTests {
 /// the four: it overflows. A cache that *fits* — an 18.x or 26.x base, the case
 /// the self-gate exists to protect — cannot be demonstrated with the fixture on
 /// hand, so it is built.
-@Suite(.serialized, .enabled(if: MaxSlideFixture.runs, MaxSlideFixture.skipReason))
+@Suite(.serialized)
 struct DyldSharedCacheMaxSlideGateTests {
+    /// Scratch for the synthetic caches. Under the system temporary directory
+    /// rather than the repo: these are 16 KiB files written whole, so there is
+    /// no clone that needs to share the fixture's volume, and `ipsws/` is a
+    /// gitignored path that is commonly a symlink to an external disk — so
+    /// creating a directory under it fails with ENOTDIR precisely in the case a
+    /// fixture-free run has to survive. The pid keeps concurrent runs apart.
+    private static let scratchRoot = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("vphone-dscmaxslide-gates-\(ProcessInfo.processInfo.processIdentifier)")
+
     /// A minimal but *real* cache: header plus a one-entry mapping table that
     /// covers it. The Python's own self-test fixture has no mapping table at
     /// all, which the Swift refuses — see `noMappingTableIsRefused`.
@@ -627,7 +655,7 @@ struct DyldSharedCacheMaxSlideGateTests {
         expectedOutcome: DyldSharedCacheMaxSlidePatcher.Outcome,
         expectedMaxSlideAfter: UInt64,
     ) throws {
-        let swiftSide = MaxSlideFixture.scratchRoot.appendingPathComponent("\(name)_swift")
+        let swiftSide = Self.scratchRoot.appendingPathComponent("\(name)_swift")
         defer { MaxSlideFixture.discard(swiftSide) }
         try Self.writeCache(into: swiftSide, regionSize: regionSize, maxSlide: maxSlide)
 
@@ -742,7 +770,7 @@ struct DyldSharedCacheMaxSlideGateTests {
 
     @Test
     func `A missing main chunk is a named failure, not a crash`() throws {
-        let empty = MaxSlideFixture.scratchRoot.appendingPathComponent("empty")
+        let empty = Self.scratchRoot.appendingPathComponent("empty")
         try FileManager.default.createDirectory(at: empty, withIntermediateDirectories: true)
         defer { MaxSlideFixture.discard(empty) }
 
@@ -756,7 +784,7 @@ struct DyldSharedCacheMaxSlideGateTests {
     /// what makes the check worth having.
     @Test
     func `A file that is not a dyld_v1 cache is refused`() throws {
-        let directory = MaxSlideFixture.scratchRoot.appendingPathComponent("badmagic")
+        let directory = Self.scratchRoot.appendingPathComponent("badmagic")
         defer { MaxSlideFixture.discard(directory) }
         try Self.writeCache(
             into: directory,
@@ -777,7 +805,7 @@ struct DyldSharedCacheMaxSlideGateTests {
     /// 0xF0 — here that is a `dyld_cache_mapping_info.fileOffset`.
     @Test
     func `A header too short to hold maxSlide is refused, where the reference would write`() throws {
-        let directory = MaxSlideFixture.scratchRoot.appendingPathComponent("shortheader")
+        let directory = Self.scratchRoot.appendingPathComponent("shortheader")
         defer { MaxSlideFixture.discard(directory) }
         // Mapping table at 0xC0: the header struct then ends at 0xC0, well
         // before the 0xF0 these offsets want to write at. The mapping itself is
@@ -799,7 +827,7 @@ struct DyldSharedCacheMaxSlideGateTests {
     /// assume, so the write is refused rather than aimed at an unknown field.
     @Test
     func `A header that disagrees with the mapping table is refused`() throws {
-        let directory = MaxSlideFixture.scratchRoot.appendingPathComponent("mismatch")
+        let directory = Self.scratchRoot.appendingPathComponent("mismatch")
         defer { MaxSlideFixture.discard(directory) }
         try Self.writeCache(
             into: directory,
@@ -828,7 +856,7 @@ struct DyldSharedCacheMaxSlideGateTests {
     /// strictly safer one — the input is not a shared cache.
     @Test
     func `A header with no mapping table is refused, where the reference patched it`() throws {
-        let swiftSide = MaxSlideFixture.scratchRoot.appendingPathComponent("headeronly_swift")
+        let swiftSide = Self.scratchRoot.appendingPathComponent("headeronly_swift")
         defer { MaxSlideFixture.discard(swiftSide) }
 
         try FileManager.default.createDirectory(at: swiftSide, withIntermediateDirectories: true)
