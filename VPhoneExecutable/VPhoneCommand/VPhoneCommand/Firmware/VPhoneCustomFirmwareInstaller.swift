@@ -142,11 +142,23 @@ struct VPhoneCustomFirmwareInstaller {
                 "attach", "-nomount", "-imagekey", "diskimage-class=CRawDiskImage", image.path,
             ],
         )
-        guard
-            let baseDisk = attached.split(whereSeparator: \.isNewline).first?
-            .split(whereSeparator: \.isWhitespace).first.map(String.init),
-            baseDisk.hasPrefix("/dev/disk")
-        else {
+        // `hdiutil attach` prints the image's own disk and, on macOS 27, the APFS
+        // container it synthesizes over it before that disk, so its first line is
+        // no longer the image: the container's line carries the container's type
+        // and taking it would make every later device reference point at the
+        // container instead of the store it lives on. The image's disk is the one
+        // whose `Apple_APFS` partition is the store, so take its parent.
+        let devices = attached.split(whereSeparator: \.isNewline).compactMap { line -> (device: String, type: String)? in
+            let fields = line.split(whereSeparator: \.isWhitespace)
+            guard fields.count >= 2, fields[0].hasPrefix("/dev/disk") else { return nil }
+            return (String(fields[0]), String(fields[1]))
+        }
+        let store = devices.first(where: { $0.type == "Apple_APFS" })?.device
+        let wholeDisk = devices.first(where: { $0.type == "GUID_partition_scheme" })?.device
+        let baseDisk = store.flatMap { device in
+            device.range(of: "s", options: .backwards).map { String(device[..<$0.lowerBound]) }
+        } ?? wholeDisk ?? devices.first?.device
+        guard let baseDisk, baseDisk.hasPrefix("/dev/disk") else {
             if let range = attached.range(of: #"/dev/disk[0-9]+"#, options: .regularExpression) {
                 _ = try? tool("/usr/bin/hdiutil", ["detach", "-force", String(attached[range])], quiet: true)
             }
@@ -942,9 +954,13 @@ struct VPhoneCustomFirmwareInstaller {
             fromPropertyList: plist,
             format: .xml, options: 0,
         )
+        // Replacement, not merge: `plist` is already the complete set we want,
+        // and merging it back over the file's own entitlements would re-add the
+        // `seatbelt-profiles` removed above — merge updates and appends keys, it
+        // cannot delete one.
         try VPhoneSigner.sign(
             fileAt: staged,
-            options: .init(entitlements: data, mergesExisting: true),
+            options: .init(entitlements: data),
         )
         try system.replaceFile(target, fromFileAt: staged, mode: 0o755, owner: Self.guestOwner)
     }
