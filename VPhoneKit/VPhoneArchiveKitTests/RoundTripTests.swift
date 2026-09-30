@@ -1,3 +1,4 @@
+import ArchiveKit
 import Foundation
 import Testing
 @testable import VPhoneArchiveKit
@@ -340,6 +341,121 @@ struct RoundTripTests {
         #expect(!FileManager.default.fileExists(
             atPath: destination.deletingLastPathComponent().appendingPathComponent("escaped").path,
         ))
+    }
+
+    // MARK: - Non-ASCII names
+
+    /// libarchive converts member names through the calling thread's LC_CTYPE.
+    /// A process that never calls setlocale(3) — every launchd job, the
+    /// Launchpad helper, and vphone-cli itself — runs in "C", where UTF-8 names
+    /// cannot be converted: the reader returned a NULL pathname and the pax
+    /// writer refused the header. Pinned to "C" here so the test does not
+    /// depend on how the test runner set up its locale.
+    private func inLocale<T>(_ name: String, _ body: () throws -> T) throws -> T {
+        let locale = try #require(newlocale(LC_CTYPE_MASK, name, nil))
+        let previous = uselocale(locale)
+        defer {
+            uselocale(previous)
+            freelocale(locale)
+        }
+        return try body()
+    }
+
+    private static let unicodeName = "café-中文.txt"
+
+    private static func makeUnicodeTree() throws -> URL {
+        let root = scratch("unicode")
+        try FileManager.default.createDirectory(
+            at: root.appendingPathComponent("目录"),
+            withIntermediateDirectories: true,
+        )
+        try Data("bonjour\n".utf8).write(to: root.appendingPathComponent("目录/\(unicodeName)"))
+        try FileManager.default.createSymbolicLink(
+            atPath: root.appendingPathComponent("lien-é").path,
+            withDestinationPath: "目录/\(unicodeName)",
+        )
+        return root
+    }
+
+    @Test(arguments: [VPhoneArchiveFormat.gnutar, .pax])
+    func `non-ASCII names round trip in the C locale`(format: VPhoneArchiveFormat) throws {
+        let source = try Self.makeUnicodeTree()
+        let archive = Self.scratch("unicode").appendingPathExtension("tar")
+        let destination = Self.scratch("unicode-out")
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        defer {
+            for url in [source, archive, destination] {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        let member = "目录/\(Self.unicodeName)"
+        let (entries, data) = try inLocale("C") {
+            try VPhoneArchiveWriter.create(archive: archive, from: source, format: format)
+            try VPhoneArchiveExtractor.extract(archive, into: destination, options: .intoHostDirectory)
+            return try (
+                VPhoneArchiveReader.entries(of: archive),
+                VPhoneArchiveReader.readMember(member, from: archive),
+            )
+        }
+
+        #expect(Set(entries.map(\.path)) == ["目录/", member, "lien-é"])
+        #expect(entries.first { $0.path == "lien-é" }?.linkTarget == member)
+        #expect(String(decoding: data, as: UTF8.self) == "bonjour\n")
+        #expect(try String(contentsOf: destination.appendingPathComponent(member), encoding: .utf8) == "bonjour\n")
+        #expect(try FileManager.default.destinationOfSymbolicLink(
+            atPath: destination.appendingPathComponent("lien-é").path,
+        ) == member)
+    }
+
+    /// A zip entry with the UTF-8 flag (0x800) is the case libarchive converts
+    /// rather than passing the bytes through. Neither ditto nor /usr/bin/zip
+    /// sets that flag, so the fixture is written here, in a UTF-8 locale.
+    @Test
+    func `a UTF-8 flagged zip is listed and unpacked in the C locale`() throws {
+        let zip = Self.scratch("unicode").appendingPathExtension("zip")
+        let destination = Self.scratch("unicode-zip-out")
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        defer {
+            for url in [zip, destination] {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        let member = "目录/\(Self.unicodeName)"
+        try inLocale("UTF-8") {
+            let writer = archive_write_new()
+            defer { archive_write_free(writer) }
+            archive_write_set_format_zip(writer)
+            try #require(archive_write_set_options(writer, "zip:hdrcharset=UTF-8") == ARCHIVE_OK)
+            try #require(archive_write_open_filename(writer, zip.path) == ARCHIVE_OK)
+            let entry = archive_entry_new()
+            defer { archive_entry_free(entry) }
+            archive_entry_set_pathname(entry, member)
+            archive_entry_set_filetype(entry, UInt32(S_IFREG))
+            archive_entry_set_perm(entry, 0o644)
+            archive_entry_set_size(entry, 8)
+            try #require(archive_write_header(writer, entry) == ARCHIVE_OK)
+            #expect(archive_write_data(writer, "bonjour\n", 8) == 8)
+            try #require(archive_write_close(writer) == ARCHIVE_OK)
+        }
+        // General purpose flags are at +6 of the first local header.
+        let header = try [UInt8](Data(contentsOf: zip).prefix(8))
+        try #require(header[0 ..< 4] == [0x50, 0x4B, 0x03, 0x04])
+        try #require(header[7] & 0x08 != 0)
+
+        let (entries, data) = try inLocale("C") {
+            try VPhoneArchiveExtractor.extract(zip, into: destination, options: .intoHostDirectory)
+            return try (
+                VPhoneArchiveReader.entries(of: zip),
+                VPhoneArchiveReader.readMember(member, from: zip),
+            )
+        }
+
+        #expect(entries.map(\.path).contains(member))
+        #expect(!entries.contains { $0.path.isEmpty })
+        #expect(String(decoding: data, as: UTF8.self) == "bonjour\n")
+        #expect(try String(contentsOf: destination.appendingPathComponent(member), encoding: .utf8) == "bonjour\n")
     }
 
     /// Overwrite the name in a ustar/gnutar header in place. The name field is

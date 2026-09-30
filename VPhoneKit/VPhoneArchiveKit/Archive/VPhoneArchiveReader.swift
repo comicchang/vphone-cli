@@ -92,19 +92,21 @@ public enum VPhoneArchiveReader {
         _ archive: URL,
         _ body: (OpaquePointer?) throws -> T,
     ) throws -> T {
-        let reader = archive_read_new()
-        archive_read_support_format_all(reader)
-        archive_read_support_format_raw(reader)
-        archive_read_support_filter_all(reader)
-        defer { archive_read_free(reader) }
+        try withArchiveLocale {
+            let reader = archive_read_new()
+            archive_read_support_format_all(reader)
+            archive_read_support_format_raw(reader)
+            archive_read_support_filter_all(reader)
+            defer { archive_read_free(reader) }
 
-        guard archive_read_open_filename(reader, archive.path, blockSize) == ARCHIVE_OK else {
-            throw VPhoneArchiveError.cannotOpen(
-                path: archive.path,
-                reason: archiveErrorString(reader),
-            )
+            guard archive_read_open_filename(reader, archive.path, blockSize) == ARCHIVE_OK else {
+                throw VPhoneArchiveError.cannotOpen(
+                    path: archive.path,
+                    reason: archiveErrorString(reader),
+                )
+            }
+            return try body(reader)
         }
-        return try body(reader)
     }
 
     private static func nextHeader(

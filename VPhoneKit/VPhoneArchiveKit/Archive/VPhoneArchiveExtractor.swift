@@ -36,6 +36,26 @@ public enum VPhoneArchiveExtractor {
         bytesRead: ((Int64) -> Void)? = nil,
         isCancelled: (() -> Bool)? = nil,
     ) throws -> Int {
+        try withArchiveLocale {
+            try unpack(
+                archive,
+                into: destination,
+                options: options,
+                progress: progress,
+                bytesRead: bytesRead,
+                isCancelled: isCancelled,
+            )
+        }
+    }
+
+    private static func unpack(
+        _ archive: URL,
+        into destination: URL,
+        options: VPhoneArchiveExtractOptions,
+        progress: ((Progress) -> Void)?,
+        bytesRead: ((Int64) -> Void)?,
+        isCancelled: (() -> Bool)?,
+    ) throws -> Int {
         let reader = archive_read_new()
         archive_read_support_format_all(reader)
         archive_read_support_filter_all(reader)
@@ -86,7 +106,16 @@ public enum VPhoneArchiveExtractor {
                 )
             }
 
-            let memberPath = archive_entry_pathname(entry).map { String(cString: $0) } ?? ""
+            // A name libarchive could not convert comes back NULL. Treated as
+            // "", it would resolve to the destination itself and pass the
+            // containment check below.
+            guard let rawPath = archive_entry_pathname(entry) else {
+                throw VPhoneArchiveError.readFailed(
+                    path: archive.path,
+                    reason: archiveErrorString(reader),
+                )
+            }
+            let memberPath = String(cString: rawPath)
             let target = resolvedDestination.appendingPathComponent(memberPath)
 
             // libarchive's SECURE_* flags already refuse absolute paths and

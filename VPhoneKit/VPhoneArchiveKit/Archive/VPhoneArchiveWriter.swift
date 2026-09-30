@@ -39,6 +39,32 @@ public enum VPhoneArchiveWriter {
         bytesPacked: ((Int64) -> Void)? = nil,
         isCancelled: (() -> Bool)? = nil,
     ) throws -> Int {
+        try withArchiveLocale {
+            try pack(
+                archive: archive,
+                from: root,
+                topLevel: topLevel,
+                format: format,
+                compression: compression,
+                excluding: patterns,
+                progress: progress,
+                bytesPacked: bytesPacked,
+                isCancelled: isCancelled,
+            )
+        }
+    }
+
+    private static func pack(
+        archive: URL,
+        from root: URL,
+        topLevel: String?,
+        format: VPhoneArchiveFormat,
+        compression: VPhoneArchiveCompression,
+        excluding patterns: [String],
+        progress: ((Progress) -> Void)?,
+        bytesPacked: ((Int64) -> Void)?,
+        isCancelled: (() -> Bool)?,
+    ) throws -> Int {
         let writer = archive_write_new()
         defer { archive_write_free(writer) }
 
