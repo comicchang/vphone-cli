@@ -441,6 +441,11 @@ struct VPhoneCustomFirmwareInstaller {
                 try patch("patch-dsc-maxslide", [dsc, "--force"])
             }
         }
+        // Version-agnostic: the guest is hacktivated on every base, so the
+        // profile check this opens fails on every base too.
+        if on("mis_trust_auth") {
+            try patch("patch-mis-trust-auth", [dsc])
+        }
         // These former EXP patches pair with the kernel OID rename and the
         // camera DeviceTree additions in the public JB firmware pipeline.
         if on("hv_vmm_dsc") {

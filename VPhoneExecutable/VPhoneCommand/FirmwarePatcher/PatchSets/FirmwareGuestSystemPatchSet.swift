@@ -59,6 +59,17 @@ public enum FirmwareGuestSystemPatchSet {
                 applicability: ios27,
                 bootEssential: true,
             ),
+            VPhonePatchDeclaration(
+                identifier: "mis_trust_auth",
+                title: "MIS online authorization",
+                summary: """
+                Accepts a provisioning profile that wants online authorization. The guest is \
+                hacktivated and has no activation record, so it can never obtain the device \
+                identity such a profile is checked against; without this, an app signed with a \
+                free personal-team certificate installs but refuses to launch.
+                """,
+                target: .dyldSharedCache,
+            ),
 
             // MARK: System Daemons
 

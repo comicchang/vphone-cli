@@ -32,6 +32,7 @@ enum VPhoneCustomFirmwareDyldSharedCacheVerbs {
             VPhoneCustomFirmwarePatchLSDEmbeddedRegCommand.self,
             VPhoneCustomFirmwarePatchXPCLWCRCommand.self,
             VPhoneCustomFirmwarePatchLockdownModeCommand.self,
+            VPhoneCustomFirmwarePatchMISTrustAuthCommand.self,
             VPhoneCustomFirmwarePatchCameraDyldSharedCacheCommand.self,
         ]
     }
@@ -295,6 +296,53 @@ struct VPhoneCustomFirmwarePatchLSDEmbeddedRegCommand: ParsableCommand {
 
     func run() throws {
         try DyldSharedCacheLSDEmbeddedRegPatcher.patch(
+            chunksDirectory: chunksDirectory,
+            dryRun: dryRun,
+            log: VPhoneCustomFirmwareDyldSharedCacheVerbs.stdout,
+        )
+    }
+}
+
+// MARK: - patch-mis-trust-auth
+
+struct VPhoneCustomFirmwarePatchMISTrustAuthCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "patch-mis-trust-auth",
+        abstract: "Accept a provisioning profile that wants online authorization",
+        discussion: """
+        A guest restored by this project is hacktivated, so it holds no
+        activation record and `online-auth-agent` can never obtain the device
+        identity an authorization request is signed with. `libmis`'s
+        `checkTrustAndAuthorization` therefore returns 0xE8008026 — "missing
+        trust and/or authorization" — and the profile stays in the
+        "Profile Needs Network Validation" state for good. In practice that is
+        what stops an app signed with a free personal-team Apple Development
+        certificate from launching, and what makes Settings' "Verify App" fail.
+
+        The function is short-circuited to return success. Two instructions,
+        written after the prologue's `pacibsp` so the PAC pair stays balanced.
+        The function is static and carries no symbol, so it is found by the log
+        string that names it and confirmed by the failure code its prologue
+        seeds; the page is re-attested afterwards.
+
+        Self-gating: a cache whose libmis lacks that string is reported and
+        exits 0, and a cache already carrying the patched shape is a no-op. A
+        cache with the string but not the prologue is an error — MIS has been
+        rewritten, and guessing at it would be worse than stopping.
+        """,
+    )
+
+    @Argument(
+        help: "The guest's /System/Library/Caches/com.apple.dyld directory",
+        transform: URL.init(fileURLWithPath:),
+    )
+    var chunksDirectory: URL
+
+    @Flag(name: .customLong("dry-run"), help: "Report the site and write nothing")
+    var dryRun = false
+
+    func run() throws {
+        try DyldSharedCacheMISTrustAuthPatcher.patch(
             chunksDirectory: chunksDirectory,
             dryRun: dryRun,
             log: VPhoneCustomFirmwareDyldSharedCacheVerbs.stdout,
