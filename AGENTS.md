@@ -21,6 +21,9 @@ Virtual iPhone boot tool using Apple's Virtualization.framework with PCC researc
 - Ignore `/TODO.md` if it exists locally; it is intentionally not part of the repo workflow anymore.
 - Track plan, progress, assumptions, blockers, and next actions in commit history, code comments when warranted, and current research docs instead of a repo TODO file.
 
+
+
+
 For any changes applying new patches, also update Research/0_binary_patch_comparison.md. Dont forget this.
 
 ## Local Skills
@@ -125,6 +128,21 @@ There is none, and adding any is a regression.
 ## Build & Sign
 
 The VM process requires private entitlements for PV=3 virtualization. Build the `VPhone` scheme in Xcode; its final build phase ad hoc signs each child and seals `VPhone.bundle`. `swift build` alone does not produce the distributable bundle.
+
+## Validation Matrix
+
+Evidence-backed checks for the Xcode workspace and native test schemes.
+
+| # | Layer | Command | What it proves | Status / blocked handling |
+|---|-------|---------|----------------|---------------------------|
+| 1 | Bundle build + validation | `xcodebuild -workspace VPhone.xcworkspace -scheme VPhone -configuration Debug -destination 'platform=macOS,arch=arm64' -derivedDataPath .build/XcodeBundle build` | Builds `VPhone.bundle`, signs child binaries, and runs `Build/ValidateBundle.sh` | Required before packaging or installing a local bundle. |
+| 2 | Firmware patcher tests | `xcodebuild -workspace VPhone.xcworkspace -scheme FirmwarePatcherTests -destination 'platform=macOS,arch=arm64' test` | Firmware patch logic and patch-set behavior | Add for firmware or patcher changes. |
+| 3 | Signer tests | `xcodebuild -workspace VPhone.xcworkspace -scheme VPhoneSignTests -destination 'platform=macOS,arch=arm64' test` | Mach-O signing, entitlements, and fixture parity | Add for signing changes. |
+| 4 | Restore tests | `xcodebuild -workspace VPhone.xcworkspace -scheme VPhoneRestoreTests -destination 'platform=macOS,arch=arm64' test` | Native restore planning and identity handling | Add for restore changes. |
+| 5 | Shared kit tests | `xcodebuild -workspace VPhone.xcworkspace -scheme VPhoneCoreKitTests -destination 'platform=macOS,arch=arm64' test` and `xcodebuild -workspace VPhone.xcworkspace -scheme VPhoneArchiveKitTests -destination 'platform=macOS,arch=arm64' test` | Core VM, archive, and support behavior | Add for `VPhoneKit` changes. |
+| 6 | Launchpad host policy | `zsh VPhoneLaunchpad/Tests/HostPolicyTests.sh` | Host setup policy and helper-facing checks | Add for Launchpad host setup changes. |
+
+Minimal gate for code changes: row 1 plus the test schemes for the touched target(s). Never use `vm launch`, `restore`, or `cfw install` as validation — they mutate VM state, require privileged helper or sudo actions, or contact external services.
 
 ## Design System
 
