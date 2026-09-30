@@ -25,7 +25,7 @@ import ImageIO
 ///   {"t":"screenshot","path":"/tmp/shot.png"}   → save to explicit path (PNG/JPEG by extension)
 ///   {"t":"tap","x":645,"y":1398}                → tap at pixel coordinates
 ///   {"t":"swipe","x1":645,"y1":2600,"x2":645,"y2":1400,"ms":300}  → swipe
-///   {"t":"touchswipe","x1":0,"y1":1,"x2":0.2,"y2":0.8,"ms":500}  → guest-touch swipe
+///   {"t":"touchswipe","x1":645,"y1":2600,"x2":645,"y2":1400,"ms":500} → guest-touch swipe
 ///   {"t":"key","name":"home"}                   → hardware key (home/power/volup/voldown/spotlight)
 ///   {"t":"key","name":"cmd+v"}                  → any other name goes to vphoned `input.key`
 ///   {"t":"type","text":"Hello"}                 → set guest clipboard
@@ -240,7 +240,7 @@ class VPhoneHostAutomationServer {
                         ok: false,
                         error: "touch requires phase(0/1/3), x, y (normalized 0..1)")
                 }
-                touchControl().sendTouch(phase: phase, x: x, y: y)
+                try touchControl().sendTouch(phase: phase, x: x, y: y)
                 return Self.reply(ok: true)
 
             case "file_list":
