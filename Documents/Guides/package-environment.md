@@ -8,6 +8,16 @@ The VM has no package manager by default. To install one:
    This one package brings in everything a VM needs in a single pass: `apt` and `dpkg`, `bash`, `zsh` and `dash`, `sudo`, the core command-line tools, `openssh-server`, `curl`, `wget`, `vim`, `git`, `uikittools`, `launchctl`, and the OwnGoal apps. Do not install these packages one by one: several depend on one another, and `openssh-server` declares some dependencies circularly, so separate installs can fail partway.
 3. After the first installation, install further packages normally.
 
+## SSH and Privilege Escalation
+
+After the bootstrap is installed, SSH is available on the guest's IP address (shown in the VM window title):
+
+```sh
+ssh mobile@<guest-ip>    # password: alpine
+```
+
+The `mobile` account can escalate to root with `sudo` (password `alpine`) or `su root`. The `root` account uses the same password.
+
 If the first installation fails, do not repair it in place. Choose **Apps > Uninstall Bootstrap…**, then start again from step 1.
 
 ## Remove the Environment

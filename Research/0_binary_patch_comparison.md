@@ -1076,7 +1076,7 @@ environment fails before publishing a partially patched tree.
 
 | #   | Patch        | Purpose                          | Regular | Dev | JB  |
 | --- | ------------ | -------------------------------- | :-----: | :-: | :-: |
-| 1   | `mov x0, #0` | DGST signature validation bypass |    Y    |  Y  |  Y  |
+| 1   | `mov x0, #0` | DGST signature validation bypass (searches for `movk #0x4447` to avoid false-positive branch-target matches; backward scan crosses `bl` calls) |    Y    |  Y  |  Y  |
 
 New machines boot OpenAVB instead of AVPBooter, and OpenAVB checks no image
 digest: `fw patch` skips this component on them (the patch stays selected and

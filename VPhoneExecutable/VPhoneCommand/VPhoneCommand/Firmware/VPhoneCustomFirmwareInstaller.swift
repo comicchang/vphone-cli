@@ -430,15 +430,20 @@ struct VPhoneCustomFirmwareInstaller {
         var systemMounted = false
         var xartMounted = false
         defer {
+            _ = try? tool("/bin/sync", [], quiet: true)
             if xartMounted,
                (try? tool("/sbin/umount", [xart.path], quiet: true)) == nil
             {
-                _ = try? tool("/sbin/umount", ["-f", xart.path], quiet: true)
+                if (try? tool("/sbin/umount", ["-f", xart.path], quiet: true)) == nil {
+                    _ = try? tool("/usr/sbin/diskutil", ["unmount", "force", xart.path], quiet: true)
+                }
             }
             if systemMounted,
                (try? tool("/sbin/umount", [system.path], quiet: true)) == nil
             {
-                _ = try? tool("/sbin/umount", ["-f", system.path], quiet: true)
+                if (try? tool("/sbin/umount", ["-f", system.path], quiet: true)) == nil {
+                    _ = try? tool("/usr/sbin/diskutil", ["unmount", "force", system.path], quiet: true)
+                }
             }
         }
         systemMounted = true
@@ -584,12 +589,16 @@ struct VPhoneCustomFirmwareInstaller {
         // The snapshot rename is a full install's alone: it has already been
         // done on any VM an environment update is allowed to run against, and
         // this run creates no new snapshot to flip.
-        _ = try tool("/sbin/umount", [xart.path])
-        xartMounted = false
-        _ = try tool("/sbin/umount", [system.path])
-        systemMounted = false
-        _ = try tool("/usr/sbin/diskutil", ["eject", baseDisk], quiet: true)
-        diskAttached = false
+        _ = try? tool("/bin/sync", [], quiet: true)
+        if (try? tool("/sbin/umount", [xart.path], quiet: true)) != nil {
+            xartMounted = false
+        }
+        if (try? tool("/sbin/umount", [system.path], quiet: true)) != nil {
+            systemMounted = false
+        }
+        if (try? tool("/usr/sbin/diskutil", ["eject", baseDisk], quiet: true)) != nil {
+            diskAttached = false
+        }
         if mode == .full, !isOTAUpdate {
             if cloned {
                 try VPhoneAPFSSnapshot.rename(imageAt: image)
@@ -3922,6 +3931,7 @@ struct VPhoneCustomFirmwareInstaller {
     }
 
     private func detachImage(at mount: URL) throws {
+        _ = try? tool("/bin/sync", [], quiet: true)
         do {
             _ = try tool("/usr/sbin/diskutil", ["eject", mount.path], quiet: true)
         } catch {

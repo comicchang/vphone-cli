@@ -26,12 +26,20 @@ import VPhoneCoreKit
 ///   {"t":"screenshot","path":"/tmp/shot.png"}   → save to explicit path (PNG/JPEG by extension)
 ///   {"t":"tap","x":645,"y":1398}                → tap at pixel coordinates
 ///   {"t":"swipe","x1":645,"y1":2600,"x2":645,"y2":1400,"ms":300}  → swipe
-///   {"t":"key","name":"home"}                   → hardware key (home/power/volup/voldown)
+///   {"t":"touchswipe","x1":645,"y1":2600,"x2":645,"y2":1400,"ms":500} → guest-touch swipe
+///   {"t":"key","name":"home"}                   → hardware key (home/power/volup/voldown/spotlight)
 ///   {"t":"key","name":"cmd+v"}                  → any other name goes to vphoned `input.key`
 ///   {"t":"hostkey","keys":"ctrl+space"}         → the same key events a Mac keyboard gives the VM
 ///                                                 window, through `VPhoneApplication` and the virtual
 ///                                                 keyboard (windowed launches only)
 ///   {"t":"type","text":"Hello"}                 → set guest clipboard
+///   {"t":"touch","phase":0,"x":0.5,"y":0.5}     → guest HID digitizer event
+///   {"t":"file_list","path":"/var/mobile"}       → list guest directory entries
+///   {"t":"file_delete","path":"/var/mobile/tmp/x"} → delete a guest file
+///   {"t":"open_url","url":"https://example.com"} → open a URL in the guest
+///   {"t":"app_launch","bundle_id":"com.example.App"} → launch a guest app
+///   {"t":"ipa_install","path":"/path/to/app.ipa"} → install a local IPA
+///   {"t":"app_terminate","bundle_id":"com.example.App"} → terminate a guest app
 ///   {"t":"ping"}                                → vphoned request/response
 ///   {"t":"rpc","method":"input.type","params":{"text":"ls\n"}}
 ///                                               → any vphoned method; its result is in `"result"`.
@@ -224,6 +232,16 @@ class VPhoneHostAutomationServer {
                 }
                 try await swipe(x1: x1, y1: y1, x2: x2, y2: y2, durationMs: json["ms"] as? Int ?? 300)
 
+            case "touchswipe":
+                guard let x1 = json["x1"] as? Double,
+                      let y1 = json["y1"] as? Double,
+                      let x2 = json["x2"] as? Double,
+                      let y2 = json["y2"] as? Double
+                else {
+                    return Self.reply(ok: false, error: "touchswipe requires x1, y1, x2, y2")
+                }
+                try await swipe(x1: x1, y1: y1, x2: x2, y2: y2, durationMs: json["ms"] as? Int ?? 500)
+
             case "key":
                 guard let name = json["name"] as? String else {
                     return Self.reply(
@@ -250,6 +268,69 @@ class VPhoneHostAutomationServer {
                 // Not a copy the user made, so leaving the window does not
                 // put it on the Mac clipboard.
                 captureView?.clipboardSync?.adoptGuestClipboard()
+
+            case "touch":
+                guard let phase = json["phase"] as? Int,
+                      let x = json["x"] as? Double,
+                      let y = json["y"] as? Double
+                else {
+                    return Self.reply(
+                        ok: false,
+                        error: "touch requires phase(0/1/3), x, y (normalized 0..1)")
+                }
+                try touchControl().sendTouch(phase: phase, x: x, y: y)
+                return Self.reply(ok: true)
+
+            case "file_list":
+                guard let path = json["path"] as? String else {
+                    return Self.reply(ok: false, error: "file_list requires path")
+                }
+                let entries = try await connectedControl().listFiles(path: path)
+                return Self.reply(ok: true, entries: entries)
+
+            case "file_delete":
+                guard let path = json["path"] as? String else {
+                    return Self.reply(ok: false, error: "file_delete requires path")
+                }
+                try await connectedControl().deleteFile(path: path)
+                return Self.reply(ok: true)
+
+            case "open_url":
+                guard let url = json["url"] as? String else {
+                    return Self.reply(ok: false, error: "open_url requires url")
+                }
+                try await connectedControl().openURL(url)
+
+            case "app_launch":
+                guard let bundleID = json["bundle_id"] as? String else {
+                    return Self.reply(ok: false, error: "app_launch requires bundle_id")
+                }
+                var params: [String: Any] = ["bundle_id": bundleID]
+                if let url = json["url"] as? String {
+                    params["url"] = url
+                }
+                let result = try await connectedControl().callAfterQueuedInput("apps.launch", params: params)
+                let image = wantScreen ? await settledCompactScreenshot(delayMs: screenDelay) : nil
+                let path = (result["pid"] as? Int).map { String($0) }
+                return Self.reply(ok: true, path: path, image: image, result: result)
+
+            case "ipa_install":
+                guard let path = json["path"] as? String else {
+                    return Self.reply(ok: false, error: "ipa_install requires path")
+                }
+                let localURL = URL(fileURLWithPath: path)
+                guard FileManager.default.fileExists(atPath: path) else {
+                    return Self.reply(ok: false, error: "file not found: \(path)")
+                }
+                let message = try await connectedControl().installIPA(localURL: localURL)
+                return Self.reply(ok: true, path: message)
+
+            case "app_terminate":
+                guard let bundleID = json["bundle_id"] as? String else {
+                    return Self.reply(ok: false, error: "app_terminate requires bundle_id")
+                }
+                let result = try await connectedControl().appTerminate(bundleID: bundleID)
+                return Self.reply(ok: true, path: "terminated \(bundleID)", result: result)
 
             case "rpc":
                 guard let method = json["method"] as? String, !method.isEmpty else {
@@ -340,6 +421,12 @@ class VPhoneHostAutomationServer {
 
     private func pressKey(_ name: String) async throws {
         let control = try connectedControl()
+        if name == "spotlight" {
+            control.sendHIDDown(page: 0x07, usage: 0xE3)
+            control.sendHIDPress(page: 0x07, usage: 0x2C)
+            control.sendHIDUp(page: 0x07, usage: 0xE3)
+            return
+        }
         let hidKey: (page: UInt32, usage: UInt32)? = switch name {
         case "home": (0x0C, 0x40)
         case "power": (0x0C, 0x30)
@@ -556,6 +643,7 @@ class VPhoneHostAutomationServer {
         image: String? = nil,
         result: [String: Any]? = nil,
         guestError: [String: Any]? = nil,
+        entries: [[String: Any]]? = nil,
     ) -> Data {
         var dict: [String: Any] = ["ok": ok]
         if let result {
@@ -563,6 +651,9 @@ class VPhoneHostAutomationServer {
         }
         if let guestError {
             dict["guest_error"] = guestError
+        }
+        if let entries {
+            dict["entries"] = entries
         }
         if let path {
             dict["path"] = path
