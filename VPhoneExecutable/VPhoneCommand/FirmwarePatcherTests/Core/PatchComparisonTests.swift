@@ -22,11 +22,12 @@ import Foundation
 import Testing
 import VPhonePatchKit
 
-/// True when the unreproducible Python reference records are present.
+/// Both halves of the fixture have to be there: the reference records to
+/// compare against, and the raw payloads to run the patchers over. Either one
+/// alone would make the comparison vacuous, so this is all or nothing.
 private var hasReferencePatches: Bool {
-    FileManager.default.fileExists(
-        atPath: baseDir.appendingPathComponent("reference_patches").path,
-    )
+    PatchRefactorFixture.has("reference_patches")
+        && PatchRefactorFixture.has("raw_payloads")
 }
 
 private let referenceMissing: Comment = """
@@ -51,21 +52,14 @@ private struct TXMDevReference: Decodable {
 
 // MARK: - Test helpers
 
-private let baseDir = URL(fileURLWithPath: #filePath)
-    .deletingLastPathComponent()
-    .deletingLastPathComponent()
-    .deletingLastPathComponent()
-    .deletingLastPathComponent()
-    .deletingLastPathComponent()
-    .appendingPathComponent("ipsws/patch_refactor_input")
-
 private func loadRawPayload(_ name: String) throws -> Data {
-    let url = baseDir.appendingPathComponent("raw_payloads/\(name)")
+    let url = PatchRefactorFixture.baseDir.appendingPathComponent("raw_payloads/\(name)")
     return try Data(contentsOf: url)
 }
 
 private func loadReference(_ name: String) throws -> [ReferencePatch] {
-    let url = baseDir.appendingPathComponent("reference_patches/\(name).json")
+    let url = PatchRefactorFixture.baseDir
+        .appendingPathComponent("reference_patches/\(name).json")
     let data = try Data(contentsOf: url)
     return try JSONDecoder().decode([ReferencePatch].self, from: data)
 }
@@ -184,7 +178,8 @@ struct TXMComparisonTests {
 @Suite(.enabled(if: hasReferencePatches, referenceMissing))
 struct TXMDevComparisonTests {
     @Test func `compare TXM dev`() throws {
-        let url = baseDir.appendingPathComponent("reference_patches/txm_dev.json")
+        let url = PatchRefactorFixture.baseDir
+            .appendingPathComponent("reference_patches/txm_dev.json")
         let jsonData = try Data(contentsOf: url)
         let ref = try JSONDecoder().decode(TXMDevReference.self, from: jsonData)
 
