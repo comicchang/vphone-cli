@@ -20,11 +20,12 @@
 // slot that the last independent-Mach-O re-signing regression came from.
 //
 // Point `VPHONE_MACHO_PRISTINE` at a directory of those binaries, or leave the
-// default `ipsws/ref_extract/macho_pristine` in place. Without it these tests
-// FAIL — the suite never opens with a bare `return`, which Swift Testing
-// reports as a pass, so a green run cannot mean the fixture was absent. A
-// machine that genuinely cannot carry it sets `VPHONE_MACHO_FIXTURE_OPTIONAL=1`,
-// which turns the failure into a visible skip.
+// default `ipsws/ref_extract/macho_pristine` in place. The fixture is required;
+// without it these tests are *skipped*, with the reason printed. A multi-GB
+// gitignored extraction is simply not on a fresh clone, and that is not a
+// regression. `VPHONE_MACHO_FIXTURE_REQUIRED=1` turns an absent fixture back
+// into a failure, for a runner that forwards its environment (see
+// `DiskImagesFixture.required`).
 //
 // Nothing here writes into the pristine tree. Clones are made with `cp -c`
 // (`clonefile`: instant, and free on APFS) under the system temporary
@@ -65,21 +66,28 @@ private enum DiskImagesFixture {
         pristineDirectory?.appendingPathComponent("watchdogd")
     }
 
-    /// Opt-out for a machine that cannot carry the fixture.
-    static var isOptional: Bool {
-        ProcessInfo.processInfo.environment["VPHONE_MACHO_FIXTURE_OPTIONAL"] == "1"
+    /// An absent cache skips the suite rather than failing it, with the reason
+    /// below, so a fresh clone without a multi-GB gitignored extraction is not
+    /// reported as a regression.
+    ///
+    /// These suites used to fail on absence and skip only under
+    /// `VPHONE_MACHO_FIXTURE_OPTIONAL=1`. That escape hatch was unreachable:
+    /// `xcodebuild test` does not forward the environment to this non-hosted
+    /// macOS test bundle, so the variable could never be set and every run
+    /// without the cache was red. The strict reading survives as
+    /// `VPHONE_MACHO_FIXTURE_REQUIRED=1`, for a runner that does forward it.
+    static var required: Bool {
+        ProcessInfo.processInfo.environment["VPHONE_MACHO_FIXTURE_REQUIRED"] == "1"
     }
 
-    /// The suite runs unless the fixture is absent *and* the caller opted out.
     static var runs: Bool {
-        pristine != nil || !isOptional
+        pristine != nil || required
     }
 
     static let missing: Comment = """
     the real 24A435 arm64e diskimagesiod is required — put it at \
-    ipsws/ref_extract/macho_pristine/diskimagesiod, point VPHONE_MACHO_PRISTINE \
-    at its directory, or set VPHONE_MACHO_FIXTURE_OPTIONAL=1 to skip these \
-    tests instead of failing
+    ipsws/ref_extract/macho_pristine/diskimagesiod, or point \
+    VPHONE_MACHO_PRISTINE at its directory
     """
 
     /// Where clones go. Deliberately *not* inside `ipsws/ref_extract`: that tree

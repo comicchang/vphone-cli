@@ -10,6 +10,16 @@ The VM has no package manager by default. To install one:
 
 `vphone-cli vm create <name> --bootstrap roothide` does steps 1 and 2 during the new machine's first boot: it installs Irisin, then `owngoal-bootstrap-vphone` with Bootstrap Install through `irisin-cli`, from the repositories Irisin recommends. Step 2 needs an Irisin whose `irisin-cli install` has `--repository` and `--bootstrap-install`.
 
+## SSH and Privilege Escalation
+
+After the bootstrap is installed, SSH is available on the guest's IP address (shown in the VM window title):
+
+```sh
+ssh mobile@<guest-ip>    # password: alpine
+```
+
+The `mobile` account can escalate to root with `sudo` (password `alpine`) or `su root`. The `root` account uses the same password.
+
 If the first installation fails, do not repair it in place. Choose **Apps > Uninstall Bootstrap…**, then start again from step 1.
 
 ## Remove the Environment

@@ -23,11 +23,11 @@
 // `VPHONE_MACHO_PRISTINE` at a directory of pristine Mach-O binaries or leave
 // the default `ipsws/ref_extract/macho_pristine` in place.
 //
-// Without it these FAIL, following `DyldSharedCacheFoundationTests`: a `guard … else
-// { return }` is reported by Swift Testing as a pass, so a green run on a
-// machine with no fixture would be indistinguishable from a green run that
-// proved something. Set `VPHONE_MACHO_FIXTURE_OPTIONAL=1` to turn that failure
-// into a visible skip.
+// Without it these are *skipped*, with the reason printed: the extraction is
+// gitignored and simply not on a fresh clone, and that is not a regression.
+// `VPHONE_MACHO_FIXTURE_REQUIRED=1` turns an absent fixture back into a
+// failure, for a runner that forwards its environment (see
+// `SeputilFixture.required`).
 //
 // Nothing here writes anywhere under `ipsws/ref_extract/`: that tree is the
 // pristine reference the whole suite compares against. Clones land in
@@ -61,25 +61,32 @@ private enum SeputilFixture {
         return FileManager.default.fileExists(atPath: binary.path) ? binary : nil
     }
 
-    /// Opt-out for a machine that does not carry the extracted IPSW.
-    static var isOptional: Bool {
-        ProcessInfo.processInfo.environment["VPHONE_MACHO_FIXTURE_OPTIONAL"] == "1"
+    /// An absent cache skips the suite rather than failing it, with the reason
+    /// below, so a fresh clone without a multi-GB gitignored extraction is not
+    /// reported as a regression.
+    ///
+    /// These suites used to fail on absence and skip only under
+    /// `VPHONE_MACHO_FIXTURE_OPTIONAL=1`. That escape hatch was unreachable:
+    /// `xcodebuild test` does not forward the environment to this non-hosted
+    /// macOS test bundle, so the variable could never be set and every run
+    /// without the cache was red. The strict reading survives as
+    /// `VPHONE_MACHO_FIXTURE_REQUIRED=1`, for a runner that does forward it.
+    static var required: Bool {
+        ProcessInfo.processInfo.environment["VPHONE_MACHO_FIXTURE_REQUIRED"] == "1"
     }
 
-    /// The suite runs unless the binary is absent *and* the caller opted out.
     static var runs: Bool {
-        pristine != nil || !isOptional
+        pristine != nil || required
     }
 
     static let missing: Comment = """
     the real 24A435 iPhone17,3 seputil is required — put it at \
-    ipsws/ref_extract/macho_pristine/seputil, point VPHONE_MACHO_PRISTINE at \
-    the directory holding it, or set VPHONE_MACHO_FIXTURE_OPTIONAL=1 to skip \
-    these tests instead of failing
+    ipsws/ref_extract/macho_pristine/seputil, or point VPHONE_MACHO_PRISTINE \
+    at the directory holding it
     """
 
     static let skipReason: Comment =
-        "VPHONE_MACHO_FIXTURE_OPTIONAL=1 and no macho_pristine/seputil fixture present"
+        "no macho_pristine/seputil fixture; put it at ipsws/ref_extract/macho_pristine or set VPHONE_MACHO_PRISTINE"
 
     /// Where clones are made. Same filesystem as the repo, and deliberately
     /// *not* under `ipsws/ref_extract/`.
