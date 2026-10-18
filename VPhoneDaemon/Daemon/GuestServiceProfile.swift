@@ -21,7 +21,7 @@ import Foundation
 enum GuestServiceProfile {
     /// Raised whenever a label list changes, and kept in the record, so a
     /// guest shows which list its overrides came from.
-    static let listVersion = 4
+    static let listVersion = 5
     static let recordPath = "/var/db/vphoned/service-profile.plist"
     static let trimmed = "trimmed"
     static let none = "none"
@@ -83,8 +83,10 @@ enum GuestServiceProfile {
     /// 24A435): the LaunchDaemons that were loaded at boot and stayed unloaded
     /// after the override, with the four traps below already taken out: 137,
     /// less siriactionsd since list version 2, passd and financed since list
-    /// version 3 and generativeexperiencesd since list version 4 (see
-    /// `neverDisable`).
+    /// version 3, generativeexperiencesd since list version 4 and
+    /// ThreadCommissionerService since list version 5 (see `neverDisable`):
+    /// on iOS 27.0.1 (24A446) launchd answers EPERM to its system-domain
+    /// override while accepting the others, so the profile keeps it.
     static let base27: [String] = [
         "com.apple.CallHistorySyncHelper",
         "com.apple.Maps.mapspushd",
@@ -97,7 +99,6 @@ enum GuestServiceProfile {
         "com.apple.SensorKitALSHelper",
         "com.apple.SiriTTSTrainingAgent",
         "com.apple.StatusKitAgent",
-        "com.apple.ThreadCommissionerService",
         "com.apple.WirelessRadioManager",
         "com.apple.absd",
         "com.apple.accessibility.heard",
@@ -291,6 +292,12 @@ enum GuestServiceProfile {
         // and passd waits on financed's Core Data store; with either disabled
         // FrontBoard kills Wallet at the scene-create watchdog.
         "com.apple.passd", "com.apple.financed",
+        // The guest's launchd refuses this one: iOS 27.0.1 (24A446) answers
+        // EPERM to its system-domain override while accepting the other 136
+        // of the base list, and a template build fails at service-profile on
+        // any refusal. Whether the job moved domains or is protected there is
+        // not yet known (see research/Guest/service_trimming.md).
+        "com.apple.ThreadCommissionerService",
     ]
 
     // MARK: - Selection

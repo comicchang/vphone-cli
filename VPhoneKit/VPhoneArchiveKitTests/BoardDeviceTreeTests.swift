@@ -203,6 +203,19 @@ struct BoardDeviceTreeTests {
         #expect(VPhoneBoardDeviceTree.searchDirectories(forVirtualMachineAt: local).count == 1)
     }
 
+    @Test func `a run's own IPSW cache is searched before the shared cache`() {
+        let vm = URL(fileURLWithPath: "/Volumes/Lab/vphone/machines/ipad", isDirectory: true)
+        let cache = URL(fileURLWithPath: "/Volumes/Extra/ipsws", isDirectory: true)
+        let directories = VPhoneBoardDeviceTree.searchDirectories(forVirtualMachineAt: vm, cache: cache)
+        #expect(directories.first == cache)
+        #expect(directories.dropFirst().first == VPhoneResources.ipswCacheDirectory())
+        #expect(directories.last?.path == "/Volumes/Lab/vphone/ipsws")
+        // An explicit cache that is the shared one is not searched twice.
+        let same = VPhoneBoardDeviceTree.searchDirectories(
+            forVirtualMachineAt: vm, cache: VPhoneResources.ipswCacheDirectory())
+        #expect(same.count == 2)
+    }
+
     // MARK: - Store
 
     @Test func `a recovered tree is kept where fw patch keeps it`() throws {
