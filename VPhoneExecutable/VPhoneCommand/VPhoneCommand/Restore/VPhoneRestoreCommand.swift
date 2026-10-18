@@ -329,6 +329,8 @@ struct VPhoneCustomFirmwareInstallCommand: ParsableCommand {
         help: "Keep the extracted firmware after install (default: removed to save space)",
     )
     var keepArtifacts = false
+    @Option(help: "Directory for downloaded IPSWs, used to recover a missing board device tree (default: ~/.vphone/ipsws or $VPHONE_ROOT/ipsws)")
+    var ipswCache: String?
     @Option(name: .customLong("work-parent"), help: "Root-owned private CFW temporary directory")
     var workParent = VPhoneCustomFirmwareInstaller.defaultWorkParent
 
@@ -341,6 +343,9 @@ struct VPhoneCustomFirmwareInstallCommand: ParsableCommand {
             bundle: bundle.url,
             resources: resources,
             workParent: workParent,
+            ipswCacheDirectory: ipswCache.map {
+                URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath, isDirectory: true)
+            },
         )
         if code == 0 {
             try recordInstall(in: bundle)
@@ -425,6 +430,8 @@ struct VPhoneCustomFirmwareUpdateKernelCommand: ParsableCommand {
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "VM name") var name: String?
+    @Option(help: "Directory for downloaded IPSWs, used to recover a missing board device tree (default: ~/.vphone/ipsws or $VPHONE_ROOT/ipsws)")
+    var ipswCache: String?
     @Option(name: .customLong("work-parent"), help: "Root-owned private CFW temporary directory")
     var workParent = VPhoneCustomFirmwareInstaller.defaultWorkParent
 
@@ -436,6 +443,9 @@ struct VPhoneCustomFirmwareUpdateKernelCommand: ParsableCommand {
             resources: VPhoneResources.resolve(),
             mode: .kernelUpdate,
             workParent: workParent,
+            ipswCacheDirectory: ipswCache.map {
+                URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath, isDirectory: true)
+            },
         )
         throw ExitCode(code)
     }
@@ -462,8 +472,8 @@ struct VPhoneCustomFirmwareUpdateEnvironmentCommand: ParsableCommand {
 
         An iPad VM's audio repair needs the iPad's own DeviceTree.<board>.im4p
         in the VM's FirmwareOriginals. When a VM patched by an older build has
-        none, it is recovered from the VM's IPSW in ~/.vphone/ipsws (matched by
-        its BuildManifest) and kept there; without that IPSW the repair is
+        none, it is recovered from the VM's IPSW in the cache --ipsw-cache
+        names (matched by its BuildManifest) and kept there; without that IPSW the repair is
         skipped with a [!] line naming the fix.
 
         Use it to move an existing VM onto a newer bundle, or to apply a
@@ -474,6 +484,8 @@ struct VPhoneCustomFirmwareUpdateEnvironmentCommand: ParsableCommand {
 
     @OptionGroup var lib: VPhoneLibraryOption
     @Argument(help: "VM name") var name: String?
+    @Option(help: "Directory for downloaded IPSWs, used to recover a missing board device tree (default: ~/.vphone/ipsws or $VPHONE_ROOT/ipsws)")
+    var ipswCache: String?
     @Option(name: .customLong("work-parent"), help: "Root-owned private CFW temporary directory")
     var workParent = VPhoneCustomFirmwareInstaller.defaultWorkParent
 
@@ -485,6 +497,9 @@ struct VPhoneCustomFirmwareUpdateEnvironmentCommand: ParsableCommand {
             resources: VPhoneResources.resolve(),
             mode: .environmentOnly,
             workParent: workParent,
+            ipswCacheDirectory: ipswCache.map {
+                URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath, isDirectory: true)
+            },
         )
         throw ExitCode(code)
     }

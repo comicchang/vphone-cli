@@ -18,7 +18,7 @@ enum VPhoneLaunchpadHelperFirmwareAdmission {
 
     /// The free space one run needs on each volume it writes to, matching
     /// `VPhoneCustomFirmwareInstaller.requireFreeSpace` in vphone-cli.
-    static let freeSpacePerRun: Int64 = 50 * 1024 * 1024 * 1024
+    static let freeSpacePerRun: Int64 = 15 * 1024 * 1024 * 1024
 
     static let machineBusy = "A CFW install or environment update is already running on this machine. Wait for it to finish, then try again."
     static let notEnoughSpace = "Not enough free disk space to run this alongside the CFW installs or environment updates already running. Wait for them to finish or free up space, then try again."
