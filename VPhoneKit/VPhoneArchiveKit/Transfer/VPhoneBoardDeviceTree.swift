@@ -141,14 +141,15 @@ public enum VPhoneBoardDeviceTree {
 
     // MARK: - IPSW
 
-    /// Where a VM's IPSW can be: the shared cache (`~/.vphone/ipsws`, or
+    /// Where a VM's IPSW can be: the cache a run was given (`--ipsw-cache`)
+    /// when there is one, the shared cache (`~/.vphone/ipsws`, or
     /// `$VPHONE_ROOT/ipsws`), and the `ipsws` folder beside the VM's library,
     /// which is the same cache for a library under another data root.
-    public static func searchDirectories(forVirtualMachineAt vm: URL) -> [URL] {
+    public static func searchDirectories(forVirtualMachineAt vm: URL, cache: URL? = nil) -> [URL] {
         let beside = vm.standardizedFileURL.deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("ipsws", isDirectory: true)
         var directories: [URL] = []
-        for directory in [VPhoneResources.ipswCacheDirectory(), beside] {
+        for directory in [cache, VPhoneResources.ipswCacheDirectory(), beside].compactMap({ $0 }) {
             let path = directory.standardizedFileURL.path
             if !directories.contains(where: { $0.standardizedFileURL.path == path }) {
                 directories.append(directory)

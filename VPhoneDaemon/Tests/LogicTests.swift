@@ -46,8 +46,8 @@ enum LogicTests {
 
     static func profileCatalog() {
         let groups = GuestServiceProfile.groups27
-        expectEqual(GuestServiceProfile.base27.count, 136, "appendix A less siriactionsd")
-        expectEqual(Set(GuestServiceProfile.base27).count, 136, "appendix A has no duplicates")
+        expectEqual(GuestServiceProfile.base27.count, 135, "appendix A less siriactionsd and ThreadCommissionerService")
+        expectEqual(Set(GuestServiceProfile.base27).count, 135, "appendix A has no duplicates")
         let all = groups.flatMap(\.labels)
         expectEqual(Set(all).count, all.count, "no label is in two groups")
         for label in all + GuestServiceProfile.neverDisable {
@@ -65,7 +65,7 @@ enum LogicTests {
 
     static func profileCatalog26() {
         let base26 = GuestServiceProfile.base26
-        expectEqual(base26.count, 130, "136 minus six 26.6.2 does not load")
+        expectEqual(base26.count, 129, "135 minus six 26.6.2 does not load")
         expectEqual(Set(base26).count, base26.count, "no duplicates")
         expect(Set(base26).isSubset(of: GuestServiceProfile.base27), "26 adds no label of its own")
         expect(GuestServiceProfile.notLoadedOn26.isSubset(of: GuestServiceProfile.base27), "only 27 labels are left out")
@@ -87,7 +87,7 @@ enum LogicTests {
 
     static func profileSelection() {
         let trimmed = try? GuestServiceProfile.select(profile: "trimmed", iosMajor: 27)
-        expectEqual(trimmed?.labels.count, 140, "default trimmed = 136 + 2 store + 2 follow-up")
+        expectEqual(trimmed?.labels.count, 139, "default trimmed = 135 + 2 store + 2 follow-up")
         expectEqual(trimmed?.groups, ["base", "app_store", "signin_followup"])
         expect(trimmed?.labels.contains("com.apple.followupd") == true, "followupd is in trimmed")
         expect(trimmed?.labels.contains("com.apple.akd") == false, "akd is not in trimmed by default")
@@ -96,23 +96,23 @@ enum LogicTests {
         expectEqual(trimmed?.labels, trimmed?.labels.sorted(), "labels sorted")
 
         let accounts = try? GuestServiceProfile.select(profile: "trimmed", iosMajor: 27, extraGroups: ["accounts"])
-        expectEqual(accounts?.labels.count, 143, "accounts adds three")
+        expectEqual(accounts?.labels.count, 142, "accounts adds three")
         expect(accounts?.labels.contains("com.apple.amsaccountsd") == true, "amsaccountsd with accounts")
 
         let allowed = try? GuestServiceProfile.select(
             profile: "trimmed", iosMajor: 27, allow: ["com.apple.weatherd", "com.example.not-listed"],
         )
-        expectEqual(allowed?.labels.count, 139, "allow removes one")
+        expectEqual(allowed?.labels.count, 138, "allow removes one")
         expectEqual(allowed?.allowed, ["com.apple.weatherd"], "only catalog labels are reported as allowed")
         expect(allowed?.labels.contains("com.apple.weatherd") == false, "weatherd kept")
 
         let trimmed26 = try? GuestServiceProfile.select(profile: "trimmed", iosMajor: 26)
-        expectEqual(trimmed26?.labels.count, 134, "26 trimmed = 130 + 2 store + 2 follow-up")
+        expectEqual(trimmed26?.labels.count, 133, "26 trimmed = 129 + 2 store + 2 follow-up")
         expectEqual(trimmed26?.groups, ["base", "app_store", "signin_followup"])
         expect(trimmed26?.refused.isEmpty == true, "the 26 list names nothing never disabled")
         expectEqual(
             (try? GuestServiceProfile.select(profile: "trimmed", iosMajor: 26, extraGroups: ["accounts"]))?.labels.count,
-            137, "accounts adds three on 26",
+            136, "accounts adds three on 26",
         )
 
         expectEqual(try? GuestServiceProfile.select(profile: "none", iosMajor: 25), GuestServiceProfile.Selection())
@@ -207,7 +207,7 @@ enum LogicTests {
         var overrides = Dictionary(uniqueKeysWithValues: ota.map { ($0, true) })
         overrides["com.apple.user-choice"] = true
         let apply = GuestServiceProfile.reconcile(target: trimmed.labels, owned: [], overrides: overrides)
-        expectEqual(apply.disable.count, 137, "140 minus the three already disabled")
+        expectEqual(apply.disable.count, 136, "139 minus the three already disabled")
         expectEqual(apply.skipped.map(\.label), ota.sorted())
         let owned = GuestServiceProfile.owned(after: apply, failedDisable: [], failedEnable: [])
         for label in apply.disable {

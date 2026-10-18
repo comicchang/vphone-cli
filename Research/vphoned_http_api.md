@@ -663,8 +663,9 @@ boot, so the guest has to restart. `apply {profile, groups?, allow?}`:
   Services panel) is skipped and never recorded, so `none` leaves it disabled.
   A recorded label the profile no longer selects is turned back on. The jobs
   in `GuestServiceProfile.neverDisable` (sleepd, CommCenter and its helpers,
-  cloudd, NanoRegistry, mobileassetd, storekitd, vphoned, and what vphone's
-  features use) are refused whatever names them.
+  cloudd, NanoRegistry, mobileassetd, storekitd, vphoned, what vphone's
+  features use, and ThreadCommissionerService, whose override iOS 27.0.1's
+  launchd refuses) are refused whatever names them.
 - The labels the profile owns go to `/var/db/vphoned/service-profile.plist`
   (`Profile`, `ListVersion`, `iOSMajor`, `Groups`, `Allow`, `Labels`,
   `Updated`). A second apply with the same arguments changes nothing.

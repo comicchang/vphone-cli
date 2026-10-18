@@ -44,7 +44,7 @@ load a disabled job at the next boot. It is the same mechanism
 
 | Group | Default | Labels | Why they can go |
 | --- | --- | --- | --- |
-| `base` | on | 136 | Appendix A of the measurement below, less `siriactionsd` (list version 2). Nothing in vphone, IcliKit or the guest hooks talks to them |
+| `base` | on | 135 | Appendix A of the measurement below, less `siriactionsd` (list version 2) and minus ThreadCommissionerService (see [Never disabled](#never-disabled)). Nothing in vphone, IcliKit or the guest hooks talks to them |
 | `app_store` | on | `com.apple.appstored`, `com.apple.itunesstored` | Off with the App Store and iTunes Store apps a template removes. `appstorecomponentsd` is already in `base` |
 | `signin_followup` | on | `com.apple.followupd`, `com.apple.appleidsetupd` | The sign-in follow-up and Apple Account setup prompts. They complement `libsigninfix`'s pane suppression. A guest that went through `setup.skip` has no follow-up items, so no orphaned badge is left |
 | `accounts` | off, `groups: ["accounts"]` | `com.apple.akd`, `com.apple.amsaccountsd`, `com.apple.appleaccountd` | Only for guests that never sign in: with these off, the guest cannot sign in to an Apple Account |
@@ -59,7 +59,7 @@ The `base` group, by area:
 | Find My | findmydeviced, searchpartyd, findmylocated, fmflocatord | No Apple Account |
 | Wallet, NFC, Secure Element | passd, nfcd, seld, seserviced, coreidvd | No NFC or SE hardware |
 | Watch | nanotimekitcompaniond, nanoprefsyncd, nanobackupd | No paired watch. nanoregistryd stays (see below) |
-| Home and health | homed, homeeventsd, fitnesscoachingd, ThreadCommissionerService | HomeKit apps under test need `homed` |
+| Home and health | homed, homeeventsd, fitnesscoachingd | HomeKit apps under test need `homed`. ThreadCommissionerService was here until 27.0.1 refused its override (see [Never disabled](#never-disabled)) |
 | Maps background | routined, navd, destinationd, mapspushd, mapssyncd | Not the location simulation path |
 | iCloud, iMessage, mail sync | identityservicesd, imagent, maild, remindd, replicatord, syncdefaultsd | No account. Mail, Reminders and iMessage under test need theirs |
 | Telemetry | analyticsd, triald, cloudtelemetryd, hangtelemetryd and other reporting daemons | Upload only. ReportCrash and osanalyticshelper stay, for `logs.crashes` |
@@ -104,6 +104,14 @@ guest **worse** when off, and are kept out of the lists for that reason:
 | `com.apple.CommCenter`, `CommCenterMobileHelper`, `CommCenterRootHelper` | SpringBoard's `SBTelephonyManager` reconnects to `com.apple.commcenter.xpc` every second and resets the idle timer each time (`updateIdleTimerForReason:"TelephonyManager:UpdateSB"`), so **the screen never turns off** | A 1 Hz loop in the log; backboardd grew from 99 to 160 MB; SpringBoard took 4418 wakeups in two minutes |
 | `com.apple.cloudd` | transparencyd (`Retrying CK account state fetch`) and ScreenTimeSettingsAgent keep retrying CloudKit | Each wrote 50–60 MiB per 15 idle minutes, against nothing on the untrimmed guest. Idle writes rose above the untrimmed guest's, to 337 MiB per 15 minutes |
 | `com.apple.nanoregistryd`, `nanoregistrylaunchd` | locationd waits synchronously on NanoRegistry's management queue | A spindump of a hung locationd showed `com.apple.nanoregistry.registry.managementqueue` in `dispatch_sync`. 27.0's locationd also hangs and crashes on its own, so this is kept out of caution |
+
+One label is kept for a different reason. `com.apple.ThreadCommissionerService`
+was one of Appendix A's 137 and its override worked on 24A435, but on iOS 27.0.1
+(24A446) launchd answers EPERM to its system-domain override while accepting the
+other 136, and every template build failed at `service-profile` on it. Whether
+24A446 moved the job to another launchd domain or protects it is undetermined; a
+booted guest's `services.list` (the `domains` of that label) is the next evidence
+to collect. Until then the profile keeps the label rather than fail builds.
 
 The rest of the list is what vphone's own features and the tools it drives
 rely on. Each one was traced to vphoned, IcliKit, the guest hooks or a

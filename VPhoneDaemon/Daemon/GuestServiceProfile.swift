@@ -82,7 +82,10 @@ enum GuestServiceProfile {
     /// Appendix A of the 2026-10-07 measurement on `svctest-a` (iPhone, 27.0
     /// 24A435): the LaunchDaemons that were loaded at boot and stayed unloaded
     /// after the override, with the four traps below already taken out: 137,
-    /// less siriactionsd since list version 2 (see `neverDisable`).
+    /// less siriactionsd since list version 2 (see `neverDisable`), and less
+    /// ThreadCommissionerService, one of the 137: on iOS 27.0.1 (24A446)
+    /// launchd answers EPERM to its system-domain override while accepting
+    /// the others, so the profile keeps it — see `neverDisable`.
     static let base27: [String] = [
         "com.apple.CallHistorySyncHelper",
         "com.apple.Maps.mapspushd",
@@ -95,7 +98,6 @@ enum GuestServiceProfile {
         "com.apple.SensorKitALSHelper",
         "com.apple.SiriTTSTrainingAgent",
         "com.apple.StatusKitAgent",
-        "com.apple.ThreadCommissionerService",
         "com.apple.WirelessRadioManager",
         "com.apple.absd",
         "com.apple.accessibility.heard",
@@ -285,6 +287,12 @@ enum GuestServiceProfile {
         // without it WidgetKit traps in each extension and the controls draw
         // blank.
         "com.apple.siriactionsd",
+        // The guest's launchd refuses this one: iOS 27.0.1 (24A446) answers
+        // EPERM to its system-domain override while accepting the other 136
+        // of the base list, and a template build fails at service-profile on
+        // any refusal. Whether the job moved domains or is protected there is
+        // not yet known (see research/Guest/service_trimming.md).
+        "com.apple.ThreadCommissionerService",
     ]
 
     // MARK: - Selection

@@ -89,7 +89,10 @@ enum VPhoneMachineTemplateTrimmer {
         guard lstat(disk.path, &info) == 0, info.st_mode & S_IFMT == S_IFREG, info.st_nlink == 1 else {
             throw ValidationError("\(disk.path) is not a plain disk image file.")
         }
-        if geteuid() == 0, let user = VPhoneInvokingUser.current, info.st_uid != user.uid {
+        if geteuid() == 0, let user = VPhoneInvokingUser.current,
+           VPhoneCustomFirmwareInstaller.ownershipHonored(atPath: disk.path),
+           info.st_uid != user.uid
+        {
             throw ValidationError("\(disk.path) is not owned by the account that started this command.")
         }
         return disk

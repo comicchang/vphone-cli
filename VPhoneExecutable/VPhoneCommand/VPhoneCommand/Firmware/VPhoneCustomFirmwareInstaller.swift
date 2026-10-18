@@ -69,6 +69,10 @@ struct VPhoneCustomFirmwareInstaller {
     let resources: VPhoneResources
     var mode: Mode = .full
     let workParent: String
+    /// The IPSW cache the run was given (`--ipsw-cache`), searched first when
+    /// a board device tree has to be recovered from an IPSW. Nil searches the
+    /// shared cache alone.
+    var ipswCacheDirectory: URL? = nil
 
     /// Guest system files belong to root:wheel.
     private static let guestOwner: (uid: uid_t, gid: gid_t) = (0, 0)
@@ -87,6 +91,18 @@ struct VPhoneCustomFirmwareInstaller {
     /// Root-owned and sticky, outside every user's tree. The work folder is
     /// made here with `mkdtemp`, so its name cannot be predicted or claimed.
     static let defaultWorkParent = "/private/var/tmp"
+
+    /// Whether the volume holding `path` records ownership at all. A volume
+    /// mounted with `MNT_IGNORE_OWNERSHIP` (Finder's "Ignore ownership on
+    /// this volume") reports every file as an unknown owner (uid 99) to
+    /// root, so comparing `st_uid` with the invoking user can neither hold
+    /// nor mean anything there. Owner checks are skipped on such volumes;
+    /// the no-follow, single-link and file-type checks are not.
+    static func ownershipHonored(atPath path: String) -> Bool {
+        var info = statfs()
+        guard statfs(path, &info) == 0 else { return true }
+        return info.f_flags & numericCast(MNT_IGNORE_OWNERSHIP) == 0
+    }
 
     private var executable: URL {
         VPhoneResources.runningExecutable()
@@ -108,6 +124,7 @@ struct VPhoneCustomFirmwareInstaller {
         resources: VPhoneResources,
         mode: Mode = .full,
         workParent: String = defaultWorkParent,
+        ipswCacheDirectory: URL? = nil,
     ) throws -> Int32 {
         if geteuid() == 0 {
             try VPhoneCustomFirmwareInstaller(
@@ -115,6 +132,7 @@ struct VPhoneCustomFirmwareInstaller {
                 resources: resources,
                 mode: mode,
                 workParent: workParent,
+                ipswCacheDirectory: ipswCacheDirectory,
             ).run()
             return 0
         }
@@ -154,9 +172,12 @@ struct VPhoneCustomFirmwareInstaller {
             return
         }
         // Ownership checks apply when the caller is known (SUDO_UID, which
-        // the Launchpad helper also sets). Plain root trusts its own files.
+        // the Launchpad helper also sets) and the volume records ownership.
+        // A volume mounted with owners disabled reports an unknown owner to
+        // root, where the comparison can neither hold nor mean anything.
+        // Plain root trusts its own files.
         let invokingUser = VPhoneInvokingUser.current
-        let callerUID = invokingUser?.uid
+        let callerUID = Self.ownershipHonored(atPath: bundle.path) ? invokingUser?.uid : nil
 
         let bundleDirectory = try pinBundle(owner: callerUID)
         let bundlePath = try bundleDirectory.path
@@ -697,7 +718,7 @@ struct VPhoneCustomFirmwareInstaller {
     /// from Preboot directly.
     private func runKernelUpdate() throws {
         let invokingUser = VPhoneInvokingUser.current
-        let callerUID = invokingUser?.uid
+        let callerUID = Self.ownershipHonored(atPath: bundle.path) ? invokingUser?.uid : nil
         let bundleDirectory = try pinBundle(owner: callerUID)
         let bundlePath = try bundleDirectory.path
         let recordedPlan = readPatchPlan(in: bundleDirectory)
@@ -1171,7 +1192,7 @@ struct VPhoneCustomFirmwareInstaller {
     /// full.
     static func requiredFreeSpaceGiB(for mode: Mode) -> Int64 {
         switch mode {
-        case .full: 50
+        case .full: 15
         case .environmentOnly, .kernelUpdate: 10
         }
     }
@@ -3412,7 +3433,7 @@ struct VPhoneCustomFirmwareInstaller {
             case let .recover(found):
                 firmware = found
             }
-            let directories = VPhoneBoardDeviceTree.searchDirectories(forVirtualMachineAt: bundle)
+            let directories = VPhoneBoardDeviceTree.searchDirectories(forVirtualMachineAt: bundle, cache: ipswCacheDirectory)
             let fix = "Put that IPSW in \(directories[0].path), or copy its \(device.boardDeviceTreePath) to \(bundle.path)/\(firmware.keptPath), then run this again."
             print("[*] \(originals) has no \(tree); looking for the \(device.productType) \(firmware.version) (\(firmware.build)) IPSW in \(directories.map(\.path).joined(separator: ", "))")
             let recover = { () throws -> (source: VPhoneBoardDeviceTree.Source, path: String)? in

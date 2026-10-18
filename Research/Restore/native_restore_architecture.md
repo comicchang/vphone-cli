@@ -340,6 +340,27 @@ given up on returned success and `restore-info.json` and the patch receipt were
 written. It now keeps the first fatal error. Round 3 above, with this fix,
 exited 1 and stopped before `cfw install`.
 
+## The create pipeline decrypts AEA images before it restores (2026-10-13)
+
+A template build streaming the AEA-wrapped system image has restored request
+its WKMS key mid-restore (`URLAsset`); the host fetches
+`wkms-public.apple.com` and only then delivers the key on the data port. When
+that fetch is slow — one run delivered it only after the ASR stream had died —
+device-side ASR aborts with `No WKMS decryption key received from host` (ASR
+error 1106), the chunk stream fails with `Unable to send data to ASR`, and the
+device-side re-request that succeeds afterwards is still discarded because the
+async handler has recorded the failure.
+`Research/Guest/locationd_27_0_1_startup_race.md` records the same failure
+with an HTTP 301 on the fetch.
+
+`vm create`'s `runRestorePhase` now runs
+`VPhoneRestoreOperations.decryptAEAImages(inRestoreDir:)` over
+`VPhoneRestoreLayout.findRestoreDirectory` before the DFU boot — the same
+host-side AEA decryption `restore --offline` performs — so the stream carries a
+plain image and the URLAsset path is never exercised. The step is idempotent
+(an already-plain `.dmg.aea` is skipped) and fails fast when the one WKMS
+request cannot be made.
+
 ## Still open
 
 **FDR equivalence.** The Python ran `Restore(..., ignore_fdr=False)`;

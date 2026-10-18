@@ -564,6 +564,15 @@ public struct VPhoneVirtualMachineCreator {
 
     private func runRestorePhase(bundleURL: URL, verbosity v: VPhoneVerbosity) throws {
         let configURL = bundleURL.appendingPathComponent("config.plist")
+        // The restore would otherwise stream the AEA-wrapped system image and
+        // let restored ask for its WKMS key mid-restore (URLAsset); when that
+        // fetch is slow, device-side ASR aborts with "No WKMS decryption key
+        // received from host" (ASR error 1106) and the transfer dies
+        // mid-stream. Decrypt on the host first, as `restore --offline` does,
+        // so the stream is a plain image and needs no key at all.
+        let restoreDir = try VPhoneRestoreLayout.findRestoreDirectory(in: bundleURL)
+        print("[*] Decrypting AEA images in \(restoreDir.lastPathComponent)...")
+        try VPhoneRestoreOperations.decryptAEAImages(inRestoreDir: restoreDir)
         print("[*] Starting DFU boot in background...")
         // Guest serial is never teed during `vm create` (echo: false); the
         // managed process still reads it internally for panic/prompt matching.
@@ -709,7 +718,11 @@ public struct VPhoneVirtualMachineCreator {
     ) throws {
         let v = options.verbosity
         trace("native CFW install for \(bundleURL.path)", v)
-        let code = try VPhoneCustomFirmwareInstaller.elevate(bundle: bundleURL, resources: resources)
+        let code = try VPhoneCustomFirmwareInstaller.elevate(
+            bundle: bundleURL,
+            resources: resources,
+            ipswCacheDirectory: options.ipswCacheDirectory,
+        )
         guard code == 0 else { throw VPhoneVirtualMachineCreationError.cfwInstallFailed(code) }
         print("[+] CFW installed.")
         if let bundle = try? VPhoneBundle.load(at: bundleURL),
