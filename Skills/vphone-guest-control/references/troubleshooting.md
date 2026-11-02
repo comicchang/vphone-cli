@@ -22,7 +22,7 @@ notes.
 | `vphone-launchpad-cli: command not found` | Not installed or not on PATH. [install](install.md) |
 | `canInstallBundles: false` | `helper` is missing or outdated, or Developer Tools access is not granted. The user fixes it in Launchpad's Host Setup; `status` reads the grant again, no relaunch needed |
 | "Unable to Start <name>" with "did not pass host preflight", or "is not installed" | The machine's own bundle (`vm list` → `bundle`) failed its checks or is gone. `bundle verify <version>`, then read `bundle list` → `preflightDetail`; for a missing one, install it or `vm set-bundle` to another version |
-| `vphone-vm` is killed before a window opens | AMFI refused the entitled binary. `bundle verify`; a rebuilt bundle has a new cdhash and needs the allowlist again. Host SIP/AMFI settings are the owner's to change |
+| `vphone-vm` is killed before a window opens | AMFI refused the entitled binary. Launchpad re-applies the allowlist and retries a refused start once; `bundle verify` does it by hand. A rebuilt bundle has a new cdhash and needs the allowlist again. Host SIP/AMFI settings are the owner's to change |
 | Prompt for an administrator password | Expected after the helper's five-minute authorization lapses. Tell the user; do not loop |
 | Launchpad too old for the bundle | Series mismatch. Update Launchpad; do not install a newer-series bundle |
 
