@@ -94,9 +94,11 @@ same `X.Y` from `gh release list -R Lakr233/vphone-cli` or the releases page.
 `--off` takes that back. `bundle remove <version>` deletes one, and refuses
 while a machine is bound to it. Neither is for routine use; ask first.
 
-The first step that needs the helper after its five-minute authorization
-expires asks the user for an administrator password on the Mac. Warn them
-before running one, and do not retry in a loop while a prompt is open.
+The first step that needs the helper in a macOS login session asks the user
+for an administrator password on the Mac (the helper's Security authorization
+rule omits timeout to retain the credential for the login session per
+HelperAuthorization semantics). Warn them before running one, and do not retry
+in a loop while a prompt is open.
 
 ## Testing a local build
 

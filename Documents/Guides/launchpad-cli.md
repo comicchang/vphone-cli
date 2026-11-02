@@ -76,8 +76,9 @@ vphone-launchpad-cli vm stop research-01
 ```
 
 The exact version is in the install result and in `bundle list`. The first
-step that needs the helper after its five-minute authorization expires asks
-for an administrator password on the Mac, as the window does.
+step that needs the helper in a macOS login session asks for an administrator
+password on the Mac (the authorization rule omits timeout for login-session
+credential reuse per HelperAuthorization semantics), as the window does.
 
 ## Comparing two builds
 
