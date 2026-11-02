@@ -5,6 +5,10 @@ import Foundation
 /// version, never a path or command line. Both executables come from the
 /// root-owned, receipt-verified bundle store.
 enum VPhoneLaunchpadHelperAMFI {
+    /// How long the escalator may run before the helper kills it. It normally
+    /// finishes in well under a second; this only bounds a hung run.
+    private static let escalatorTimeout: TimeInterval = 30
+
     private static let lock = NSLock()
 
     static func allow(bundleVersion: String) throws {
@@ -45,6 +49,25 @@ enum VPhoneLaunchpadHelperAMFI {
             try process.run()
         } catch {
             throw VPhoneLaunchpadHelperError("Unable to allow the bundle to run. Try again.")
+        }
+        // A hung escalator holds the pipe write end, so a plain
+        // readDataToEndOfFile would block forever. Poll for exit first; EOF
+        // follows exit, so draining afterwards never blocks.
+        let deadline = Date().addingTimeInterval(escalatorTimeout)
+        while process.isRunning, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        guard !process.isRunning else {
+            process.terminate()
+            // The escalator may ignore SIGTERM on its way down; make sure.
+            Thread.sleep(forTimeInterval: 1)
+            if process.isRunning {
+                kill(process.processIdentifier, SIGKILL)
+            }
+            process.waitUntilExit()
+            throw VPhoneLaunchpadHelperError(
+                "The AMFI escalator did not finish within \(Int(escalatorTimeout)) seconds and was stopped. Try again.",
+            )
         }
         let text = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
             .trimmingCharacters(in: .whitespacesAndNewlines)

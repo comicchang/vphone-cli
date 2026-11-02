@@ -232,7 +232,10 @@ final class VPhoneLaunchpadMachineLibrary {
             found += machines.filter { $0.libraryRoot == root }
         }
         machines = found
-        listError = errors.first
+        // Every library's failure is reported, not just the first: a root
+        // that cannot be listed is one problem among several, and the window
+        // shows them together.
+        listError = errors.isEmpty ? nil : errors.joined(separator: "\n")
         hasListed = true
         forgetEmptyLocations(listed: listed)
         selection.formIntersection(machines.map(\.id) + imports.map(\.row))

@@ -26,6 +26,11 @@ final class VPhoneLaunchpadHelperClient {
 
     private nonisolated static let label = VPhoneLaunchpadHelperIdentity.label
 
+    /// Client-side bound for one-shot privileged verbs. The helper answers in
+    /// well under a second normally; the AMFI allow verb itself kills a hung
+    /// escalator after 30 seconds, so 60 leaves room without hanging the UI.
+    private nonisolated static let privilegedVerbTimeout: TimeInterval = 60
+
     init() {
         state = installedState()
     }
@@ -129,9 +134,9 @@ final class VPhoneLaunchpadHelperClient {
 
     func uninstall() async throws {
         let authorization = try await authorizationSession.externalForm()
-        try await call { proxy, done in
+        try await withTimeout(seconds: Self.privilegedVerbTimeout) { proxy, done in
             proxy.uninstallHelper(authorization: authorization) { message in
-                done(message.map { VPhoneLaunchpadError($0) })
+                done(message.map { .failure(VPhoneLaunchpadError($0)) } ?? .success(()))
             }
         }
         connection?.invalidate()
@@ -220,9 +225,9 @@ final class VPhoneLaunchpadHelperClient {
 
     func removeBundle(version: String) async throws {
         let authorization = try await authorizationSession.externalForm()
-        try await call { proxy, done in
+        try await withTimeout(seconds: Self.privilegedVerbTimeout) { proxy, done in
             proxy.removeBundle(authorization: authorization, version: version) { message in
-                done(message.map { VPhoneLaunchpadError($0) })
+                done(message.map { .failure(VPhoneLaunchpadError($0)) } ?? .success(()))
             }
         }
     }
@@ -238,9 +243,9 @@ final class VPhoneLaunchpadHelperClient {
             )
         }
         let authorization = try await authorizationSession.externalForm()
-        try await call { proxy, done in
+        try await withTimeout(seconds: Self.privilegedVerbTimeout) { proxy, done in
             proxy.allowVirtualMachine(authorization: authorization, bundleVersion: bundleVersion) { message in
-                done(message.map { VPhoneLaunchpadError($0) })
+                done(message.map { .failure(VPhoneLaunchpadError($0)) } ?? .success(()))
             }
         }
     }
@@ -353,7 +358,7 @@ final class VPhoneLaunchpadHelperClient {
             throw VPhoneLaunchpadError(String(localized: "Update the privileged helper in Host Setup, then try again."))
         }
         let authorization = try await authorizationSession.externalForm()
-        return try await request { proxy, done in
+        return try await withTimeout(seconds: Self.privilegedVerbTimeout) { proxy, done in
             proxy.releaseOrphanedLeases(
                 authorization: authorization,
                 bundleVersion: bundleVersion,
@@ -466,7 +471,8 @@ final class VPhoneLaunchpadHelperClient {
         }
     }
 
-    /// One request whose reply carries only an optional error.
+    /// One request whose reply carries only an optional error. No timeout:
+    /// only the bundle install uses it, which streams an archive of any size.
     private func call(
         _ body: (VPhoneLaunchpadHelperProtocol, @escaping @Sendable (Error?) -> Void) -> Void,
     ) async throws {
