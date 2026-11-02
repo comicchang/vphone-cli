@@ -51,6 +51,9 @@ final class VPhoneLaunchpadMachineLibrary {
     private(set) var maintenance: [Path: VPhoneLaunchpadMaintenanceRun] = [:]
     private var isRefreshing = false
     private var timer: Timer?
+    /// amfid's pid at the last refresh, nil until amfid is first seen. A new
+    /// pid means amfid was relaunched, taking every VM admission with it.
+    private var lastAmfidPID: pid_t?
 
     private static let addedRootsKey = "VPhoneLaunchpadLibraryRoots"
     private static let lastRootKey = "VPhoneLaunchpadLastLibraryRoot"
@@ -247,6 +250,8 @@ final class VPhoneLaunchpadMachineLibrary {
         // A stopped machine's guest boots afresh when it starts again.
         pendingGuestRestarts = pendingGuestRestarts.filter { state(of: $0.key) != .stopped }
         await loadBindings(paths)
+        // amfid's restarts take the machines' bundle admissions with them.
+        await checkAmfidGeneration()
         refreshDiskUsage()
     }
 
@@ -287,6 +292,89 @@ final class VPhoneLaunchpadMachineLibrary {
             return nil
         }
         return name
+    }
+
+    /// amfid's pid, found by walking the kernel's process list with sysctl
+    /// (`KERN_PROC_ALL`), without shelling out. Nil when amfid cannot be
+    /// found or read; Launchpad runs as the user, so it sees amfid's pid
+    /// even where `kp_proc.p_comm` is hidden from it.
+    private nonisolated static func amfidPID() -> pid_t? {
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL]
+        var size = 0
+        guard sysctl(&mib, 4, nil, &size, nil, 0) == 0, size > 0 else {
+            return nil
+        }
+        // Processes can appear between the two calls; the usual slack.
+        size += size / 8
+        let capacity = size / MemoryLayout<kinfo_proc>.stride
+        var buffer = [kinfo_proc](repeating: kinfo_proc(), count: capacity)
+        var remaining = capacity * MemoryLayout<kinfo_proc>.stride
+        guard sysctl(&mib, 4, &buffer, &remaining, nil, 0) == 0 else {
+            return nil
+        }
+        for entry in buffer.prefix(remaining / MemoryLayout<kinfo_proc>.stride) {
+            let isAmfid = withUnsafeBytes(of: entry.kp_proc.p_comm) { bytes in
+                bytes.prefix(while: { $0 != 0 }).elementsEqual("amfid".utf8)
+            }
+            if isAmfid {
+                return entry.kp_proc.p_pid
+            }
+        }
+        return nil
+    }
+
+    /// Tracks amfid's pid across the 5-second refreshes. amfid holds each VM
+    /// binary's admission in its heap, so relaunching amfid takes every
+    /// admission with it (`_isRunningInternalBuild` is a per-instance byte;
+    /// jetsam idle-exits amfid every 30–120 minutes). When the pid changes,
+    /// every installed bundle that passed its check this session — the
+    /// `verify` that admits `vphone-vm` and may prompt once for the
+    /// administrator credential, which `authorizationSession` then caches
+    /// for this login session — is allowed again through the helper, once
+    /// per generation. A bundle whose check did not pass is not re-allowed
+    /// here, nor are installed-but-unverified versions; only a machine
+    /// start's own healing (b7a8605a) touches those. A failure is logged to
+    /// the console of one bound machine and left to the next amfid
+    /// generation, or to a start, not retried within this one.
+    private func checkAmfidGeneration() async {
+        let pid = await Task.detached { Self.amfidPID() }.value
+        guard let pid else {
+            return
+        }
+        guard let previous = lastAmfidPID else {
+            // First sight this session: nothing to heal yet.
+            lastAmfidPID = pid
+            return
+        }
+        guard pid != previous else {
+            return
+        }
+        lastAmfidPID = pid
+        // Set before re-admitting: one round per amfid generation, whatever
+        // its outcome, so a failing helper cannot make each 5-second refresh
+        // retry and re-prompt.
+        let versions = bundles.selectableVersions.filter { bundles.isChecked($0) }
+        guard !versions.isEmpty else {
+            return
+        }
+        if let machine = anyMachine {
+            appendConsoleLog(machine, "amfid relaunched (pid \(previous) → \(pid)); re-admitting checked bundles")
+        }
+        for version in versions {
+            do {
+                try await helper.allowVirtualMachine(bundleVersion: version)
+            } catch {
+                if let machine = anyMachine {
+                    appendConsoleLog(machine, "re-admitting VPhone.bundle \(version) after amfid's relaunch failed: \(VPhoneLaunchpadError.message(for: error))")
+                }
+            }
+        }
+    }
+
+    /// A listed machine to address console log lines to when no one machine
+    /// owns the event, or nil while none is listed.
+    private var anyMachine: Path? {
+        machines.first?.path
     }
 
     // MARK: - Core Bundle
