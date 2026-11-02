@@ -511,26 +511,95 @@ final class VPhoneLaunchpadMachineLibrary {
             arguments.append("--headless")
         }
         panicked.remove(machine)
+        await start(machine, version: version, commandLine: commandLine, arguments: arguments, healRetriesLeft: 1)
+    }
+
+    /// The first line `vphone-cli` prints when amfid refuses `vphone-vm` at
+    /// exec, the same prefix `verify` matches in a preflight.
+    private nonisolated static let amfiBlockedPrefix = "Error: AMFI blocked vphone-vm"
+
+    /// How long a fresh launch is watched before it counts as healthy. An
+    /// exec refusal kills the launch in well under a second; a healthy boot
+    /// is still starting when this ends.
+    private nonisolated static let launchWatch: TimeInterval = 3
+
+    /// Spawns `vm launch` and watches it briefly. amfid's admission of a VM
+    /// binary lives in amfid's heap and goes away whenever amfid is
+    /// relaunched, so the next launch dies at exec having printed
+    /// `blockedByAMFI` — a death that used to reach the user as a machine
+    /// that simply stays stopped. Re-applying the allowlist through the
+    /// helper and starting once more recovers on the spot; a refusal that
+    /// survives that is reported with the command that fixes it by hand.
+    private func start(
+        _ machine: Path,
+        version: String,
+        commandLine: VPhoneLaunchpadCommandLine,
+        arguments: [String],
+        healRetriesLeft: Int,
+    ) async {
+        let refused = VPhoneLaunchpadLineCollector()
         do {
             let child = try commandLine.start(arguments, logFile: Self.consoleLog(machine)) { [weak self] line in
+                if line.hasPrefix(Self.amfiBlockedPrefix) || line.hasPrefix("  sudo ") {
+                    refused.append(line)
+                }
                 if VPhoneLaunchpadCreationPipeline.isPanic(line) {
                     Task { @MainActor in self?.panicked.insert(machine) }
                 }
             }
             launched[machine] = child
             startedAt[machine] = Date()
-            Task {
-                let status = await child.wait()
-                if launched[machine] === child {
-                    launched[machine] = nil
-                    startedAt[machine] = nil
-                    appendConsoleLog(machine, "vm launch exited with status \(status)")
+            guard await Self.exitedWithin(child, Self.launchWatch) else {
+                Task {
+                    let status = await child.wait()
+                    if launched[machine] === child {
+                        launched[machine] = nil
+                        startedAt[machine] = nil
+                        appendConsoleLog(machine, "vm launch exited with status \(status)")
+                    }
+                    await refresh()
                 }
-                await refresh()
+                return
             }
+            let status = await child.wait()
+            if launched[machine] === child {
+                launched[machine] = nil
+                startedAt[machine] = nil
+                appendConsoleLog(machine, "vm launch exited with status \(status)")
+            }
+            guard refused.lines.contains(where: { $0.hasPrefix(Self.amfiBlockedPrefix) }) else {
+                await refresh()
+                return
+            }
+            guard healRetriesLeft > 0 else {
+                actionError = VPhoneLaunchpadError(
+                    String(localized: "Unable to Start \(machine.name)"),
+                    detail: refused.lines
+                        .map { $0.replacingOccurrences(of: "Error: ", with: "") }
+                        .joined(separator: "\n"),
+                )
+                await refresh()
+                return
+            }
+            appendConsoleLog(machine, "AMFI refused vphone-vm; re-applying the allowlist and starting again")
+            await bundles.verify(version, showsProgress: false)
+            await start(machine, version: version, commandLine: commandLine, arguments: arguments, healRetriesLeft: healRetriesLeft - 1)
         } catch {
             actionError = VPhoneLaunchpadError(String(localized: "Unable to Start \(machine.name)"), detail: error.localizedDescription)
         }
+    }
+
+    /// True when `child` is gone before `seconds` pass: the shape of an exec
+    /// refusal, watched for without keeping a second waiter on the child.
+    private static func exitedWithin(_ child: VPhoneLaunchpadChildProcess, _ seconds: TimeInterval) async -> Bool {
+        let deadline = Date().addingTimeInterval(seconds)
+        while Date() < deadline {
+            if !child.isRunning {
+                return true
+            }
+            try? await Task.sleep(for: .milliseconds(200))
+        }
+        return !child.isRunning
     }
 
     /// False, with `actionError` set, while a process that does not run the
