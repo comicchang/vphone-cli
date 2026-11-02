@@ -151,6 +151,26 @@ final nonisolated class VPhoneLaunchpadChildProcess: @unchecked Sendable {
             }
             Thread.sleep(forTimeInterval: 0.25)
         }
+        // The exit is observed first and read after: a reaped launcher's last
+        // lines can still be missing here. Draining before `finish` keeps the
+        // ordering of the pipe path, where `finish` runs only after every
+        // line is read, so a consumer that waits sees the whole log — the
+        // AMFI refusal among it. The wait is bounded: a healthy launch keeps
+        // the file open and silent, so this ends after the fixed window.
+        var quietFor: TimeInterval = 0
+        let deadline = Date().addingTimeInterval(2)
+        while Date() < deadline {
+            if let chunk = try? reader.readToEnd(), !chunk.isEmpty {
+                splitter.feed(chunk, onLine)
+                quietFor = 0
+            } else {
+                quietFor += 0.25
+                if quietFor >= 0.5 {
+                    break
+                }
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
         splitter.flush(onLine)
         try? reader.close()
         finish(lock.withLock { exitCode })
